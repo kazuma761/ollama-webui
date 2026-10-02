@@ -1,0 +1,40 @@
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+
+from .settings import settings  # isort: skip - loads .env before the pipeline reads the environment
+from ollama_pipeline import Registry, load_config
+
+from .routes import router
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    app.state.registry = Registry(load_config())
+    yield
+    await app.state.registry.aclose()
+
+
+def create_app() -> FastAPI:
+    app = FastAPI(title="Fastshot API", version="0.1.0", lifespan=lifespan)
+
+    if settings.cors_origins:
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=settings.cors_origins,
+            allow_methods=["GET", "POST"],
+            allow_headers=["Content-Type"],
+        )
+
+    app.include_router(router, prefix="/api")
+
+    # Mounted last so /api and /docs win over the static catch-all.
+    if settings.frontend_dir.is_dir():
+        app.mount("/", StaticFiles(directory=settings.frontend_dir, html=True), name="frontend")
+
+    return app
+
+
+app = create_app()

@@ -1,0 +1,53 @@
+# Ollama servers the platform can talk to.
+# Today this is just your laptop; when you move to the company server add it
+# here (or override a URL with the env var OLLAMA_HOST_<NAME>, e.g.
+# OLLAMA_HOST_GPU=http://10.0.0.12:11434). OLLAMA_HOST overrides default_host.
+hosts:
+  local: http://127.0.0.1:11434
+  # gpu: http://gpu-box.internal:11434
+
+default_host: local
+
+# true = every chat model pulled on a host also shows up in the picker,
+# even if it has no entry below.
+discover: true
+
+# Picked when the user has not chosen a model yet. Falls back to the first
+# available model if this one is not pulled.
+default_model: general
+
+# Named models shown in the picker. Each one maps a friendly label to an
+# Ollama model tag on a host, plus an optional system prompt and options.
+# Several entries may point at the same tag with different prompts.
+models:
+  - id: general
+    label: Llama 3.2
+    model: llama3.2:3b
+    host: local
+    description: Fast general-purpose assistant
+    system: |
+      You are an internal assistant for our engineering team. Be direct and
+      concise. Use Markdown, and fenced code blocks for any code.
+    options:
+      temperature: 0.7
+
+  - id: coder
+    label: Qwen Coder
+    model: qwen2.5-coder:7b
+    host: local
+    description: Code generation and review
+    system: |
+      You are a senior software engineer. Answer with working code first,
+      then a short explanation. Use fenced code blocks with a language tag.
+    options:
+      temperature: 0.2
+
+  - id: vision
+    label: Gemma 3 Vision
+    model: gemma3:4b
+    host: local
+    description: Reads screenshots and images
+    vision: true
+    system: |
+      You are a product engineer. When given a screenshot, describe the UI
+      precisely before answering the question.

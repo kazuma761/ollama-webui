@@ -1,0 +1,907 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Fastshot — Describe an app. We'll build it.</title>
+<meta name="description" content="Fastshot turns a written description into a working app.">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,100..900&display=block" rel="stylesheet">
+<script>document.documentElement.classList.add('anim')</script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+button,input,textarea{font:inherit;color:inherit;background:none;border:0}
+img,svg{display:block}
+
+:root{
+  --u:min(0.06410256vw,0.12400794vh);
+  --vu:0.09920635vh;
+  --inset-top:41; --inset-bottom:106;
+
+  --font-text:Inter,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --font-display:Inter,var(--font-text);
+
+  /* Nav */
+  --brand-x:225; --brand-y:45; --mark:34; --brand-gap:12; --brand-fs:18.49;
+  --links-y:50.5; --links-gap:50; --links-fs:21.69;
+  --cta-x:1195; --cta-y:42; --cta-w:140; --cta-h:43; --cta-r:12; --cta-fs:15.70; --cta-dy:2;
+  /* Hero */
+  --hero-gap:51;
+  --h1-y:323; --h1-fs:36.25; --display-ls:0.0018em;
+  --nav-ls:-0.0115em; --brand-ls:-0.0154em; --cta-ls:-0.0127em; --body-ls:0.007em;
+  --label-ls:normal; --model-ls:normal; --proof-ls:0.0065em;
+  --w-regular:400; --w-display-wght:410; --w-medium:500; --w-semibold:600;
+  --w-display:var(--w-display-wght); --w-nav:400; --w-brand:500; --w-cta:520;
+  --w-body:var(--w-regular); --w-label:var(--w-medium);
+  --w-model:var(--w-regular); --w-proof:480;
+  /* Composer */
+  --card-x:425; --card-y:413; --card-w:708; --card-h:143; --card-r:26;
+  --ph-x:452; --ph-y:446; --ph-fs:9.97;
+  --chips-x:444; --chips-y:505; --chip-h:30; --chip-r:9; --chip-fs:9.0; --chip-gap:5.5;
+  --son-fs:10.4; --son-top:15.5; --chev-gap:6.2;
+  --chev-x:1013.5; --chev-y:522.3;
+  --att-x:1043.2; --att-y:515.1;
+  --send-x:1084; --send-y:507; --send-d:35;
+  /* Footer */
+  --by-y:799; --by-fs:14.01; --logo-y:867; --logo-gap:62;
+
+  --e-primary:cubic-bezier(.16,1,.3,1);
+  --e-soft:cubic-bezier(.22,1,.36,1);
+
+  /* Chat (typed text and replies never drop below a readable size) */
+  --type-fs:max(12px,calc(12.5*var(--u)));
+  --msg-fs:max(13px,calc(13.5*var(--u)));
+  --ui-fs:max(11px,calc(11.5*var(--u)));
+  --ui-sm:max(10px,calc(9.5*var(--u)));
+}
+@supports (height:100dvh){
+  :root{--u:min(0.06410256vw,0.12400794dvh);--vu:0.09920635dvh}
+}
+@media (min-width:1561px){
+  :root{--inset-top:27;--inset-bottom:74}
+}
+
+html,body{height:100%}
+body{
+  overflow:hidden;background:#0a0d12;color:#fff;
+  font-family:var(--font-text);font-synthesis:none;
+  -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;
+  text-rendering:geometricPrecision;
+}
+:focus-visible{outline:2px solid #F8B285;outline-offset:3px;border-radius:4px}
+a{color:inherit;text-decoration:none}
+button{cursor:pointer}
+[hidden]{display:none!important}
+
+.stage{position:fixed;inset:0;overflow:hidden;background:#0a0d12}
+.stage-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0}
+.frame{
+  position:absolute;inset:0;z-index:1;display:flex;flex-direction:column;
+  padding:calc(var(--inset-top)*var(--vu)) calc(225*var(--u)) calc(var(--inset-bottom)*var(--vu));
+}
+
+/* ───────── Nav ───────── */
+.nav{
+  position:relative;flex:none;height:calc(43*var(--u));
+  display:flex;align-items:center;justify-content:space-between;
+}
+.brand{display:inline-flex;align-items:center;gap:calc(var(--brand-gap)*var(--u))}
+.mark{width:calc(var(--mark)*var(--u));height:calc(var(--mark)*var(--u));flex:none}
+.word{
+  font-family:var(--font-display);font-variation-settings:"opsz" 32;
+  font-size:calc(var(--brand-fs)*var(--u));font-weight:var(--w-brand);
+  letter-spacing:var(--brand-ls);line-height:1;
+  transform:translateY(calc(1*var(--u)));
+  text-shadow:0 calc(1*var(--u)) calc(10*var(--u)) rgba(0,0,0,.30);
+}
+.links{
+  position:absolute;left:50%;transform:translateX(-50%);
+  top:calc((50.5 - 41)*var(--u));
+  display:flex;gap:calc(var(--links-gap)*var(--u));
+}
+.links a{
+  font-size:calc(var(--links-fs)*var(--u));font-weight:var(--w-nav);
+  letter-spacing:var(--nav-ls);line-height:1.2;color:#fff;white-space:nowrap;
+  text-shadow:0 calc(1*var(--u)) calc(12*var(--u)) rgba(0,0,0,.32);
+  transition:opacity .18s ease;
+}
+.links a:hover{opacity:.72}
+.cta{
+  align-self:flex-start;margin-top:calc((42 - 41)*var(--u));flex:none;
+  width:calc(var(--cta-w)*var(--u));height:calc(var(--cta-h)*var(--u));
+  border-radius:calc(var(--cta-r)*var(--u));
+  display:inline-flex;align-items:center;justify-content:center;
+  font-size:calc(var(--cta-fs)*var(--u));font-weight:var(--w-cta);letter-spacing:var(--cta-ls);
+  background:linear-gradient(180deg,#3d3d3f 0%,#1d1d20 100%);
+  box-shadow:inset 0 calc(1*var(--u)) 0 rgba(255,255,255,.10),0 calc(2*var(--u)) calc(14*var(--u)) rgba(0,0,0,.28);
+}
+.cta span{transform:translateY(calc(var(--cta-dy)*var(--u)))}
+.cta:hover{filter:brightness(1.16)}
+.cta:active{transform:translateY(1px)}
+.burger,.sheet{display:none}
+
+/* ───────── Hero ───────── */
+.hero{
+  flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:calc(var(--hero-gap)*var(--vu));padding-bottom:calc(4*var(--vu));
+}
+.h1{
+  font-family:var(--font-display);font-variation-settings:"opsz" 32;
+  font-size:calc(var(--h1-fs)*var(--u));font-weight:var(--w-display);
+  line-height:1.10;letter-spacing:var(--display-ls);color:#fff;text-align:center;white-space:nowrap;
+  text-shadow:0 calc(2*var(--u)) calc(22*var(--u)) rgba(0,0,0,.30);
+}
+
+/* ───────── Composer ───────── */
+.card{
+  position:relative;flex:none;
+  width:calc(var(--card-w)*var(--u));height:calc(var(--card-h)*var(--u));
+  border-radius:calc(var(--card-r)*var(--u));margin-right:calc(3*var(--u));
+  background:rgba(41,41,43,.955);
+  -webkit-backdrop-filter:blur(calc(26*var(--u))) saturate(112%);
+  backdrop-filter:blur(calc(26*var(--u))) saturate(112%);
+  box-shadow:inset 0 0 0 1px rgba(214,228,255,.14),0 calc(22*var(--u)) calc(60*var(--u)) rgba(0,0,0,.30);
+}
+.ph{
+  position:absolute;
+  left:calc((452 - 425)*var(--u));top:calc((446 - 413)*var(--u));
+  width:calc((708 - 27 - 24)*var(--u));height:calc(53*var(--u));
+  display:block;resize:none;outline:none;overflow-y:auto;scrollbar-width:thin;
+  color:#ECECEF;font-size:calc(var(--ph-fs)*var(--u));font-weight:var(--w-body);
+  line-height:1.35;letter-spacing:var(--body-ls);
+}
+.ph:focus-visible{outline:none}
+.ph::placeholder{color:#8B8C8E;opacity:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ph:not(:placeholder-shown){font-size:var(--type-fs);line-height:1.42}
+
+.tools{
+  position:absolute;
+  left:calc((444 - 425)*var(--u));top:calc((505 - 413)*var(--u));
+  right:calc((425 + 708 - 1134)*var(--u));height:calc(var(--chip-h)*var(--u));
+  display:flex;align-items:center;
+}
+.chips{display:flex;align-items:center;gap:calc(var(--chip-gap)*var(--u))}
+.chip{
+  flex:none;width:calc(var(--cw)*var(--u));height:calc(var(--chip-h)*var(--u));
+  padding-left:calc(var(--pl)*var(--u));
+  display:inline-flex;align-items:center;gap:calc(var(--ig)*var(--u));
+  border-radius:calc(var(--chip-r)*var(--u));border:1px solid rgba(255,255,255,.05);
+  font-size:calc(var(--chip-fs)*var(--u));font-weight:var(--w-label);letter-spacing:var(--label-ls);
+  color:#909093;line-height:1;white-space:nowrap;
+  background:linear-gradient(180deg,rgba(255,255,255,.088) 0%,rgba(255,255,255,.050) 45%,rgba(255,255,255,.038) 100%);
+}
+.chip:hover{background:linear-gradient(180deg,rgba(255,255,255,.14),rgba(255,255,255,.07));color:#c8c8cb}
+.chip svg{width:calc(var(--iw)*var(--u));flex:none;fill:currentColor}
+.chip span{transform:translateY(calc(2*var(--u)))}
+
+/* Right cluster: absolute coordinates, NOT a flex-centered group. */
+.right{position:absolute;inset:0;pointer-events:none}
+.right>*{position:absolute;pointer-events:auto}
+/* Anchored by the chevron's right edge (frame-x 1013.5 + 6.8), which puts
+   "Sonnet 4.5" at left 510.2u and lets longer model names grow leftward. */
+.model-wrap{right:calc((1134 - 1013.5 - 6.8)*var(--u));top:calc(var(--son-top)*var(--u))}
+.model{
+  display:flex;align-items:center;gap:calc(var(--chev-gap)*var(--u));
+  max-width:calc(230*var(--u));
+  font-size:calc(var(--son-fs)*var(--u));font-weight:var(--w-model);letter-spacing:var(--model-ls);
+  color:#98999C;line-height:1;white-space:nowrap;
+}
+.model:hover{color:#c8c8cb}
+.model span{overflow:hidden;text-overflow:ellipsis;padding-bottom:.12em;margin-bottom:-.12em}
+.model svg{width:calc(6.8*var(--u));flex:none;fill:currentColor}
+.attach{
+  left:calc((1043.15 - 444)*var(--u));top:calc((515.14 - 505)*var(--u));
+  color:#A9AAAD;line-height:0;
+}
+.attach svg{width:calc(19.79*var(--u))}
+.attach:hover{color:#fff}
+.send{
+  left:calc((1084 - 444)*var(--u));top:calc((507 - 505)*var(--u));
+  width:calc(var(--send-d)*var(--u));height:calc(var(--send-d)*var(--u));border-radius:50%;
+  display:flex;align-items:center;justify-content:center;color:#fff;
+  background:linear-gradient(163deg,#FBBC94 0%,#F49D70 46%,#E88654 100%);
+  box-shadow:0 calc(3*var(--u)) calc(12*var(--u)) rgba(210,110,60,.34);
+}
+.send svg{width:calc(11.66*var(--u));fill:currentColor}
+.send .i-stop{display:none;width:calc(10.5*var(--u))}
+.busy .send .i-up{display:none}
+.busy .send .i-stop{display:block}
+.send:hover{filter:brightness(1.07)}
+.send:active{transform:scale(.95)}
+.send:focus-visible{border-radius:50%}
+
+/* ───────── Model menu ───────── */
+.menu{
+  position:absolute;z-index:20;right:calc(-10*var(--u));bottom:calc(100% + 12*var(--u));
+  width:max(230px,calc(250*var(--u)));max-height:min(46vh,340px);overflow-y:auto;scrollbar-width:thin;
+  padding:6px;border-radius:14px;
+  background:rgba(24,24,27,.97);border:1px solid rgba(255,255,255,.09);
+  box-shadow:0 18px 50px rgba(0,0,0,.45);
+}
+.opt{
+  width:100%;display:flex;align-items:center;gap:10px;text-align:left;
+  padding:8px 10px;border-radius:9px;
+}
+.opt:hover,.opt:focus-visible{background:rgba(255,255,255,.07);outline:none}
+.opt-text{flex:1;min-width:0}
+.opt-name{font-size:var(--ui-fs);font-weight:500;color:#ECECEF;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.opt-sub{font-size:var(--ui-sm);color:#8B8C8E;line-height:1.35;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.opt-dot{flex:none;width:6px;height:6px;border-radius:50%;background:transparent}
+.opt[aria-selected="true"] .opt-dot{background:#F49D70}
+.opt[disabled]{cursor:default}
+.opt[disabled] .opt-name{color:#77787B}
+.menu-note{padding:10px;font-size:var(--ui-fs);line-height:1.5;color:#98999C}
+.menu-note code,.msg code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.92em;background:rgba(255,255,255,.08);padding:.1em .35em;border-radius:5px}
+
+/* ───────── Figma link row + attachment pills ───────── */
+.figma{
+  position:absolute;z-index:5;
+  left:calc(19*var(--u));right:calc(19*var(--u));top:calc(22*var(--u));
+  display:flex;gap:8px;padding:6px;border-radius:12px;
+  background:rgba(24,24,27,.97);border:1px solid rgba(255,255,255,.09);
+}
+.figma input{flex:1;min-width:0;padding:0 8px;font-size:var(--type-fs);color:#ECECEF;outline:none}
+.figma input::placeholder{color:#8B8C8E}
+.figma button{flex:none;height:30px;padding:0 12px;border-radius:8px;font-size:var(--ui-fs);font-weight:500;color:#1d1d20;background:#F49D70}
+.attachments{
+  position:absolute;left:calc(19*var(--u));right:calc(19*var(--u));bottom:calc(100% + 8px);
+  display:flex;flex-wrap:wrap;gap:6px;
+}
+.pill{
+  display:inline-flex;align-items:center;gap:6px;max-width:240px;height:26px;padding:0 6px 0 10px;border-radius:8px;
+  font-size:var(--ui-sm);font-weight:500;color:#D5D5D8;
+  background:rgba(41,41,43,.955);box-shadow:inset 0 0 0 1px rgba(214,228,255,.14);
+}
+.pill span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pill button{flex:none;width:16px;height:16px;border-radius:50%;line-height:1;color:#98999C}
+.pill button:hover{color:#fff;background:rgba(255,255,255,.12)}
+.pill.warn{padding-right:10px;color:#FBBC94}
+
+/* ───────── Chat thread (shown after the first message) ───────── */
+.thread{display:none}
+.chat .h1,.chat .proof{display:none}
+.chat .frame{padding-bottom:calc(30*var(--vu))}
+.chat .hero{justify-content:flex-end;gap:calc(16*var(--u));padding-top:calc(18*var(--u))}
+.chat .thread{
+  flex:1 1 0;min-height:0;display:flex;flex-direction:column;gap:12px;
+  width:calc(var(--card-w)*var(--u));margin-right:calc(3*var(--u));
+  overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.25) transparent;
+  padding:18px 2px 34px;
+  -webkit-mask-image:linear-gradient(to bottom,transparent 0,#000 22px);
+  mask-image:linear-gradient(to bottom,transparent 0,#000 22px);
+}
+.msg{
+  flex:none;font-size:var(--msg-fs);line-height:1.55;letter-spacing:var(--body-ls);color:#ECECEF;
+  overflow-wrap:anywhere;border-radius:16px;
+}
+.msg.user{
+  align-self:flex-end;max-width:84%;padding:9px 14px;
+  background:rgba(41,41,43,.955);box-shadow:inset 0 0 0 1px rgba(214,228,255,.14);
+}
+.msg.bot{align-self:stretch;padding:12px 16px 14px;background:rgba(20,20,23,.88);box-shadow:inset 0 0 0 1px rgba(255,255,255,.07)}
+.msg .meta{font-size:var(--ui-sm);font-weight:500;color:#98999C;margin-bottom:5px;display:flex;gap:10px;justify-content:space-between}
+.msg .files{font-size:var(--ui-sm);color:#98999C;margin-bottom:4px}
+.msg .txt{white-space:pre-wrap}
+.msg .txt+.txt,.msg .txt+pre,.msg pre+.txt{margin-top:10px}
+.msg pre{
+  overflow-x:auto;padding:10px 12px;border-radius:10px;background:rgba(0,0,0,.42);
+  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.9em;line-height:1.5;
+}
+.msg pre code{background:none;padding:0;font-size:1em}
+.msg.err .body{color:#FBBC94}
+.dots{display:inline-flex;gap:4px;padding:6px 0}
+.dots i{width:5px;height:5px;border-radius:50%;background:#98999C;animation:dot 1s ease-in-out infinite}
+.dots i:nth-child(2){animation-delay:.15s}
+.dots i:nth-child(3){animation-delay:.3s}
+@keyframes dot{0%,80%,100%{opacity:.25}40%{opacity:1}}
+
+/* ───────── Footer ───────── */
+.proof{flex:none;display:flex;flex-direction:column;align-items:center;gap:calc(52.3*var(--vu))}
+.by{
+  font-family:var(--font-display);font-variation-settings:"opsz" 32;
+  font-size:calc(var(--by-fs)*var(--u));font-weight:var(--w-proof);letter-spacing:var(--proof-ls);
+  line-height:1.12;color:rgba(255,255,255,.95);text-align:center;
+  text-shadow:0 calc(1*var(--u)) calc(12*var(--u)) rgba(0,0,0,.35);
+}
+/* Caption at frame-y 799 and logos at 867 put the footer at 103u tall. */
+.logos{display:flex;align-items:center;height:calc(35*var(--u));gap:calc(var(--logo-gap)*var(--u));color:#fff}
+.logos svg{flex:none;fill:currentColor;filter:drop-shadow(0 calc(1*var(--u)) calc(10*var(--u)) rgba(0,0,0,.30))}
+.logos text{font-family:var(--font-display);font-weight:700;font-size:23px}
+
+/* ═════════ TABLET: fluid desktop, one-row toolbar ═════════ */
+@media (min-width:600px) and (max-width:1180px) and (min-height:600px){
+  :root{--u:1px}
+  .frame{padding:clamp(24px,3.4vh,44px) clamp(28px,4.2vw,60px) clamp(26px,4.4vh,56px)}
+  .links{gap:clamp(18px,3.4vw,50px)}
+  .links a{font-size:clamp(15px,2vw,21.69px)}
+  .h1{font-size:clamp(27px,4.3vw,44px);line-height:1.12}
+  .card,.chat .thread{width:min(100%,clamp(516px,74vw,760px));margin-right:0}
+  .card{
+    height:auto;padding:clamp(15px,1.9vw,24px);border-radius:clamp(17px,2.1vw,26px);
+    display:flex;flex-direction:column;gap:clamp(20px,3.2vh,44px);
+  }
+  .ph{position:static;width:100%;height:var(--ta-h,auto);min-height:2.8em;max-height:34vh;font-size:clamp(11px,1.35vw,14px);line-height:1.4}
+  .ph::placeholder{white-space:normal}
+  .ph:not(:placeholder-shown){font-size:14px}
+  .tools{position:static;height:auto;display:flex;flex-direction:row;flex-wrap:wrap;align-items:center;gap:clamp(10px,1.4vw,18px)}
+  .chips{flex-wrap:nowrap;gap:clamp(6px,0.85vw,10px)}
+  .chip{width:auto;height:clamp(29px,3.4vh,34px);padding:0 clamp(7px,1vw,13px);font-size:clamp(9.6px,1.12vw,12.5px)}
+  .right{position:static;display:flex;align-items:center;margin-left:auto;gap:0}
+  .right>*{position:relative;inset:auto}
+  .model{font-size:clamp(9.8px,1.12vw,12.5px)}
+  .attach{margin-left:clamp(9px,1.4vw,20px)}
+  .send{margin-left:clamp(9px,1.3vw,18px);width:clamp(32px,3.5vw,38px);height:clamp(32px,3.5vw,38px)}
+  .figma{left:12px;right:12px;top:12px}
+  .proof{gap:clamp(15px,2.5vh,30px)}
+}
+
+/* ═════════ COMPACT: phones and short landscape ═════════ */
+@media (max-width:599px),(max-height:599px) and (max-width:1180px){
+  :root{
+    --u:1px;
+    --pad-t:max(18px,env(safe-area-inset-top));
+    --pad-r:max(clamp(18px,5.2vw,40px),env(safe-area-inset-right));
+    --pad-b:max(20px,env(safe-area-inset-bottom));
+    --pad-l:max(clamp(18px,5.2vw,40px),env(safe-area-inset-left));
+  }
+  .frame,.chat .frame{padding:var(--pad-t) var(--pad-r) var(--pad-b) var(--pad-l)}
+  .links,header .cta{display:none}
+  .mark{width:30px;height:30px}
+  .burger{
+    display:flex;align-items:center;justify-content:center;width:38px;height:38px;border-radius:11px;cursor:pointer;
+    background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.14);
+  }
+  .burger svg{width:17px;height:12px;fill:#fff}
+  .sheet{
+    display:grid;grid-template-rows:0fr;transition:grid-template-rows .32s cubic-bezier(.4,0,.2,1);
+    position:absolute;z-index:30;left:var(--pad-l);right:var(--pad-r);top:calc(var(--pad-t) + 43px + 8px);
+  }
+  #menu:checked~.sheet{grid-template-rows:1fr}
+  .sheet-inner{overflow:hidden;min-height:0}
+  .panel{
+    display:flex;flex-direction:column;gap:2px;padding:10px;border-radius:16px;
+    background:rgba(24,24,27,.86);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);
+    border:1px solid rgba(255,255,255,.09);
+  }
+  .panel a{font-size:15px;padding:10px 10px;border-radius:10px}
+  .panel .cta{
+    display:inline-flex;align-self:stretch;width:auto;height:40px;margin-top:6px;border-radius:11px;font-size:15px;padding:0;
+  }
+  .panel .cta span{transform:none}
+  .h1{width:100%;max-width:15ch;white-space:normal;font-size:clamp(29px,7.6vw,50px);line-height:1.14;letter-spacing:-.012em}
+  .card,.chat .thread{width:100%;max-width:600px;margin-right:0}
+  .card{height:auto;display:flex;flex-direction:column;gap:clamp(16px,4.6vh,34px);padding:clamp(13px,3.4vw,18px);border-radius:20px}
+  .ph{position:static;width:100%;height:var(--ta-h,auto);min-height:1.4em;max-height:30vh;font-size:clamp(9.4px,2.95vw,14px)}
+  .ph:not(:placeholder-shown){font-size:16px;line-height:1.4}
+  .tools{position:static;height:auto;flex-direction:column;align-items:stretch;gap:12px}
+  .chips{flex-wrap:wrap;gap:6px}
+  .chip{width:auto;height:32px;padding:0 11px;font-size:11.5px}
+  .right{position:static;display:flex;align-items:center;justify-content:flex-start}
+  .right>*{position:relative;inset:auto}
+  .model{font-size:12.5px;max-width:52vw}
+  .attach{margin-left:auto}
+  .send{margin-left:14px;width:40px;height:40px}
+  .menu{left:0;right:auto}
+  .figma{left:10px;right:10px;top:10px}
+  .logos{gap:clamp(22px,7vw,62px);transform-origin:center;scale:.82}
+  .proof{gap:22px}
+}
+@media (max-width:1180px) and (max-height:560px){
+  .hero{gap:16px}
+  .h1{font-size:clamp(24px,5.4vh,34px)}
+  .proof{gap:10px}
+  .frame{padding-top:10px}
+}
+
+/* ═════════ Entrance (once, on first paint) ═════════ */
+@keyframes e-settle-down{from{opacity:0;transform:translateY(calc(-5*var(--u)))}to{opacity:1;transform:none}}
+@keyframes e-settle-up{from{opacity:0;transform:translateY(calc(6*var(--u)))}to{opacity:1;transform:none}}
+@keyframes e-mark{from{transform:scale(.9)}to{transform:none}}
+@keyframes e-focus{from{opacity:0;transform:translateY(calc(14*var(--u)));filter:blur(calc(6*var(--u)))}to{opacity:1;transform:none;filter:blur(0)}}
+@keyframes e-panel{from{opacity:0;transform:translateY(calc(18*var(--u))) scale(.985)}to{opacity:1;transform:none}}
+@keyframes e-populate{from{opacity:0;transform:translateY(calc(4*var(--u)))}to{opacity:1;transform:none}}
+@keyframes e-send{from{transform:scale(.82)}to{transform:none}}
+@keyframes e-msg{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:no-preference){
+  .anim .brand{animation:e-settle-down .58s var(--e-soft) .06s both}
+  .anim .mark{animation:e-mark .62s var(--e-primary) .06s both}
+  .anim .links a{animation:e-settle-down .50s var(--e-soft) both}
+  .anim .links a:nth-child(1){animation-delay:.16s}
+  .anim .links a:nth-child(2){animation-delay:.21s}
+  .anim .links a:nth-child(3){animation-delay:.26s}
+  .anim .links a:nth-child(4){animation-delay:.31s}
+  .anim .nav>.cta{animation:e-settle-down .55s var(--e-soft) .34s both}
+  .anim .h1{animation:e-focus 1s var(--e-primary) .30s both;will-change:transform,opacity}
+  .anim .card{animation:e-panel .90s var(--e-primary) .62s both;will-change:transform,opacity}
+  .anim .ph{animation:e-populate .50s var(--e-soft) .88s both}
+  .anim .chips{animation:e-populate .50s var(--e-soft) .94s both}
+  .anim .right{animation:e-populate .50s var(--e-soft) 1s both}
+  .anim .send{animation:e-send .50s var(--e-primary) 1s both}
+  .anim .by{animation:e-settle-up .55s var(--e-soft) 1.08s both}
+  .anim .logos svg{animation:e-settle-up .55s var(--e-soft) both}
+  .anim .logos svg:nth-child(1){animation-delay:1.16s}
+  .anim .logos svg:nth-child(2){animation-delay:1.22s}
+  .anim .logos svg:nth-child(3){animation-delay:1.28s}
+  .msg{animation:e-msg .32s var(--e-soft) both}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}
+}
+</style>
+</head>
+<body>
+<div class="stage">
+  <video class="stage-video" autoplay muted loop playsinline preload="auto"
+    src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260826_124724_bc041163-d651-425f-aea3-2acc1efc2c96.mp4"></video>
+
+  <div class="frame">
+    <input type="checkbox" id="menu" hidden>
+
+    <header class="nav">
+      <a class="brand" href="#" id="brand" aria-label="Fastshot home">
+        <svg class="mark" viewBox="0 0 34 34" aria-hidden="true">
+          <circle cx="17" cy="17" r="17" fill="#9C86CE"/>
+          <circle cx="17" cy="17" r="8.6" fill="#FFFFFF"/>
+          <circle cx="17" cy="17" r="3.7" fill="#151519"/>
+        </svg>
+        <span class="word">Fastshot</span>
+      </a>
+      <nav class="links" aria-label="Primary">
+        <a href="#">Features</a>
+        <a href="#">Examples</a>
+        <a href="#">Docs</a>
+      </nav>
+      <a class="cta" href="#" data-start><span>Get Started</span></a>
+      <label class="burger" for="menu" aria-label="Menu">
+        <svg viewBox="0 0 17 12" aria-hidden="true"><rect width="17" height="2" rx="1"/><rect y="10" width="17" height="2" rx="1"/></svg>
+      </label>
+    </header>
+
+    <div class="sheet">
+      <div class="sheet-inner">
+        <div class="panel">
+          <a href="#">Features</a>
+          <a href="#">Examples</a>
+          <a href="#">Docs</a>
+          <a class="cta" href="#" data-start><span>Get Started</span></a>
+        </div>
+      </div>
+    </div>
+
+    <main class="hero">
+      <h1 class="h1">Describe an app. We'll build it.</h1>
+
+      <section class="thread" id="thread" aria-live="polite" aria-label="Conversation"></section>
+
+      <form class="card" id="composer" onsubmit="return false">
+        <div class="attachments" id="attachments"></div>
+
+        <textarea class="ph" id="prompt" rows="1" aria-label="Describe what you want to build"
+          placeholder="Build a fintech tracking app with bank level privacy and..."></textarea>
+
+        <div class="figma" id="figma" hidden>
+          <input id="figma-url" type="url" placeholder="Paste a Figma link" aria-label="Figma link">
+          <button type="button" id="figma-add">Attach</button>
+        </div>
+
+        <div class="tools">
+          <div class="chips">
+            <button type="button" class="chip" id="chip-screens" style="--cw:107;--pl:12;--ig:3.7;--iw:15.06">
+              <svg viewBox="0 0 16 13" aria-hidden="true"><path d="M2.2 0h8.6A2.2 2.2 0 0 1 13 2.2v.3H5.6a3.1 3.1 0 0 0-3.1 3.1V10h-.3A2.2 2.2 0 0 1 0 7.8V2.2A2.2 2.2 0 0 1 2.2 0Z"/><rect x="3.6" y="3.6" width="12.4" height="9.4" rx="2.2"/></svg>
+              <span>Attach Screens</span>
+            </button>
+            <button type="button" class="chip" id="chip-figma" style="--cw:108;--pl:16;--ig:3.9;--iw:11.8">
+              <svg viewBox="-3 0 18 18" aria-hidden="true"><path d="M3 0h3v6H3a3 3 0 0 1 0-6Z"/><path d="M6 0h3a3 3 0 0 1 0 6H6Z"/><path d="M3 6h3v6H3a3 3 0 0 1 0-6Z"/><circle cx="9" cy="9" r="3"/><path d="M3 12h3v3a3 3 0 1 1-3-3Z"/></svg>
+              <span>Attach a Figma</span>
+            </button>
+            <button type="button" class="chip" id="chip-theme" style="--cw:107;--pl:15.8;--ig:2.9;--iw:12.13">
+              <svg viewBox="0 0 12 12" aria-hidden="true"><path d="M6 0c.5 3.2 2.8 5.5 6 6-3.2.5-5.5 2.8-6 6-.5-3.2-2.8-5.5-6-6 3.2-.5 5.5-2.8 6-6Z"/></svg>
+              <span>Today's Theme</span>
+            </button>
+          </div>
+
+          <div class="right">
+            <div class="model-wrap">
+              <button type="button" class="model" id="model-btn" aria-haspopup="listbox" aria-expanded="false">
+                <span id="model-label">Sonnet 4.5</span>
+                <svg viewBox="0 0 8 5" aria-hidden="true"><path d="M1 0l3 3 3-3 1 1-4 4-4-4Z"/></svg>
+              </button>
+              <div class="menu" id="model-menu" role="listbox" aria-label="Model" hidden></div>
+            </div>
+            <button type="button" class="attach" id="attach" aria-label="Attach files">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+            </button>
+            <button type="submit" class="send" id="send" aria-label="Build it">
+              <svg class="i-up" viewBox="0 0 12 14" aria-hidden="true"><path d="M6 0l6 6-1.5 1.5-3.4-3.4V14H4.9V4.1L1.5 7.5 0 6Z"/></svg>
+              <svg class="i-stop" viewBox="0 0 10 10" aria-hidden="true"><rect width="10" height="10" rx="2"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <input type="file" id="file-any" multiple hidden>
+        <input type="file" id="file-img" accept="image/*" multiple hidden>
+      </form>
+    </main>
+
+    <footer class="proof">
+      <p class="by">Built by engineers who loves building</p>
+      <div class="logos">
+        <svg viewBox="0 0 97 26" style="width:calc(96.84*var(--u))" role="img" aria-label="Ahana"><text x="0" y="21" textLength="97" lengthAdjust="spacingAndGlyphs">ahana</text></svg>
+        <svg viewBox="0 0 67 26" style="width:calc(67.29*var(--u))" role="img" aria-label="Cisco"><text x="0" y="21" textLength="67" lengthAdjust="spacingAndGlyphs">cisco</text></svg>
+        <svg viewBox="0 0 89 26" style="width:calc(88.68*var(--u))" role="img" aria-label="Ollama"><text x="0" y="21" textLength="89" lengthAdjust="spacingAndGlyphs">ollama</text></svg>
+      </div>
+    </footer>
+  </div>
+</div>
+
+<script>
+(() => {
+  const root = document.documentElement;
+  const $ = (id) => document.getElementById(id);
+
+  /* Entrance teardown: after the last logo settles, or 2600ms. */
+  const settle = () => root.classList.remove('anim');
+  const lastLogo = document.querySelector('.logos svg:last-child');
+  if (lastLogo) lastLogo.addEventListener('animationend', settle, { once: true });
+  setTimeout(settle, 2600);
+
+  /* Set window.FASTSHOT_API before this script to point at a backend on another origin. */
+  const API = (window.FASTSHOT_API || '').replace(/\/$/, '');
+  const MODEL_KEY = 'fastshot.model';
+  const MAX_TEXT_BYTES = 512 * 1024;
+  const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+
+  const el = {
+    thread: $('thread'), prompt: $('prompt'), attachments: $('attachments'),
+    modelBtn: $('model-btn'), modelLabel: $('model-label'), menu: $('model-menu'),
+    send: $('send'), figma: $('figma'), figmaUrl: $('figma-url'),
+    fileAny: $('file-any'), fileImg: $('file-img'),
+  };
+  const state = { models: [], model: null, offline: false, messages: [], attachments: [], busy: false, abort: null };
+
+  const store = {
+    get() { try { return localStorage.getItem(MODEL_KEY); } catch { return null; } },
+    set(v) { try { localStorage.setItem(MODEL_KEY, v); } catch {} },
+  };
+  const node = (tag, cls, text) => {
+    const n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text != null) n.textContent = text;
+    return n;
+  };
+  const current = () => state.models.find((m) => m.id === state.model) || null;
+
+  /* ── Models ── */
+  async function loadModels() {
+    try {
+      const res = await fetch(API + '/api/models');
+      if (!res.ok) throw new Error(String(res.status));
+      const data = await res.json();
+      state.models = data.models;
+      state.offline = false;
+      const usable = (id) => state.models.find((m) => m.id === id && m.available);
+      const pick = usable(state.model) || usable(store.get()) || usable(data.default) || state.models.find((m) => m.available);
+      state.model = pick ? pick.id : null;
+    } catch {
+      state.models = [];
+      state.model = null;
+      state.offline = true;
+    }
+    renderModels();
+  }
+
+  function renderModels() {
+    const cur = current();
+    el.modelLabel.textContent = cur ? cur.label : state.offline ? 'Offline' : 'No model';
+    el.menu.replaceChildren();
+    if (state.offline) {
+      el.menu.append(node('p', 'menu-note', 'The backend is not reachable. Start it with ./run.sh and reopen this menu.'));
+      return;
+    }
+    for (const m of state.models) {
+      const opt = node('button', 'opt');
+      opt.type = 'button';
+      opt.setAttribute('role', 'option');
+      opt.setAttribute('aria-selected', String(m.id === state.model));
+      opt.disabled = !m.available;
+      const text = node('span', 'opt-text');
+      const sub = m.available
+        ? [m.description, m.parameter_size, m.vision ? 'vision' : ''].filter(Boolean).join(' · ')
+        : 'Not pulled — ollama pull ' + m.model;
+      text.append(node('span', 'opt-name', m.label), node('span', 'opt-sub', sub || m.model));
+      text.firstChild.style.display = text.lastChild.style.display = 'block';
+      opt.append(text, node('span', 'opt-dot'));
+      opt.addEventListener('click', () => {
+        state.model = m.id;
+        store.set(m.id);
+        renderModels();
+        toggleMenu(false);
+        el.prompt.focus();
+      });
+      el.menu.append(opt);
+    }
+    if (!state.models.some((m) => m.available)) {
+      const note = node('p', 'menu-note');
+      note.append('No models are pulled yet. Start Ollama, then run ', node('code', '', 'ollama pull llama3.2:3b'), '.');
+      el.menu.append(note);
+    }
+  }
+
+  function toggleMenu(open) {
+    el.menu.hidden = !open;
+    el.modelBtn.setAttribute('aria-expanded', String(open));
+    if (open) loadModels();
+  }
+  el.modelBtn.addEventListener('click', () => toggleMenu(el.menu.hidden));
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.model-wrap')) toggleMenu(false);
+    if (!e.target.closest('#figma, #chip-figma')) el.figma.hidden = true;
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    toggleMenu(false);
+    el.figma.hidden = true;
+  });
+
+  /* ── Attachments ── */
+  function renderAttachments() {
+    el.attachments.querySelectorAll('.pill:not(.warn)').forEach((p) => p.remove());
+    state.attachments.forEach((a, i) => {
+      const pill = node('span', 'pill');
+      const remove = node('button', '', '×');
+      remove.type = 'button';
+      remove.setAttribute('aria-label', 'Remove ' + a.name);
+      remove.addEventListener('click', () => { state.attachments.splice(i, 1); renderAttachments(); });
+      pill.append(node('span', '', a.name), remove);
+      el.attachments.append(pill);
+    });
+  }
+  function flash(message) {
+    const pill = node('span', 'pill warn', message);
+    el.attachments.prepend(pill);
+    setTimeout(() => pill.remove(), 5000);
+  }
+  const readDataUrl = (file) => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+  async function addFiles(files) {
+    for (const file of files) {
+      try {
+        if (file.type.startsWith('image/')) {
+          if (file.size > MAX_IMAGE_BYTES) { flash(file.name + ' is over 8 MB'); continue; }
+          const data = (await readDataUrl(file)).split(',')[1];
+          state.attachments.push({ kind: 'image', name: file.name || 'screenshot.png', data });
+        } else {
+          if (file.size > MAX_TEXT_BYTES) { flash(file.name + ' is over 512 KB'); continue; }
+          const content = await file.text();
+          if (content.includes('\u0000')) { flash(file.name + ' is not a text file'); continue; }
+          state.attachments.push({ kind: 'file', name: file.name, content });
+        }
+      } catch {
+        flash('Could not read ' + file.name);
+      }
+    }
+    const cur = current();
+    if (cur && cur.vision === false && state.attachments.some((a) => a.kind === 'image')) {
+      flash(cur.label + " can't read images — pick a vision model");
+    }
+    renderAttachments();
+  }
+  for (const input of [el.fileAny, el.fileImg]) {
+    input.addEventListener('change', () => { addFiles([...input.files]); input.value = ''; });
+  }
+  $('attach').addEventListener('click', () => el.fileAny.click());
+  $('chip-screens').addEventListener('click', () => el.fileImg.click());
+  el.prompt.addEventListener('paste', (e) => {
+    const files = [...(e.clipboardData?.files || [])];
+    if (files.length) { e.preventDefault(); addFiles(files); }
+  });
+
+  $('chip-figma').addEventListener('click', () => {
+    el.figma.hidden = !el.figma.hidden;
+    if (!el.figma.hidden) el.figmaUrl.focus();
+  });
+  function addFigma() {
+    const url = el.figmaUrl.value.trim();
+    if (!/^https:\/\/([\w-]+\.)?figma\.com\//.test(url)) { flash('That is not a Figma link'); return; }
+    state.attachments.push({ kind: 'file', name: 'Figma link', content: 'Figma design reference: ' + url });
+    el.figmaUrl.value = '';
+    el.figma.hidden = true;
+    renderAttachments();
+    el.prompt.focus();
+  }
+  $('figma-add').addEventListener('click', addFigma);
+  el.figmaUrl.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); addFigma(); } });
+
+  $('chip-theme').addEventListener('click', async () => {
+    try {
+      const res = await fetch(API + '/api/theme');
+      if (!res.ok) throw new Error(String(res.status));
+      el.prompt.value = (await res.json()).prompt;
+      grow();
+      el.prompt.focus();
+    } catch {
+      flash("Could not load today's theme");
+    }
+  });
+
+  /* ── Composer ── */
+  function grow() {
+    /* Only the tablet and phone layouts read --ta-h; desktop keeps its fixed box. */
+    el.prompt.style.setProperty('--ta-h', 'auto');
+    el.prompt.style.setProperty('--ta-h', el.prompt.scrollHeight + 'px');
+  }
+  el.prompt.addEventListener('input', grow);
+  el.prompt.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); send(); }
+  });
+  el.send.addEventListener('click', (e) => { e.preventDefault(); send(); });
+  document.querySelectorAll('[data-start]').forEach((a) => a.addEventListener('click', (e) => {
+    e.preventDefault();
+    $('menu').checked = false;
+    el.prompt.focus();
+  }));
+  $('brand').addEventListener('click', (e) => { e.preventDefault(); reset(); });
+
+  function setBusy(busy) {
+    state.busy = busy;
+    root.classList.toggle('busy', busy);
+    el.send.setAttribute('aria-label', busy ? 'Stop' : 'Build it');
+  }
+  function reset() {
+    if (state.abort) state.abort.abort();
+    state.messages = [];
+    state.attachments = [];
+    el.thread.replaceChildren();
+    renderAttachments();
+    root.classList.remove('chat');
+    el.prompt.focus();
+  }
+
+  /* ── Rendering ── */
+  const escapeHtml = (s) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const inline = (s) => escapeHtml(s)
+    .replace(/`([^`\n]+)`/g, '<code>$1</code>')
+    .replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
+  /* Minimal, escape-first Markdown: fenced code, inline code and bold. */
+  function render(markdown) {
+    return markdown.split('```').map((part, i) => {
+      if (i % 2) {
+        const nl = part.indexOf('\n');
+        return '<pre><code>' + escapeHtml((nl >= 0 ? part.slice(nl + 1) : part).replace(/\n$/, '')) + '</code></pre>';
+      }
+      const text = part.replace(/^\n+|\n+$/g, '');
+      return text ? '<div class="txt">' + inline(text) + '</div>' : '';
+    }).join('');
+  }
+  const nearBottom = () => el.thread.scrollHeight - el.thread.scrollTop - el.thread.clientHeight < 80;
+  const toBottom = () => { el.thread.scrollTop = el.thread.scrollHeight; };
+
+  function addUser(message, names) {
+    const bubble = node('div', 'msg user');
+    if (names.length) bubble.append(node('div', 'files', names.join(', ')));
+    if (message.content) bubble.append(node('div', 'txt', message.content));
+    el.thread.append(bubble);
+  }
+  function addBot(label) {
+    const bubble = node('div', 'msg bot');
+    const meta = node('div', 'meta');
+    const stats = node('span');
+    meta.append(node('span', '', label), stats);
+    const body = node('div', 'body');
+    body.innerHTML = '<span class="dots"><i></i><i></i><i></i></span>';
+    bubble.append(meta, body);
+    el.thread.append(bubble);
+    return { bubble, body, stats };
+  }
+
+  /* ── Chat ── */
+  async function send() {
+    if (state.busy) { state.abort?.abort(); return; }
+    const content = el.prompt.value.trim();
+    const attached = state.attachments;
+    if (!content && !attached.length) return;
+
+    const message = {
+      role: 'user',
+      content,
+      images: attached.filter((a) => a.kind === 'image').map((a) => a.data),
+      files: attached.filter((a) => a.kind === 'file').map((a) => ({ name: a.name, content: a.content })),
+    };
+    const history = state.messages; /* reset() swaps the array, so a late reply can't leak into a new chat */
+    history.push(message);
+    state.attachments = [];
+    el.prompt.value = '';
+    grow();
+    renderAttachments();
+    toggleMenu(false);
+
+    root.classList.remove('anim');
+    root.classList.add('chat');
+    addUser(message, attached.map((a) => a.name));
+    const model = current();
+    const out = addBot(model ? model.label : 'Fastshot');
+    toBottom();
+
+    let answer = '';
+    let frame = 0;
+    const paint = () => {
+      frame = 0;
+      const stick = nearBottom();
+      out.body.innerHTML = render(answer);
+      if (stick) toBottom();
+    };
+    const fail = (text) => {
+      out.bubble.classList.add('err');
+      out.body.textContent = text;
+    };
+
+    setBusy(true);
+    state.abort = new AbortController();
+    try {
+      const res = await fetch(API + '/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: state.model, messages: history }),
+        signal: state.abort.signal,
+      });
+      if (!res.ok) {
+        const detail = (await res.json().catch(() => ({}))).detail;
+        throw new Error(typeof detail === 'string' ? detail : 'Request failed (' + res.status + ')');
+      }
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      for (;;) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        let cut;
+        while ((cut = buffer.indexOf('\n')) >= 0) {
+          const line = buffer.slice(0, cut).trim();
+          buffer = buffer.slice(cut + 1);
+          if (!line) continue;
+          const event = JSON.parse(line);
+          if (event.type === 'delta') {
+            answer += event.content;
+            if (!frame) frame = requestAnimationFrame(paint);
+          } else if (event.type === 'done') {
+            const s = event.stats || {};
+            out.stats.textContent = [s.tokens_per_second && s.tokens_per_second + ' tok/s', s.total_seconds && s.total_seconds + 's']
+              .filter(Boolean).join(' · ');
+          } else if (event.type === 'error') {
+            throw new Error(event.message);
+          }
+        }
+      }
+    } catch (err) {
+      if (err.name === 'AbortError') {
+        if (!answer) out.body.textContent = 'Stopped.';
+      } else if (answer) {
+        answer += '\n\n**' + err.message + '**';
+      } else {
+        fail(err instanceof TypeError ? 'The backend is not reachable. Start it with ./run.sh.' : err.message);
+      }
+    } finally {
+      cancelAnimationFrame(frame);
+      if (answer) {
+        paint();
+        history.push({ role: 'assistant', content: answer });
+      } else {
+        history.pop(); /* nothing came back, so the turn does not join the history */
+      }
+      state.abort = null;
+      setBusy(false);
+      el.prompt.focus();
+    }
+  }
+
+  loadModels();
+})();
+</script>
+</body>
+</html>
