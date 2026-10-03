@@ -1,0 +1,63 @@
+OLLAMA-WEBUI - HOW THE PROJECT WORKS
+====================================
+
+WHAT IT IS
+A chat web app for local Ollama models. The user picks a model, types a
+prompt (optionally attaching files or screenshots), and the reply streams back.
+
+FOLDERS (each has one job; calls only go frontend -> backend -> ollama)
+  frontend/   index.html - the whole UI (HTML + CSS + JS in one file).
+              Talks to the backend only through /api/* over HTTP.
+  backend/    FastAPI app (Python). Receives HTTP requests, calls the
+              ollama_pipeline package, and serves frontend/ at "/".
+                app/main.py      creates the app, mounts the frontend
+                app/routes.py    the API endpoints
+                app/schemas.py   request shapes
+                app/settings.py  HOST/PORT/CORS from env or backend/.env
+  ollama/     The Ollama layer (installed into the backend as a package).
+                config/models.yaml   Ollama servers + models in the picker
+                config/themes.yaml   prompts for the "Today's Theme" chip
+                ollama_pipeline/client.py     raw HTTP calls to Ollama
+                ollama_pipeline/registry.py   which models exist / are pulled
+                ollama_pipeline/pipeline.py   builds messages, streams reply
+                ollama_pipeline/documents.py  PDF/DOCX/text -> plain text
+  run.sh      starts the backend on http://127.0.0.1:8000
+
+REQUEST FLOW
+  1. Page loads -> GET /api/models -> registry asks each Ollama host
+     (/api/tags) what is pulled -> model list shown in the picker.
+  2. User attaches a file -> POST /api/files -> documents.py extracts text.
+     Images stay in the browser as base64.
+  3. User sends -> POST /api/chat {model, messages}
+     -> registry resolves the model -> pipeline adds the system prompt,
+        folds file text into the message -> Ollama /api/chat (streaming)
+     -> backend streams NDJSON lines back: delta / done / error
+     -> frontend renders the reply as it arrives.
+  Other endpoints: GET /api/health, GET /api/theme. API docs: /docs
+
+REQUIREMENTS
+  - macOS or Linux (Windows via WSL)
+  - Python 3.11+ and uv (https://docs.astral.sh/uv/)
+  - Ollama (https://ollama.com/download), running, with at least one model:
+        ollama pull llama3.2:3b
+  - Internet for the background video and Inter font (frontend loads them)
+
+RUN
+  ./run.sh            then open http://127.0.0.1:8000
+  If it says the port is in use, the app is already running.
+  After changing backend/ or ollama/ code: Ctrl+C and ./run.sh again.
+  After changing frontend/: just refresh the browser.
+
+HOW TO MODIFY
+  Add/rename a model, system prompt, or Ollama server -> ollama/config/models.yaml
+  Change daily prompts                                -> ollama/config/themes.yaml
+  Change how prompts are built (RAG, tools, logging)  -> ollama_pipeline/pipeline.py
+  Support a new file type                             -> ollama_pipeline/documents.py
+  Add an API endpoint                                 -> backend/app/routes.py
+  Change port/host                                    -> backend/.env (copy .env.example)
+  Change the UI                                       -> frontend/index.html
+  New Python dependency: add to the right pyproject.toml, then `cd backend && uv sync`.
+
+NOT BUILT YET
+  No login, no saved chat history, scanned PDFs have no text, Figma links
+  are passed as text only.
