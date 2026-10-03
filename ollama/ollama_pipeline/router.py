@@ -143,6 +143,15 @@ class Router:
         if message.get("images") and config.image_model:
             return Decision(config.image_model, None, "image")
 
+        previous = _previous_model(messages)
+        current = next((r for r in config.routes if r.model == previous), None)
+
+        # A short follow-up like "make it shorter" stays with the model already in use. This is
+        # checked before Von: it only reads the latest message, and on its own such a message
+        # looks like an easy request no matter how hard the task it refers to is.
+        if current and self._is_follow_up(message):
+            return Decision(current.model, current.name, "sticky")
+
         confidence = None
         if self._von is not None:
             try:
@@ -157,11 +166,8 @@ class Router:
 
         confidence = round(confidence, 3) if confidence is not None else None
 
-        # No confident answer. A follow-up like "make it shorter" stays with the model already
-        # in use: always when Von looked and was unsure, otherwise when the message is short.
-        previous = _previous_model(messages)
-        current = next((r for r in config.routes if r.model == previous), None)
-        if current and (confidence is not None or self._is_follow_up(message)):
+        # Von looked and was unsure: stay with the model already in use.
+        if current and confidence is not None:
             return Decision(current.model, current.name, "sticky", confidence)
 
         route = config.route(config.heavy_route if self._is_hard(message) else config.default_route)
