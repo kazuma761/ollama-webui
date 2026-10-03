@@ -12,7 +12,44 @@ default_host: local
 # even if it has no entry below.
 discover: true
 
-# Picked when the user has not chosen a model yet. Falls back to the first
+# Options sent to Ollama for every model unless a model overrides them.
+# num_ctx is how many tokens the model reads. Ollama's own default is small
+# (often 4096), which silently cuts off attached documents - a 10-page PDF
+# is roughly 6,000-8,000 tokens. Larger values use more memory; lower this
+# if models start running slowly because they no longer fit on the GPU.
+default_options:
+  num_ctx: 16384
+
+# Auto-routing: with "Auto" selected in the picker, each message is sent to
+# the model whose route fits it best.
+#   backend: von    a small decision model (https://github.com/wfzyx/von).
+#                   Needs `cd backend && uv sync --extra router` once
+#                   (Python 3.12+, ~3 GB of weights on first start).
+#                   English only. Falls back to rules when missing or unsure.
+#   backend: rules  keyword rules only, nothing to install.
+router:
+  enabled: true
+  backend: von
+  device: cpu            # keeps the GPU free for the answering models
+  min_confidence: 0.7    # below this, Von's answer is not trusted
+  instructions: Which kind of assistant should answer this request?
+  default_route: simple  # light model
+  heavy_route: complex   # strongest model
+  image_model: vision    # messages with screenshots go straight here
+  routes:
+    simple:
+      model: general
+      description: >-
+        Everyday writing and quick questions: emails, messages, replies,
+        rewording, translation, short summaries, simple facts, small talk.
+    complex:
+      model: reasoning
+      description: >-
+        Work that needs careful thinking: writing or debugging code, logic
+        and maths problems, multi-step reasoning, technical design, analysing
+        or reviewing documents and data.
+
+# Picked when the user has not chosen a model yet (and Auto is off). Falls back to the first
 # available model if this one is not pulled.
 default_model: general
 
@@ -30,6 +67,19 @@ models:
       concise. Use Markdown, and fenced code blocks for any code.
     options:
       temperature: 0.7
+
+  - id: reasoning
+    label: Qwen 3 14B
+    model: qwen3:14b
+    host: local
+    description: Reasoning, code and document analysis
+    system: |
+      You are a careful senior engineer and analyst. Work through the problem
+      step by step, then give a clear final answer. Use fenced code blocks
+      with a language tag for any code. When documents are attached, base
+      your answer on their content and say so if something is not in them.
+    options:
+      temperature: 0.3
 
   - id: coder
     label: Qwen Coder

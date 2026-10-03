@@ -8,9 +8,12 @@ from ollama_pipeline import (
     OllamaUnavailable,
     PipelineError,
     Registry,
+    Router,
     UnsupportedDocument,
     chat_stream,
     extract_text,
+    picker_models,
+    select_model,
     todays_theme,
 )
 
@@ -25,6 +28,10 @@ def get_registry(request: Request) -> Registry:
     return request.app.state.registry
 
 
+def get_router(request: Request) -> Router:
+    return request.app.state.router
+
+
 @router.get("/health")
 async def health(registry: Registry = Depends(get_registry)):
     hosts = await registry.health()
@@ -32,9 +39,9 @@ async def health(registry: Registry = Depends(get_registry)):
 
 
 @router.get("/models")
-async def models(registry: Registry = Depends(get_registry)):
-    entries = await registry.list_models()
-    return {"default": registry.default_id(entries), "models": [e.public() for e in entries]}
+async def models(registry: Registry = Depends(get_registry), auto: Router = Depends(get_router)):
+    default, entries = await picker_models(registry, auto)
+    return {"default": default, "models": entries}
 
 
 @router.get("/theme")
@@ -60,19 +67,22 @@ def extract_file(file: UploadFile):
 
 
 @router.post("/chat")
-async def chat(body: ChatRequest, registry: Registry = Depends(get_registry)):
-    """Streams the reply as newline-delimited JSON events: thinking, delta, done, error."""
+async def chat(
+    body: ChatRequest, registry: Registry = Depends(get_registry), auto: Router = Depends(get_router)
+):
+    """Streams the reply as newline-delimited JSON events: route, notice, thinking, delta, done, error."""
+    messages = [m.model_dump() for m in body.messages]
     try:
-        entry = await registry.resolve(body.model)
+        entry, route = await select_model(registry, auto, body.model, messages)
     except ModelNotFound as exc:
         raise HTTPException(404, str(exc)) from exc
     except OllamaUnavailable as exc:
         raise HTTPException(503, str(exc)) from exc
 
-    messages = [m.model_dump() for m in body.messages]
-
     async def events() -> AsyncIterator[str]:
         try:
+            if route:
+                yield json.dumps(route) + "\n"
             async for event in chat_stream(registry, entry, messages, body.options):
                 yield json.dumps(event) + "\n"
         except PipelineError as exc:

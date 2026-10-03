@@ -87,7 +87,7 @@ class Registry:
                     size=tag.get("size") if tag else None,
                     parameter_size=(tag.get("details") or {}).get("parameter_size") if tag else None,
                     system=alias.system,
-                    options=dict(alias.options),
+                    options={**self.config.default_options, **alias.options},
                 )
             )
             claimed.add((alias.host, entries[-1].model))
@@ -111,6 +111,7 @@ class Registry:
                             vision="vision" in caps if caps else None,
                             size=tag.get("size"),
                             parameter_size=(tag.get("details") or {}).get("parameter_size"),
+                            options=dict(self.config.default_options),
                         )
                     )
         return entries, down

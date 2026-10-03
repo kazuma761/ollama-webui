@@ -11,6 +11,9 @@ dependencies = [
     "ollama-pipeline",
 ]
 
+[project.optional-dependencies]
+router = ["ollama-pipeline[router]"]
+
 [tool.uv]
 package = false
 

@@ -288,6 +288,7 @@ button{cursor:pointer}
 .msg.bot{align-self:stretch;padding:12px 16px 14px;background:rgba(20,20,23,.88);box-shadow:inset 0 0 0 1px rgba(255,255,255,.07)}
 .msg .meta{font-size:var(--ui-sm);font-weight:500;color:#98999C;margin-bottom:5px;display:flex;gap:10px;justify-content:space-between}
 .msg .files{font-size:var(--ui-sm);color:#98999C;margin-bottom:4px}
+.msg .note{font-size:var(--ui-sm);line-height:1.45;color:#FBBC94;margin-bottom:6px}
 .msg .txt{white-space:pre-wrap}
 .msg .txt+.txt,.msg .txt+pre,.msg pre+.txt{margin-top:10px}
 .msg pre{
@@ -614,7 +615,7 @@ button{cursor:pointer}
       const text = node('span', 'opt-text');
       const sub = m.available
         ? [m.description, m.parameter_size, m.vision ? 'vision' : ''].filter(Boolean).join(' · ')
-        : 'Not pulled — ollama pull ' + m.model;
+        : m.id === 'auto' ? 'None of the routed models is pulled yet' : 'Not pulled — ollama pull ' + m.model;
       text.append(node('span', 'opt-name', m.label), node('span', 'opt-sub', sub || m.model));
       text.firstChild.style.display = text.lastChild.style.display = 'block';
       opt.append(text, node('span', 'opt-dot'));
@@ -829,12 +830,13 @@ button{cursor:pointer}
     const bubble = node('div', 'msg bot');
     const meta = node('div', 'meta');
     const stats = node('span');
-    meta.append(node('span', '', label), stats);
+    const name = node('span', '', label);
+    meta.append(name, stats);
     const body = node('div', 'body');
     body.innerHTML = '<span class="dots"><i></i><i></i><i></i></span>';
     bubble.append(meta, body);
     el.thread.append(bubble);
-    return { bubble, body, stats };
+    return { bubble, body, stats, name };
   }
 
   /* ── Chat ── */
@@ -867,6 +869,7 @@ button{cursor:pointer}
     toBottom();
 
     let answer = '';
+    let answeredBy = state.model; /* with Auto, replaced by the model the router picked */
     let frame = 0;
     const paint = () => {
       frame = 0;
@@ -905,7 +908,16 @@ button{cursor:pointer}
           buffer = buffer.slice(cut + 1);
           if (!line) continue;
           const event = JSON.parse(line);
-          if (event.type === 'delta') {
+          if (event.type === 'route') {
+            /* Auto picked a model for this message: show which one, and why on hover. */
+            answeredBy = event.model;
+            out.name.textContent = 'Auto · ' + event.label;
+            out.name.title = 'Routed by ' + event.source
+              + (event.route ? ' to "' + event.route + '"' : '')
+              + (event.confidence != null ? ' (confidence ' + event.confidence + ')' : '');
+          } else if (event.type === 'notice') {
+            out.body.before(node('div', 'note', event.message));
+          } else if (event.type === 'delta') {
             answer += event.content;
             if (!frame) frame = requestAnimationFrame(paint);
           } else if (event.type === 'done') {
@@ -929,7 +941,7 @@ button{cursor:pointer}
       cancelAnimationFrame(frame);
       if (answer) {
         paint();
-        history.push({ role: 'assistant', content: answer });
+        history.push({ role: 'assistant', content: answer, model: answeredBy });
       } else {
         history.pop(); /* nothing came back, so the turn does not join the history */
       }

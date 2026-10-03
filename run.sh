@@ -11,4 +11,5 @@ if lsof -nP -iTCP:"$port" -sTCP:LISTEN >/dev/null 2>&1; then
   exit 1
 fi
 
-exec uv run python -m app "$@"
+# --inexact keeps optional packages (the Von router) installed by `uv sync --extra router`.
+exec uv run --inexact python -m app "$@"

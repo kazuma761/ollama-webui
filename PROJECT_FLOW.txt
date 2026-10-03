@@ -19,6 +19,7 @@ FOLDERS (each has one job; calls only go frontend -> backend -> ollama)
                 config/themes.yaml   prompts for the "Today's Theme" chip
                 ollama_pipeline/client.py     raw HTTP calls to Ollama
                 ollama_pipeline/registry.py   which models exist / are pulled
+                ollama_pipeline/router.py     auto-routing: which model answers
                 ollama_pipeline/pipeline.py   builds messages, streams reply
                 ollama_pipeline/documents.py  PDF/DOCX/text -> plain text
   run.sh      starts the backend on http://127.0.0.1:8000
@@ -29,11 +30,37 @@ REQUEST FLOW
   2. User attaches a file -> POST /api/files -> documents.py extracts text.
      Images stay in the browser as base64.
   3. User sends -> POST /api/chat {model, messages}
+     -> if model is "auto", the router picks a model (see AUTO-ROUTING)
      -> registry resolves the model -> pipeline adds the system prompt,
         folds file text into the message -> Ollama /api/chat (streaming)
-     -> backend streams NDJSON lines back: delta / done / error
+     -> backend streams NDJSON lines back:
+        route / notice / delta / done / error
      -> frontend renders the reply as it arrives.
   Other endpoints: GET /api/health, GET /api/theme. API docs: /docs
+
+AUTO-ROUTING ("Auto" in the model picker, the default when enabled)
+  Runs before every reply, in ollama_pipeline/router.py, configured under
+  `router:` in ollama/config/models.yaml. Each route = a description + a model.
+  Order of decision for the latest user message:
+    1. Has an image            -> router.image_model (vision model)
+    2. Von is installed and its confidence >= min_confidence -> Von's route
+    3. Otherwise: a short follow-up stays on the model already answering
+    4. Otherwise: keyword rules (code/logic/maths/long/attached file -> heavy
+       route, everything else -> default route)
+  If the chosen model is not pulled, another routed model is used instead.
+  Von missing, loading, failing or slow never blocks a chat: rules take over.
+  Von (optional, https://github.com/wfzyx/von): a 395M decision model, CPU,
+  English only, ~3 GB download. Enable with:
+        cd backend && uv sync --extra router      (needs Python 3.12+)
+  Without it, set `backend: rules` or just leave it - rules are the fallback.
+  Picking a specific model in the picker bypasses routing completely.
+
+DOCUMENTS
+  PDF/DOCX/text are converted to text and placed in the prompt. The model
+  only reads `num_ctx` tokens (default_options in models.yaml, 16384 here;
+  Ollama's own default is ~4096 and silently cuts long documents). A warning
+  appears in the reply when a conversation is larger than num_ctx.
+  Scanned PDFs contain no text: send screenshots to a vision model instead.
 
 REQUIREMENTS
   - macOS or Linux (Windows via WSL)
@@ -50,6 +77,9 @@ RUN
 
 HOW TO MODIFY
   Add/rename a model, system prompt, or Ollama server -> ollama/config/models.yaml
+  Change which model handles which kind of request    -> `router:` in models.yaml
+  Change routing logic / keyword rules                -> ollama_pipeline/router.py
+  Let the model read longer documents                 -> default_options.num_ctx in models.yaml
   Change daily prompts                                -> ollama/config/themes.yaml
   Change how prompts are built (RAG, tools, logging)  -> ollama_pipeline/pipeline.py
   Support a new file type                             -> ollama_pipeline/documents.py
@@ -60,4 +90,5 @@ HOW TO MODIFY
 
 NOT BUILT YET
   No login, no saved chat history, scanned PDFs have no text, Figma links
-  are passed as text only.
+  are passed as text only. Routing to cloud models (e.g. Claude) is not
+  built: it would be one more route plus a second client next to client.py.

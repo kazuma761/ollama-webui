@@ -5,14 +5,17 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from .settings import settings  # isort: skip - loads .env before the pipeline reads the environment
-from ollama_pipeline import Registry, load_config
+from ollama_pipeline import Registry, Router, load_config
 
 from .routes import router
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    app.state.registry = Registry(load_config())
+    config = load_config()
+    app.state.registry = Registry(config)
+    app.state.router = Router(config.router)
+    app.state.router.warm_up()
     yield
     await app.state.registry.aclose()
 
