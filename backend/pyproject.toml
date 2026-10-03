@@ -7,8 +7,12 @@ dependencies = [
     "fastapi>=0.115",
     "uvicorn[standard]>=0.30",
     "python-dotenv>=1.0",
+    "python-multipart>=0.0.9",
     "ollama-pipeline",
 ]
+
+[project.optional-dependencies]
+router = ["ollama-pipeline[router]"]
 
 [tool.uv]
 package = false

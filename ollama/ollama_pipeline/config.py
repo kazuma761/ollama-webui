@@ -26,6 +26,29 @@ class ModelAlias:
 
 
 @dataclass(frozen=True)
+class Route:
+    name: str
+    model: str  # id of an entry under `models:`
+    description: str  # what the router is told this route is for
+
+
+@dataclass(frozen=True)
+class RouterConfig:
+    enabled: bool = False
+    backend: str = "von"  # "von" or "rules"
+    device: str = "cpu"
+    min_confidence: float = 0.7
+    instructions: str = "Which kind of assistant should answer this request?"
+    routes: list[Route] = field(default_factory=list)
+    default_route: str = ""  # light model, used for easy requests
+    heavy_route: str = ""  # strongest model, used for hard requests
+    image_model: str | None = None
+
+    def route(self, name: str) -> Route | None:
+        return next((r for r in self.routes if r.name == name), None)
+
+
+@dataclass(frozen=True)
 class Theme:
     title: str
     prompt: str
@@ -39,6 +62,8 @@ class PipelineConfig:
     discover: bool
     models: list[ModelAlias]
     themes: list[Theme]
+    default_options: dict[str, Any] = field(default_factory=dict)
+    router: RouterConfig = field(default_factory=RouterConfig)
 
 
 def config_dir() -> Path:
@@ -60,6 +85,31 @@ def _read(path: Path) -> dict[str, Any]:
     if not path.exists():
         return {}
     return yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+
+
+def _router(raw: dict[str, Any], model_ids: set[str]) -> RouterConfig:
+    routes = [Route(name, r["model"], r.get("description") or name) for name, r in (raw.get("routes") or {}).items()]
+    for route in routes:
+        if route.model not in model_ids:
+            raise ValueError(f"models.yaml: route '{route.name}' uses unknown model '{route.model}'")
+    names = [r.name for r in routes]
+    config = RouterConfig(
+        enabled=bool(raw.get("enabled", False)) and bool(routes),
+        backend=raw.get("backend") or "von",
+        device=raw.get("device") or "cpu",
+        min_confidence=float(raw.get("min_confidence", 0.7)),
+        instructions=raw.get("instructions") or RouterConfig.instructions,
+        routes=routes,
+        default_route=raw.get("default_route") or (names[0] if names else ""),
+        heavy_route=raw.get("heavy_route") or (names[-1] if names else ""),
+        image_model=raw.get("image_model"),
+    )
+    for key in ("default_route", "heavy_route"):
+        if routes and getattr(config, key) not in names:
+            raise ValueError(f"models.yaml: router.{key} '{getattr(config, key)}' is not a defined route")
+    if config.image_model and config.image_model not in model_ids:
+        raise ValueError(f"models.yaml: router.image_model '{config.image_model}' is not a defined model")
+    return config
 
 
 def load_config(directory: Path | None = None) -> PipelineConfig:
@@ -104,4 +154,6 @@ def load_config(directory: Path | None = None) -> PipelineConfig:
         discover=bool(raw.get("discover", True)),
         models=models,
         themes=themes,
+        default_options=raw.get("default_options") or {},
+        router=_router(raw.get("router") or {}, {m.id for m in models}),
     )

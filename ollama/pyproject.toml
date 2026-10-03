@@ -5,8 +5,14 @@ description = "Ollama integration layer: hosts, model registry and the chat pipe
 requires-python = ">=3.11"
 dependencies = [
     "httpx>=0.27",
+    "pypdf>=5.0",
     "pyyaml>=6.0",
 ]
+
+[project.optional-dependencies]
+# The Von decision model used for auto-routing. Optional: without it the
+# router falls back to keyword rules.
+router = ["von-sdk>=1.3; python_version >= '3.12'"]
 
 [build-system]
 requires = ["hatchling"]
