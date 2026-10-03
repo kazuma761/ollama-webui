@@ -1,11 +1,22 @@
 import json
 from collections.abc import AsyncIterator
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile
 from fastapi.responses import StreamingResponse
-from ollama_pipeline import ModelNotFound, OllamaUnavailable, PipelineError, Registry, chat_stream, todays_theme
+from ollama_pipeline import (
+    ModelNotFound,
+    OllamaUnavailable,
+    PipelineError,
+    Registry,
+    UnsupportedDocument,
+    chat_stream,
+    extract_text,
+    todays_theme,
+)
 
 from .schemas import ChatRequest
+
+MAX_UPLOAD_BYTES = 20 * 1024 * 1024
 
 router = APIRouter()
 
@@ -32,6 +43,20 @@ async def theme(registry: Registry = Depends(get_registry)):
     if today is None:
         raise HTTPException(404, "No themes configured in ollama/config/themes.yaml.")
     return {"title": today.title, "prompt": today.prompt}
+
+
+@router.post("/files")
+def extract_file(file: UploadFile):
+    """Extracts the text of a PDF, DOCX or text file so it can be attached to a message."""
+    name = file.filename or "file"
+    data = file.file.read(MAX_UPLOAD_BYTES + 1)
+    if len(data) > MAX_UPLOAD_BYTES:
+        raise HTTPException(413, f"{name} is over 20 MB")
+    try:
+        content, truncated = extract_text(name, data)
+    except UnsupportedDocument as exc:
+        raise HTTPException(415, str(exc)) from exc
+    return {"name": name, "content": content, "truncated": truncated}
 
 
 @router.post("/chat")

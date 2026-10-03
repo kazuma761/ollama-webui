@@ -12,10 +12,9 @@ from datetime import date
 from typing import Any
 
 from .config import Theme
+from .documents import MAX_FILE_CHARS
 from .errors import PipelineError
 from .registry import ModelEntry, Registry
-
-MAX_FILE_CHARS = 200_000
 
 
 def build_messages(system: str, messages: list[dict[str, Any]], *, keep_images: bool = True) -> list[dict[str, Any]]:
