@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 import re
 from dataclasses import dataclass, field
@@ -9,6 +10,8 @@ from pathlib import Path
 from typing import Any
 
 import yaml
+
+log = logging.getLogger(__name__)
 
 DEFAULT_URL = "http://127.0.0.1:11434"
 
@@ -67,8 +70,18 @@ class PipelineConfig:
 
 
 def config_dir() -> Path:
+    """The folder holding models.yaml and themes.yaml.
+
+    `ollama/config.local/` is not in git and wins over `ollama/config/` when it
+    exists, so each machine can keep its own model list without editing the
+    repo's default. OLLAMA_PIPELINE_CONFIG overrides both.
+    """
     override = os.environ.get("OLLAMA_PIPELINE_CONFIG")
-    return Path(override) if override else Path(__file__).resolve().parent.parent / "config"
+    if override:
+        return Path(override)
+    default = Path(__file__).resolve().parent.parent / "config"
+    local = default.with_name("config.local")
+    return local if (local / "models.yaml").exists() else default
 
 
 def _normalize_url(url: str) -> str:
@@ -114,6 +127,7 @@ def _router(raw: dict[str, Any], model_ids: set[str]) -> RouterConfig:
 
 def load_config(directory: Path | None = None) -> PipelineConfig:
     directory = directory or config_dir()
+    log.info("Config: %s", directory)
     raw = _read(directory / "models.yaml")
 
     hosts = {name: _normalize_url(url) for name, url in (raw.get("hosts") or {}).items()}
