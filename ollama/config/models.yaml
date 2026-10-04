@@ -34,7 +34,8 @@ router:
   min_confidence: 0.7    # below this, Von's answer is not trusted
   instructions: Which kind of assistant should answer this request?
   default_route: simple  # light model
-  heavy_route: complex   # strongest model
+  heavy_route: complex   # strongest local model
+  expert_route: expert   # cloud; remove this line and the route below to stay fully local
   image_model: vision    # messages with screenshots go straight here
   routes:
     simple:
@@ -48,6 +49,23 @@ router:
         Work that needs careful thinking: writing or debugging code, logic
         and maths problems, multi-step reasoning, technical design, analysing
         or reviewing documents and data.
+    expert:
+      model: opencode
+      description: >-
+        The hardest software engineering questions: designing a system or its
+        architecture, scaling and trade-off decisions, large refactors and
+        migrations, and bugs that are hard to find such as race conditions,
+        deadlocks, memory leaks or failures that only happen sometimes.
+
+# OpenCode (https://github.com/anomalyco/opencode) answers the "expert" route
+# with its free cloud models. Needs the `opencode` command installed; nothing
+# else to configure. IMPORTANT: messages sent to this route leave this machine.
+# Attached documents and images are never sent - those stay on local models.
+# If OpenCode is missing, offline or refuses, the local heavy model answers.
+opencode:
+  command: opencode
+  agent: plan      # keep a built-in agent: the free tier refuses custom ones
+  timeout: 300     # seconds before giving up and answering locally
 
 # Picked when the user has not chosen a model yet (and Auto is off). Falls back to the first
 # available model if this one is not pulled.
@@ -80,6 +98,12 @@ models:
       your answer on their content and say so if something is not in them.
     options:
       temperature: 0.3
+
+  - id: opencode
+    label: OpenCode Big Pickle
+    provider: opencode
+    model: opencode/big-pickle   # any id from `opencode models`
+    description: Cloud (free tier) - architecture, hard debugging, complex code
 
   - id: coder
     label: Qwen Coder

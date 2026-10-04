@@ -12,13 +12,50 @@ model, or a vision model.
 
 ## Current status — read before trusting anything
 
-- All of it was developed on a laptop **without Ollama installed** and tested
-  only against a stand-in server that imitates Ollama's API.
-- The Von routing model was **never installed or run**; its integration was
-  written from Von's README and tested with a fake module.
-- So your first job on this machine is to find out what actually works with
-  real Ollama and real models. Expect small integration bugs. Fix them, and
-  report what you changed.
+- Developed on a laptop without Ollama, then run against real Ollama 0.32.5 on
+  a second laptop: Windows 11, GTX 1650 (4 GB VRAM), 16 GB RAM, with
+  `llama3.2:3b`, `gemma3:4b`, and `qwen3:4b` standing in for `qwen3:14b`.
+  All eleven checks in "What to verify" pass there, with Von 1.3.7 loaded
+  (10 by pointing the backend at a port with no Ollama, not by stopping it).
+- **Not run anywhere yet:** `qwen3:14b`, a 16 GB GPU, and two routed models
+  loaded at once. On 4 GB no routed model fits fully on the GPU at `num_ctx`
+  8192 and Ollama swaps models on every route change, so nothing measured
+  there says how fast the server will be.
+- So on the server the open questions are about hardware: do the models fit,
+  do both routed models stay loaded, and how long do replies take. Expect
+  small integration bugs anyway. Fix them, and report what you changed.
+
+## OpenCode route (cloud) — added after the Ollama test run
+
+With Auto, the hardest engineering questions (architecture and system design,
+hard-to-find bugs such as deadlocks, races and memory leaks, large refactors)
+go to OpenCode's free cloud models instead of Ollama. Code:
+`ollama/ollama_pipeline/opencode.py`; config: `opencode:` and the `expert`
+route in `models.yaml`.
+
+- Tested on macOS with OpenCode 1.18.34 and the real free model
+  `opencode/big-pickle`. **Not tested on Windows or Linux.** On Windows check
+  that the `opencode` shim starts from Python and that Stop kills it
+  (`taskkill /T` in `_kill_tree`).
+- It runs `opencode run --agent plan --format json` in an empty temp folder,
+  with the prompt on stdin. Text arrives a block at a time, not word by word.
+- **Do not customise the agent, its prompt, or which tools exist.** OpenCode's
+  service answers "free tier can only be used from within OpenCode" (403) for
+  anything but a built-in agent. Do not work around that by faking a client.
+- Shell, edit and web tools are set to permission "ask"; headless mode rejects
+  those, so OpenCode cannot run commands or touch files here. Keep it so.
+- Privacy rules, keep them: attached files and images are never sent; in Auto
+  a conversation that has had any attachment stays on local models.
+- If OpenCode is missing, refuses, errors or times out, the local heavy model
+  answers and the reply says so.
+- If `ollama/config.local/models.yaml` exists on this machine it overrides
+  `ollama/config/` — copy the new `opencode:` block, the `opencode` model and
+  the `expert` route into it, or the route will not exist here.
+
+Checks: (a) "design the architecture for a chat service" → header shows
+"Auto · OpenCode Big Pickle"; (b) follow with "make it shorter" → stays;
+(c) same question with a PDF attached → local reasoning model; (d) rename the
+command in config to something that does not exist → local model answers.
 
 ## Your task on this machine
 
@@ -42,7 +79,11 @@ ollama pull gemma3:4b        # screenshots (optional)
 ```
 
 `run.sh` needs bash and `lsof` (macOS/Linux/WSL). On plain Windows run
-`cd backend && uv run --inexact python -m app` instead.
+`powershell -ExecutionPolicy Bypass -File run.ps1` instead.
+
+Downloads go to the user's home folder by default. If that disk is short of
+space, set `UV_CACHE_DIR` before `uv sync` (packages) and `HF_HOME` in
+`backend/.env` (Von's weights). Ollama keeps models where `OLLAMA_MODELS` points.
 
 Check hosts and which configured models are pulled:
 
@@ -52,11 +93,14 @@ cd backend && uv run --inexact python -m ollama_pipeline
 
 ### Fit the models to this machine's hardware
 
-Check GPU memory first (`nvidia-smi`, or system info on a Mac). Then edit
-`ollama/config/models.yaml`:
+Check GPU memory first (`nvidia-smi`, or system info on a Mac).
+`ollama/config/` targets the production server. On any other machine copy that
+folder to `ollama/config.local/` and edit the copy: it is ignored by git and
+used automatically when present. The server log and
+`python -m ollama_pipeline` print which folder is in use. In `models.yaml`:
 
 - If `qwen3:14b` does not fit, point the `reasoning` entry at a smaller tag
-  (e.g. `qwen3:8b`) and pull that instead.
+  (e.g. `qwen3:8b`, or `qwen3:4b` on a 4 GB GPU) and pull that instead.
 - `default_options.num_ctx` is 16384. If replies are very slow or `ollama ps`
   shows a model partly on CPU, lower it (8192). Do not go below 8192 unless
   necessary: attached documents get cut off.
@@ -90,18 +134,26 @@ Send these with **Auto** selected. Each reply's header shows the model used
 | 8 | Pick a specific model in the picker, send anything | that model answers, no routing |
 | 9 | Press the send button mid-reply | generation stops |
 | 10 | Stop Ollama, send a message | clear "Can't reach Ollama" error, no crash |
-| 11 | With Von installed: repeat 1–3 | header tooltip says "Routed by von" with a confidence |
+| 11 | With Von installed: repeat 1–3 | 1 and 2: header tooltip says "Routed by von" with a confidence. 3: "Routed by sticky" |
 
 Also check `ollama ps` while testing: both routed models should stay loaded
 and on the GPU. If Ollama unloads one each time the route changes, set
 `OLLAMA_MAX_LOADED_MODELS=2` for the Ollama server.
 
-Things most likely to need fixing with real Ollama:
+Confirmed with Ollama 0.32.5 and Von 1.3.7:
 - `qwen3` is a thinking model. Thinking arrives as separate `thinking` events
   (ignored by the UI, which shows dots until the answer starts). On older
   Ollama versions it may arrive inline as `<think>…</think>` text instead.
-- Vision detection relies on `capabilities` from Ollama's `/api/show`.
-- Von's behaviour: `von.decide(...)` return shape, `VON_DEVICE`, load time.
+  On slow hardware the dots can last a minute.
+- Vision detection uses `capabilities` from Ollama's `/api/show`, which
+  0.32.5 reports.
+- `von.decide(...)` returns `.choice` and `.confidence` as the router expects
+  and honours `VON_DEVICE`. The first start downloads 3 GB; later starts load
+  in under a minute.
+- A conversation larger than `num_ctx` is cut from the start, not the end: a
+  40-page PDF at `num_ctx` 8192 was answered from its last four pages only
+  (Ollama reported 4,098 prompt tokens). The warning appears, but the answer
+  does not say what was skipped.
 
 ## Where things are
 
@@ -109,6 +161,7 @@ Things most likely to need fixing with real Ollama:
 frontend/index.html              whole UI (one file)
 backend/app/routes.py            API endpoints
 ollama/config/models.yaml        hosts, models, routes, num_ctx  ← most changes go here
+ollama/config.local/             optional per-machine copy of config/, not in git
 ollama/ollama_pipeline/
   router.py                      which model answers (Von + keyword rules)
   pipeline.py                    builds the prompt, streams the reply
@@ -137,4 +190,5 @@ ollama/ollama_pipeline/
 ## Not built yet
 
 No login, no saved chat history, no text from scanned PDFs, Figma links are
-passed as text only, no routing to cloud models.
+passed as text only, no paid cloud models (e.g. Claude) - only OpenCode's
+free tier.

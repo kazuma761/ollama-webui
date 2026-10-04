@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 import re
 from dataclasses import dataclass, field
@@ -9,6 +10,8 @@ from pathlib import Path
 from typing import Any
 
 import yaml
+
+log = logging.getLogger(__name__)
 
 DEFAULT_URL = "http://127.0.0.1:11434"
 
@@ -23,6 +26,14 @@ class ModelAlias:
     system: str = ""
     options: dict[str, Any] = field(default_factory=dict)
     vision: bool | None = None  # None = ask Ollama
+    provider: str = "ollama"  # "ollama" (local) or "opencode" (cloud)
+
+
+@dataclass(frozen=True)
+class OpenCodeConfig:
+    command: str = "opencode"
+    agent: str = "plan"  # must be one of OpenCode's built-in agents for the free tier to answer
+    timeout: int = 300  # seconds
 
 
 @dataclass(frozen=True)
@@ -41,7 +52,8 @@ class RouterConfig:
     instructions: str = "Which kind of assistant should answer this request?"
     routes: list[Route] = field(default_factory=list)
     default_route: str = ""  # light model, used for easy requests
-    heavy_route: str = ""  # strongest model, used for hard requests
+    heavy_route: str = ""  # strongest local model, used for hard requests
+    expert_route: str = ""  # optional cloud route for the hardest engineering questions
     image_model: str | None = None
 
     def route(self, name: str) -> Route | None:
@@ -64,11 +76,22 @@ class PipelineConfig:
     themes: list[Theme]
     default_options: dict[str, Any] = field(default_factory=dict)
     router: RouterConfig = field(default_factory=RouterConfig)
+    opencode: OpenCodeConfig = field(default_factory=OpenCodeConfig)
 
 
 def config_dir() -> Path:
+    """The folder holding models.yaml and themes.yaml.
+
+    `ollama/config.local/` is not in git and wins over `ollama/config/` when it
+    exists, so each machine can keep its own model list without editing the
+    repo's default. OLLAMA_PIPELINE_CONFIG overrides both.
+    """
     override = os.environ.get("OLLAMA_PIPELINE_CONFIG")
-    return Path(override) if override else Path(__file__).resolve().parent.parent / "config"
+    if override:
+        return Path(override)
+    default = Path(__file__).resolve().parent.parent / "config"
+    local = default.with_name("config.local")
+    return local if (local / "models.yaml").exists() else default
 
 
 def _normalize_url(url: str) -> str:
@@ -102,10 +125,11 @@ def _router(raw: dict[str, Any], model_ids: set[str]) -> RouterConfig:
         routes=routes,
         default_route=raw.get("default_route") or (names[0] if names else ""),
         heavy_route=raw.get("heavy_route") or (names[-1] if names else ""),
+        expert_route=raw.get("expert_route") or "",
         image_model=raw.get("image_model"),
     )
-    for key in ("default_route", "heavy_route"):
-        if routes and getattr(config, key) not in names:
+    for key in ("default_route", "heavy_route", "expert_route"):
+        if routes and getattr(config, key) and getattr(config, key) not in names:
             raise ValueError(f"models.yaml: router.{key} '{getattr(config, key)}' is not a defined route")
     if config.image_model and config.image_model not in model_ids:
         raise ValueError(f"models.yaml: router.image_model '{config.image_model}' is not a defined model")
@@ -114,6 +138,7 @@ def _router(raw: dict[str, Any], model_ids: set[str]) -> RouterConfig:
 
 def load_config(directory: Path | None = None) -> PipelineConfig:
     directory = directory or config_dir()
+    log.info("Config: %s", directory)
     raw = _read(directory / "models.yaml")
 
     hosts = {name: _normalize_url(url) for name, url in (raw.get("hosts") or {}).items()}
@@ -129,8 +154,11 @@ def load_config(directory: Path | None = None) -> PipelineConfig:
 
     models = []
     for item in raw.get("models") or []:
-        host = item.get("host") or default_host
-        if host not in hosts:
+        provider = item.get("provider") or "ollama"
+        if provider not in ("ollama", "opencode"):
+            raise ValueError(f"models.yaml: model '{item.get('id')}' uses unknown provider '{provider}'")
+        host = "opencode" if provider == "opencode" else item.get("host") or default_host
+        if provider == "ollama" and host not in hosts:
             raise ValueError(f"models.yaml: model '{item.get('id')}' uses unknown host '{host}'")
         models.append(
             ModelAlias(
@@ -142,6 +170,7 @@ def load_config(directory: Path | None = None) -> PipelineConfig:
                 system=(item.get("system") or "").strip(),
                 options=item.get("options") or {},
                 vision=item.get("vision"),
+                provider=provider,
             )
         )
 
@@ -156,4 +185,7 @@ def load_config(directory: Path | None = None) -> PipelineConfig:
         themes=themes,
         default_options=raw.get("default_options") or {},
         router=_router(raw.get("router") or {}, {m.id for m in models}),
+        opencode=OpenCodeConfig(**{
+            key: value for key, value in (raw.get("opencode") or {}).items() if key in ("command", "agent", "timeout")
+        }),
     )

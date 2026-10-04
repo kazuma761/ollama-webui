@@ -1,3 +1,4 @@
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -8,6 +9,12 @@ from .settings import settings  # isort: skip - loads .env before the pipeline r
 from ollama_pipeline import Registry, Router, load_config
 
 from .routes import router
+
+# uvicorn only sets up its own loggers; without this the pipeline's INFO lines
+# (e.g. "Router: Von is ready") never reach the server log.
+logging.basicConfig(level=logging.INFO, format="%(levelname)s:     %(message)s")
+for noisy in ("httpx", "httpcore"):
+    logging.getLogger(noisy).setLevel(logging.WARNING)
 
 
 @asynccontextmanager

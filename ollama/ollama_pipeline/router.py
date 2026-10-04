@@ -38,6 +38,17 @@ _HARD = re.compile(
     r")\b",
     re.IGNORECASE,
 )
+# Signals for the expert (cloud) route: system design and the kinds of bug that are hard to find.
+_EXPERT = re.compile(
+    r"\b("
+    r"architecture|architect|system design|design (a|an|the|our|my) [\w\s-]{0,40}(system|service|platform|pipeline|backend|schema|api)|"
+    r"microservices?|distributed|scalab\w+|high availability|load balanc\w+|event[- ]driven|message queue|"
+    r"race condition|deadlock|memory leak|concurrency|thread[- ]safe\w*|segfault|segmentation fault|"
+    r"bottleneck|intermittent\w*|flaky|heisenbug|hard to (debug|reproduce)|"
+    r"refactor\w*|migrat\w+|design patterns?|trade-?offs?"
+    r")\b",
+    re.IGNORECASE,
+)
 _LONG_REQUEST_CHARS = 800
 # A message this short with no hard signal ("make it shorter", "and in French?") is
 # treated as a follow-up to whatever the current model was already doing.
@@ -85,11 +96,13 @@ class Router:
         return self.config.enabled
 
     def models(self) -> list[str]:
-        """Every model id routing can pick, strongest first, without duplicates."""
+        """Every model id routing can pick, in fallback order: local heavy, local light, the rest, cloud last."""
         config = self.config
-        ordered = [config.route(config.heavy_route), *config.routes]
+        local = [r for r in config.routes if r.name != config.expert_route]
+        ordered = [config.route(config.heavy_route), config.route(config.default_route), *local]
         ids = [r.model for r in ordered if r] + ([config.image_model] if config.image_model else [])
-        return list(dict.fromkeys(ids))
+        expert = config.route(config.expert_route)
+        return list(dict.fromkeys(ids + ([expert.model] if expert else [])))
 
     # ── Von ──
 
@@ -134,6 +147,22 @@ class Router:
     def _is_follow_up(self, message: dict[str, Any]) -> bool:
         return not self._is_hard(message) and len((message.get("content") or "").split()) <= _FOLLOW_UP_WORDS
 
+    def _by_rules(self, message: dict[str, Any]) -> str:
+        config = self.config
+        if config.expert_route and _EXPERT.search(message.get("content") or ""):
+            return config.expert_route
+        return config.heavy_route if self._is_hard(message) else config.default_route
+
+    def _keep_local(self, route_name: str, messages: list[dict[str, Any]]) -> str:
+        """A conversation that has had any attachment never goes to the cloud route.
+
+        That covers the documents themselves and what local models said about them.
+        """
+        private = any(m.get("files") or m.get("images") for m in messages)
+        if route_name == self.config.expert_route and private:
+            return self.config.heavy_route
+        return route_name
+
     # ── Decision ──
 
     async def decide(self, messages: list[dict[str, Any]]) -> Decision:
@@ -143,13 +172,22 @@ class Router:
         if message.get("images") and config.image_model:
             return Decision(config.image_model, None, "image")
 
+        previous = _previous_model(messages)
+        current = next((r for r in config.routes if r.model == previous), None)
+
+        # A short follow-up like "make it shorter" stays with the model already in use. This is
+        # checked before Von: it only reads the latest message, and on its own such a message
+        # looks like an easy request no matter how hard the task it refers to is.
+        if current and self._is_follow_up(message) and self._keep_local(current.name, messages) == current.name:
+            return Decision(current.model, current.name, "sticky")
+
         confidence = None
         if self._von is not None:
             try:
                 name, confidence = await asyncio.wait_for(
                     asyncio.to_thread(self._ask_von, _state(message)), DECIDE_TIMEOUT_SECONDS
                 )
-                route = config.route(name)
+                route = config.route(self._keep_local(name, messages))
                 if route and confidence >= config.min_confidence:
                     return Decision(route.model, route.name, "von", round(confidence, 3))
             except Exception:
@@ -157,12 +195,9 @@ class Router:
 
         confidence = round(confidence, 3) if confidence is not None else None
 
-        # No confident answer. A follow-up like "make it shorter" stays with the model already
-        # in use: always when Von looked and was unsure, otherwise when the message is short.
-        previous = _previous_model(messages)
-        current = next((r for r in config.routes if r.model == previous), None)
-        if current and (confidence is not None or self._is_follow_up(message)):
+        # Von looked and was unsure: stay with the model already in use.
+        if current and confidence is not None and self._keep_local(current.name, messages) == current.name:
             return Decision(current.model, current.name, "sticky", confidence)
 
-        route = config.route(config.heavy_route if self._is_hard(message) else config.default_route)
+        route = config.route(self._keep_local(self._by_rules(message), messages))
         return Decision(route.model, route.name, "rules", confidence)

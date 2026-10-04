@@ -3,11 +3,13 @@
 import asyncio
 
 from . import Registry, load_config
+from .config import config_dir
 
 
 async def main() -> int:
     registry = Registry(load_config())
     try:
+        print(f"config     {config_dir()}")
         health = await registry.health()
         for name, info in health.items():
             state = f"ok (Ollama {info['version']})" if info["ok"] else "UNREACHABLE"

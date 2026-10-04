@@ -9,6 +9,7 @@ from typing import Any
 from .client import OllamaClient
 from .config import PipelineConfig
 from .errors import ModelNotFound, OllamaError, OllamaUnavailable
+from .opencode import PROVIDER as OPENCODE, OpenCodeClient
 
 
 @dataclass
@@ -25,6 +26,7 @@ class ModelEntry:
     parameter_size: str | None = None
     system: str = ""
     options: dict[str, Any] = field(default_factory=dict)
+    provider: str = "ollama"  # "opencode" = answered in the cloud, not on this machine
 
     def public(self) -> dict[str, Any]:
         data = asdict(self)
@@ -41,6 +43,7 @@ class Registry:
     def __init__(self, config: PipelineConfig):
         self.config = config
         self._clients = {name: OllamaClient(url) for name, url in config.hosts.items()}
+        self.opencode = OpenCodeClient(config.opencode)
         self._capabilities: dict[tuple[str, str], list[str]] = {}
 
     def client(self, host: str) -> OllamaClient:
@@ -70,7 +73,25 @@ class Registry:
 
         entries: list[ModelEntry] = []
         claimed: set[tuple[str, str]] = set()
+        cloud_aliases = [a for a in self.config.models if a.provider == OPENCODE]
+        cloud_models = await self.opencode.models() if cloud_aliases else set()
+
         for alias in self.config.models:
+            if alias.provider == OPENCODE:
+                entries.append(
+                    ModelEntry(
+                        id=alias.id,
+                        label=alias.label,
+                        model=alias.model,
+                        host=alias.host,
+                        description=alias.description,
+                        available=alias.model in cloud_models,
+                        vision=False,
+                        configured=True,
+                        provider=OPENCODE,
+                    )
+                )
+                continue
             tag = _find_tag(installed[alias.host], alias.model)
             caps = await self._caps(alias.host, tag) if tag else []
             vision = alias.vision if alias.vision is not None else ("vision" in caps if caps else None)
@@ -139,6 +160,11 @@ class Registry:
                 raise ModelNotFound("No models are available yet. Pull one first, e.g. `ollama pull llama3.2:3b`.")
             raise ModelNotFound(f"Unknown model '{model_id}'.")
         if not entry.available:
+            if entry.provider == OPENCODE:
+                raise ModelNotFound(
+                    f"{entry.label} is not available: OpenCode is not installed here, or it no longer "
+                    f"offers `{entry.model}` (see `opencode models`)."
+                )
             if entry.host in down:
                 raise OllamaUnavailable(
                     f"Can't reach Ollama at {self.config.hosts[entry.host]}. Is `ollama serve` running?"
@@ -161,3 +187,4 @@ class Registry:
 
     async def aclose(self) -> None:
         await asyncio.gather(*(c.aclose() for c in self._clients.values()))
+        self.opencode.close()

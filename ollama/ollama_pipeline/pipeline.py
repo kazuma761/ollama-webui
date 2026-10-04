@@ -14,6 +14,7 @@ from typing import Any
 from .config import Theme
 from .documents import MAX_FILE_CHARS
 from .errors import PipelineError
+from .opencode import PROVIDER as OPENCODE, OpenCodeError
 from .registry import ModelEntry, Registry
 from .router import AUTO_ID, Router
 
@@ -75,13 +76,21 @@ async def picker_models(registry: Registry, router: Router) -> tuple[str | None,
 
 async def select_model(
     registry: Registry, router: Router, model_id: str | None, messages: list[dict[str, Any]]
-) -> tuple[ModelEntry, dict[str, Any] | None]:
-    """Resolves the model for one reply. Returns the entry and, when routed, a `route` event."""
+) -> tuple[ModelEntry, dict[str, Any] | None, ModelEntry | None]:
+    """Resolves the model for one reply.
+
+    Returns the entry, a `route` event when routed, and - when routing picked a
+    cloud model - the local model to fall back on if the cloud does not answer.
+    """
     if not router.enabled or model_id not in (AUTO_ID, None):
-        return await registry.resolve(None if model_id == AUTO_ID else model_id), None
+        return await registry.resolve(None if model_id == AUTO_ID else model_id), None, None
 
     decision = await router.decide(messages)
     entries = {e.id: e for e in await registry.list_models()}
+    local = next(
+        (entries[m] for m in router.models() if m in entries and entries[m].available and entries[m].provider != OPENCODE),
+        None,
+    )
     # The chosen model first; if it is not pulled, any other routed model, strongest first.
     for candidate in dict.fromkeys([decision.model, *router.models()]):
         entry = entries.get(candidate)
@@ -89,11 +98,12 @@ async def select_model(
             event = {"type": "route", "model": entry.id, "label": entry.label, **decision.event()}
             if candidate != decision.model:
                 event["source"] = "fallback"
-            return entry, event
+            return entry, event, local if entry.provider == OPENCODE else None
 
     # None of the routed models can run: use whatever can, or raise the usual clear error.
     entry = await registry.resolve(None)
-    return entry, {"type": "route", "model": entry.id, "label": entry.label, **decision.event(), "source": "fallback"}
+    event = {"type": "route", "model": entry.id, "label": entry.label, **decision.event(), "source": "fallback"}
+    return entry, event, None
 
 
 def _context_notice(entry: ModelEntry, payload: list[dict[str, Any]], options: dict[str, Any]) -> str | None:
@@ -114,8 +124,27 @@ async def chat_stream(
     entry: ModelEntry,
     messages: list[dict[str, Any]],
     options: dict[str, Any] | None = None,
+    fallback: ModelEntry | None = None,
 ) -> AsyncIterator[dict[str, Any]]:
-    """Yields {"type": "notice" | "thinking" | "delta" | "done", ...} events for one reply."""
+    """Yields {"type": "route" | "notice" | "thinking" | "delta" | "done", ...} events for one reply."""
+    if entry.provider == OPENCODE:
+        if messages[-1].get("files") or messages[-1].get("images"):
+            yield {"type": "notice", "message": f"Attached files are not sent to {entry.label}; it only sees your text."}
+        answered = False
+        try:
+            async for event in registry.opencode.chat_stream(entry.model, messages):
+                answered = answered or event["type"] == "delta"
+                yield {**event, "model": entry.id} if event["type"] == "done" else event
+            return
+        except OpenCodeError as exc:
+            # Nothing was shown yet and routing has a local model to offer: answer there instead.
+            if answered or fallback is None:
+                raise
+            yield {"type": "route", "model": fallback.id, "label": fallback.label, "route": None,
+                   "source": "fallback", "confidence": None}
+            yield {"type": "notice", "message": f"{entry.label} could not answer ({exc}) - answered locally instead."}
+            entry = fallback
+
     can_see = entry.vision is not False
     if not can_see and messages and messages[-1].get("images"):
         raise PipelineError(f"{entry.label} can't read images. Pick a vision model to use screenshots.")
