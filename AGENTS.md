@@ -25,6 +25,38 @@ model, or a vision model.
   do both routed models stay loaded, and how long do replies take. Expect
   small integration bugs anyway. Fix them, and report what you changed.
 
+## OpenCode route (cloud) — added after the Ollama test run
+
+With Auto, the hardest engineering questions (architecture and system design,
+hard-to-find bugs such as deadlocks, races and memory leaks, large refactors)
+go to OpenCode's free cloud models instead of Ollama. Code:
+`ollama/ollama_pipeline/opencode.py`; config: `opencode:` and the `expert`
+route in `models.yaml`.
+
+- Tested on macOS with OpenCode 1.18.34 and the real free model
+  `opencode/big-pickle`. **Not tested on Windows or Linux.** On Windows check
+  that the `opencode` shim starts from Python and that Stop kills it
+  (`taskkill /T` in `_kill_tree`).
+- It runs `opencode run --agent plan --format json` in an empty temp folder,
+  with the prompt on stdin. Text arrives a block at a time, not word by word.
+- **Do not customise the agent, its prompt, or which tools exist.** OpenCode's
+  service answers "free tier can only be used from within OpenCode" (403) for
+  anything but a built-in agent. Do not work around that by faking a client.
+- Shell, edit and web tools are set to permission "ask"; headless mode rejects
+  those, so OpenCode cannot run commands or touch files here. Keep it so.
+- Privacy rules, keep them: attached files and images are never sent; in Auto
+  a conversation that has had any attachment stays on local models.
+- If OpenCode is missing, refuses, errors or times out, the local heavy model
+  answers and the reply says so.
+- If `ollama/config.local/models.yaml` exists on this machine it overrides
+  `ollama/config/` — copy the new `opencode:` block, the `opencode` model and
+  the `expert` route into it, or the route will not exist here.
+
+Checks: (a) "design the architecture for a chat service" → header shows
+"Auto · OpenCode Big Pickle"; (b) follow with "make it shorter" → stays;
+(c) same question with a PDF attached → local reasoning model; (d) rename the
+command in config to something that does not exist → local model answers.
+
 ## Your task on this machine
 
 1. Get the app running against real Ollama (Setup below).
@@ -158,4 +190,5 @@ ollama/ollama_pipeline/
 ## Not built yet
 
 No login, no saved chat history, no text from scanned PDFs, Figma links are
-passed as text only, no routing to cloud models.
+passed as text only, no paid cloud models (e.g. Claude) - only OpenCode's
+free tier.

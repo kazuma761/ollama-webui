@@ -29,4 +29,6 @@ Open <http://127.0.0.1:8000>. On Windows use `powershell -ExecutionPolicy Bypass
 
 With **Auto** selected, each message is routed to the light or the reasoning model. Optional smarter routing with the Von decision model: `cd backend && uv sync --extra router`. See `PROJECT_FLOW.txt` for how it all fits together.
 
+Optional cloud route: with [OpenCode](https://github.com/anomalyco/opencode) installed, Auto sends architecture and hard-debugging questions to its free models. Those messages leave your machine; attached files never do.
+
 Any model you pull shows up in the picker. To add labels, system prompts or another Ollama server, edit `ollama/config/models.yaml` and restart. For a model list that applies to one machine only, copy `ollama/config/` to `ollama/config.local/` and edit that: it is not in git and is used automatically.

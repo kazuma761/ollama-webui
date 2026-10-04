@@ -22,6 +22,7 @@ FOLDERS (each has one job; calls only go frontend -> backend -> ollama)
                 ollama_pipeline/client.py     raw HTTP calls to Ollama
                 ollama_pipeline/registry.py   which models exist / are pulled
                 ollama_pipeline/router.py     auto-routing: which model answers
+                ollama_pipeline/opencode.py   cloud answers via `opencode run`
                 ollama_pipeline/pipeline.py   builds messages, streams reply
                 ollama_pipeline/documents.py  PDF/DOCX/text -> plain text
   run.sh      starts the backend on http://127.0.0.1:8000
@@ -58,6 +59,21 @@ AUTO-ROUTING ("Auto" in the model picker, the default when enabled)
         cd backend && uv sync --extra router      (needs Python 3.12+)
   Without it, set `backend: rules` or just leave it - rules are the fallback.
   Picking a specific model in the picker bypasses routing completely.
+
+OPENCODE (cloud route, optional)
+  The "expert" route sends the hardest engineering questions - architecture,
+  system design, hard debugging - to OpenCode's free cloud models by running
+  `opencode run` (https://github.com/anomalyco/opencode). Needs only the
+  `opencode` command installed. Config: `opencode:` + the `expert` route in
+  models.yaml; remove `expert_route` to stay fully local.
+  - These messages LEAVE THIS MACHINE. Attachments are never sent, and a
+    conversation that has had an attachment stays on local models.
+  - OpenCode runs in an empty temp folder and cannot run commands or edit
+    files here.
+  - The free tier only works with OpenCode's built-in agent, unmodified.
+  - If OpenCode is missing, refuses or times out, the local heavy model
+    answers instead and the reply says so.
+  - The reply appears all at once (10-20 s), not word by word.
 
 DOCUMENTS
   PDF/DOCX/text are converted to text and placed in the prompt. The model
@@ -98,5 +114,5 @@ HOW TO MODIFY
 
 NOT BUILT YET
   No login, no saved chat history, scanned PDFs have no text, Figma links
-  are passed as text only. Routing to cloud models (e.g. Claude) is not
-  built: it would be one more route plus a second client next to client.py.
+  are passed as text only. Paid cloud models (e.g. Claude) are not
+  built: it would be one more provider next to opencode.py.

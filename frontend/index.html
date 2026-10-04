@@ -615,7 +615,9 @@ button{cursor:pointer}
       const text = node('span', 'opt-text');
       const sub = m.available
         ? [m.description, m.parameter_size, m.vision ? 'vision' : ''].filter(Boolean).join(' · ')
-        : m.id === 'auto' ? 'None of the routed models is pulled yet' : 'Not pulled — ollama pull ' + m.model;
+        : m.id === 'auto' ? 'None of the routed models is pulled yet'
+        : m.provider === 'opencode' ? 'OpenCode is not installed, or no longer offers this model'
+        : 'Not pulled — ollama pull ' + m.model;
       text.append(node('span', 'opt-name', m.label), node('span', 'opt-sub', sub || m.model));
       text.firstChild.style.display = text.lastChild.style.display = 'block';
       opt.append(text, node('span', 'opt-dot'));
