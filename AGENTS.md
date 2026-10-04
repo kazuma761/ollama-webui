@@ -134,9 +134,22 @@ models and the `code` and `expert` routes in `models.yaml`.
 - `_SOFTWARE` is narrow on purpose: an everyday message it matches leaves the
   machine without Von being asked, so words that are also everyday words
   ("class", "error", "script", "java") are not in it.
-- After a cloud answer a chat stays in the cloud on a short follow-up, on
-  software keywords, or when Von says the new message is about software. Any
-  other message goes back to a local model.
+- **Software is checked before stickiness.** A code question goes to the cloud
+  even when a local model answered the message before it. A message with no
+  software word of its own ("add error handling to it") also goes there when
+  the chat is already about software: the request before it was a software
+  one, the last reply contains a code block, or a cloud model answered last
+  (`_cloud_route`, `_in_software_thread`; the reply header says "Routed by
+  context"). Requests for an email, translation or summary (`_EVERYDAY`) do
+  not follow the thread and go back to a local model. The "stay on the model
+  already answering" rule now applies to local models only.
+- When a software question stays local because the chat has attachments, the
+  reply carries a note saying so. Without it this looks like a routing bug.
+- Checks: after a local reply ask "now write it in html" and "can you code
+  this" → OpenCode; after a reply with code ask "add error handling to it" →
+  OpenCode ("context"); after an OpenCode reply ask "write an email to my boss
+  about it" → local light model; attach a PDF, then ask for code → local, with
+  the note.
 - Each cloud route lists several models (`model: [a, b, c]`). The first one
   OpenCode offers answers. If it fails, the next answers and the reply says
   so; after the last, the local heavy model. With another model lined up the

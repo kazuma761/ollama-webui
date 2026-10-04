@@ -6,8 +6,10 @@ loading, erroring, slow or unsure - plain keyword rules decide instead, so
 routing can never be the reason a chat fails.
 
 Requests about software can have routes of their own whose models run in the
-cloud. Those are taken on clear keywords or a confident Von, and never by a
-conversation that has had an attachment.
+cloud. Those are taken on clear keywords, on a chat that is already about
+software, or on a confident Von - and never by a conversation that has had an
+attachment. They are checked before anything that keeps a chat on the model
+already answering, so a local reply never holds later code questions back.
 """
 
 from __future__ import annotations
@@ -52,6 +54,12 @@ _SOFTWARE = re.compile(
     r"\$\w+\s*=|2>&1|\s--[a-z][\w-]+|\b[\w-]+\.(py|js|ts|jsx|tsx|json|ya?ml|html|css|sh|ps1|exe|sql|cpp|java|go|rs)\b|"
     r"\b("
     r"(write|give|create|make|generate|show|need|want)\w* (me )?(a |an |the |some )?code|"
+    # "code" on its own, but not the everyday kinds (zip code, promo code, dress code ...)
+    r"(?<!zip )(?<!pin )(?<!qr )(?<!otp )(?<!area )(?<!promo )(?<!dress )(?<!postal )(?<!coupon )"
+    r"(?<!country )(?<!discount )(?<!security )(?<!verification )code(?! of conduct)|"
+    r"implement\w*|"
+    r"(build|make|create|develop|design)\w* (me )?(a |an |the |this |that |it as an? )?([\w-]+ )?"
+    r"(app|web ?site|web ?page|landing page|web ?app|chat ?bot|dashboard|browser extension|plugin)|"
     r"(write|create|make|build)\w* (me )?(a |an )?(\w+ )?program (to|that|which)|node_modules|"
     r"python|javascript|typescript|golang|kotlin|php|sql|mysql|postgres\w*|sqlite|mongodb|redis|"
     r"html|css|json|yaml|xml|regex|powershell|linux|(bash|shell) script|"
@@ -103,6 +111,21 @@ _SOFTWARE_CONFIRM = (
     "or a technical computer problem?"
 )
 
+# In a chat that is already about software, a request for one of these goes back to a local
+# model instead of following the thread to the cloud.
+_EVERYDAY = re.compile(
+    r"\b("
+    r"(write|draft|compose|send|prepare)\w* (me )?(a |an |the |my )?(\w+ )?(e-?mail|mail|message|letter|reply|note|post|caption|essay|poem|story|speech)|"
+    r"translat\w+|summar\w+|rephrase|reword|paraphrase|proof-?read|grammar|"
+    r"leave (application|letter|request)|cover letter|resume|invoice|whatsapp|linkedin"
+    r")\b",
+    re.IGNORECASE,
+)
+_KEPT_LOCAL = (
+    "Answered by a local model: this chat has attached files, and those never go to OpenCode. "
+    "Start a new chat to ask OpenCode."
+)
+
 _LONG_REQUEST_CHARS = 800
 # A message this short with no hard signal ("make it shorter", "and in French?") is
 # treated as a follow-up to whatever the current model was already doing.
@@ -113,11 +136,13 @@ _FOLLOW_UP_WORDS = 8
 class Decision:
     model: str  # id of the model entry to use
     route: str | None  # route name, None for the image rule
-    source: str  # "von" | "rules" | "sticky" | "image"
+    source: str  # "von" | "rules" | "context" | "sticky" | "image"
     confidence: float | None = None
+    note: str | None = None  # shown to the user with the reply
 
     def event(self) -> dict[str, Any]:
-        return {"route": self.route, "source": self.source, "confidence": self.confidence}
+        event = {"route": self.route, "source": self.source, "confidence": self.confidence}
+        return {**event, "note": self.note} if self.note else event
 
 
 def _last_user(messages: list[dict[str, Any]]) -> dict[str, Any]:
@@ -127,6 +152,17 @@ def _last_user(messages: list[dict[str, Any]]) -> dict[str, Any]:
 def _previous_model(messages: list[dict[str, Any]]) -> str | None:
     """The model that wrote the latest reply, as recorded by the frontend."""
     return next((m.get("model") for m in reversed(messages) if m["role"] == "assistant" and m.get("model")), None)
+
+
+def _in_software_thread(messages: list[dict[str, Any]]) -> bool:
+    """True when the chat is already about software: the request before this one was a
+    software request, or the reply to it has code in it."""
+    earlier = messages[:-1]
+    reply = next((m for m in reversed(earlier) if m["role"] == "assistant"), None)
+    request = next((m for m in reversed(earlier) if m["role"] == "user"), None)
+    return bool(reply and "```" in (reply.get("content") or "")) or bool(
+        request and _SOFTWARE.search(request.get("content") or "")
+    )
 
 
 def _state(message: dict[str, Any]) -> str:
@@ -248,6 +284,22 @@ class Router:
 
     # ── Decision ──
 
+    def _cloud_route(self, messages: list[dict[str, Any]], current: Any) -> tuple[str, str]:
+        """The cloud route this message belongs on and why, before the privacy rule; ("", "") if none."""
+        message = _last_user(messages)
+        text = message.get("content") or ""
+        route = self._software_route(message)
+        if not route:
+            return "", ""
+        if _SOFTWARE.search(text):
+            return route, "rules"
+        # No software word of its own ("add error handling to it"), but the chat is about
+        # software: it follows the thread, on the cloud route already in use if there is one.
+        on_cloud = bool(current and current.name in self._cloud())
+        if (on_cloud or _in_software_thread(messages)) and not _EVERYDAY.search(text):
+            return (current.name if on_cloud and route != self.config.expert_route else route), "context"
+        return "", ""
+
     async def decide(self, messages: list[dict[str, Any]]) -> Decision:
         decision = await self._decide(messages)
         # The reason a message went where it did, without the message itself.
@@ -276,16 +328,32 @@ class Router:
         if current and self._keep_local(current.name, messages) != current.name:
             current = None
 
-        # A short follow-up like "make it shorter" stays with the model already in use. This is
-        # checked before Von: it only reads the latest message, and on its own such a message
-        # looks like an easy request no matter how hard the task it refers to is.
-        if current and self._is_follow_up(message):
+        # Software first, before anything that keeps the chat where it is: a local reply
+        # earlier in the chat must not hold a later code question back.
+        note = None
+        wanted, why = self._cloud_route(messages, current)
+        if wanted:
+            if self._keep_local(wanted, messages) == wanted:
+                same = bool(current and current.name == wanted)
+                return Decision(previous if same else config.route(wanted).model, wanted, why)
+            note = _KEPT_LOCAL  # the privacy rule won; say so instead of staying silently local
+
+        decision = await self._decide_local(messages, message, previous, current)
+        return Decision(decision.model, decision.route, decision.source, decision.confidence, note)
+
+    async def _decide_local(
+        self, messages: list[dict[str, Any]], message: dict[str, Any], previous: str | None, current: Any
+    ) -> Decision:
+        """Everything after the software check: follow-ups, Von, then keyword rules."""
+        config = self.config
+
+        # A short follow-up like "make it shorter" stays with the local model already in use.
+        # This is checked before Von: it only reads the latest message, and on its own such a
+        # message looks like an easy request no matter how hard the task it refers to is.
+        if current and current.name not in self._cloud() and self._is_follow_up(message):
             return Decision(previous, current.name, "sticky")
 
-        # Clear signs of a software question send it to the cloud without asking Von.
         by_rules = self._keep_local(self._by_rules(message), messages)
-        if by_rules in self._cloud():
-            return Decision(config.route(by_rules).model, by_rules, "rules")
 
         confidence = None
         if self._von is not None:
