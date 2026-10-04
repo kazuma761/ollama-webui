@@ -22,7 +22,7 @@ FOLDERS (each has one job; calls only go frontend -> backend -> ollama)
                 ollama_pipeline/client.py     raw HTTP calls to Ollama
                 ollama_pipeline/registry.py   which models exist / are pulled
                 ollama_pipeline/router.py     auto-routing: which model answers
-                ollama_pipeline/opencode.py   cloud answers via `opencode run`
+                ollama_pipeline/opencode.py   cloud answers via `opencode serve`
                 ollama_pipeline/pipeline.py   builds messages, streams reply
                 ollama_pipeline/documents.py  PDF/DOCX/text -> plain text
   run.sh      starts the backend on http://127.0.0.1:8000
@@ -38,8 +38,9 @@ REQUEST FLOW
      -> registry resolves the model -> pipeline adds the system prompt,
         folds file text into the message -> Ollama /api/chat (streaming)
      -> backend streams NDJSON lines back:
-        route / notice / delta / done / error
-     -> frontend renders the reply as it arrives.
+        route / notice / thinking / delta / done / error
+     -> frontend renders the reply as it arrives: reasoning in a live
+        "Thinking..." block, then the answer text with a caret while it grows.
   Other endpoints: GET /api/health, GET /api/theme. API docs: /docs
 
 AUTO-ROUTING ("Auto" in the model picker, the default when enabled)
@@ -62,18 +63,19 @@ AUTO-ROUTING ("Auto" in the model picker, the default when enabled)
 
 OPENCODE (cloud route, optional)
   The "expert" route sends the hardest engineering questions - architecture,
-  system design, hard debugging - to OpenCode's free cloud models by running
-  `opencode run` (https://github.com/anomalyco/opencode). Needs only the
-  `opencode` command installed. Config: `opencode:` + the `expert` route in
+  system design, hard debugging - to OpenCode's free cloud models
+  (https://github.com/anomalyco/opencode). The backend starts its own
+  password-protected `opencode serve` on 127.0.0.1 and streams replies from
+  it. Needs only the `opencode` command installed. Config: `opencode:` + the `expert` route in
   models.yaml; remove `expert_route` to stay fully local.
   - These messages LEAVE THIS MACHINE. Attachments are never sent, and a
     conversation that has had an attachment stays on local models.
-  - OpenCode runs in an empty temp folder and cannot run commands or edit
-    files here.
+  - OpenCode runs in an empty temp folder; every request it makes to run a
+    command, edit a file, fetch a URL or read elsewhere is rejected.
   - The free tier only works with OpenCode's built-in agent, unmodified.
   - If OpenCode is missing, refuses or times out, the local heavy model
     answers instead and the reply says so.
-  - The reply appears all at once (10-20 s), not word by word.
+  - The reply streams live; the first words usually take 5-10 s.
 
 DOCUMENTS
   PDF/DOCX/text are converted to text and placed in the prompt. The model

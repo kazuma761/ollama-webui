@@ -33,7 +33,7 @@ class ModelAlias:
 class OpenCodeConfig:
     command: str = "opencode"
     agent: str = "plan"  # must be one of OpenCode's built-in agents for the free tier to answer
-    timeout: int = 300  # seconds
+    timeout: int = 120  # seconds without any progress before giving up
 
 
 @dataclass(frozen=True)

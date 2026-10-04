@@ -65,7 +65,7 @@ router:
 opencode:
   command: opencode
   agent: plan      # keep a built-in agent: the free tier refuses custom ones
-  timeout: 300     # seconds before giving up and answering locally
+  timeout: 120     # seconds without any progress before answering locally instead
 
 # Picked when the user has not chosen a model yet (and Auto is off). Falls back to the first
 # available model if this one is not pulled.

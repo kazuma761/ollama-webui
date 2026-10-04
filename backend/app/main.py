@@ -21,6 +21,7 @@ for noisy in ("httpx", "httpcore"):
 async def lifespan(app: FastAPI):
     config = load_config()
     app.state.registry = Registry(config)
+    app.state.registry.warm_up()
     app.state.router = Router(config.router)
     app.state.router.warm_up()
     yield
