@@ -73,7 +73,7 @@ async def chat(
     """Streams the reply as newline-delimited JSON events: route, notice, thinking, delta, done, error."""
     messages = [m.model_dump() for m in body.messages]
     try:
-        entry, route, fallback = await select_model(registry, auto, body.model, messages)
+        entry, route, fallbacks = await select_model(registry, auto, body.model, messages)
     except ModelNotFound as exc:
         raise HTTPException(404, str(exc)) from exc
     except OllamaUnavailable as exc:
@@ -83,7 +83,7 @@ async def chat(
         try:
             if route:
                 yield json.dumps(route) + "\n"
-            async for event in chat_stream(registry, entry, messages, body.options, fallback):
+            async for event in chat_stream(registry, entry, messages, body.options, fallbacks):
                 yield json.dumps(event) + "\n"
         except PipelineError as exc:
             yield json.dumps({"type": "error", "message": str(exc)}) + "\n"

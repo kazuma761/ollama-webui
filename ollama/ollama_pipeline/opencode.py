@@ -143,7 +143,17 @@ class OpenCodeClient:
         return shutil.which(self.config.command)
 
     def _env(self) -> dict[str, str]:
-        return {**os.environ, "OPENCODE_CONFIG_CONTENT": json.dumps(_LOCKED_DOWN)}
+        # No self-update: the version that was installed and tested is the one that runs.
+        env = {
+            **os.environ,
+            "OPENCODE_CONFIG_CONTENT": json.dumps(_LOCKED_DOWN),
+            "OPENCODE_DISABLE_AUTOUPDATE": "true",
+        }
+        # Folders of its own. Sharing the default ones with an OpenCode the user runs is not
+        # safe: 1.x cannot even open the database that 2.x leaves there.
+        for kind in ("data", "state", "config", "cache"):
+            env[f"XDG_{kind.upper()}_HOME"] = os.path.join(os.path.expanduser(self.config.home), kind)
+        return env
 
     def _cwd(self) -> str:
         if self._workdir is None or not os.path.isdir(self._workdir):
@@ -273,8 +283,15 @@ class OpenCodeClient:
 
     # ── Chat ──
 
-    async def chat_stream(self, model: str, messages: list[dict[str, Any]]) -> AsyncIterator[dict[str, Any]]:
-        """Yields thinking and delta events as OpenCode writes them, then a done event."""
+    async def chat_stream(
+        self, model: str, messages: list[dict[str, Any]], patient: bool = True
+    ) -> AsyncIterator[dict[str, Any]]:
+        """Yields thinking and delta events as OpenCode writes them, then a done event.
+
+        When a model's provider fails, OpenCode waits and tries again, several
+        times. `patient=False` gives up at the first failure instead, for a
+        caller that has another model to turn to.
+        """
         http = await self._server_client()
         provider_id, _, model_id = model.partition("/")
         started = time.monotonic()
@@ -365,6 +382,10 @@ class OpenCodeClient:
                             log.info("OpenCode: rejected its request to use '%s'", props.get("permission"))
                             rejected = await http.post(f"/permission/{props['id']}/reply", json=_REJECTION)
                             rejected.raise_for_status()
+                        elif kind == "session.status":
+                            status = props.get("status") or {}
+                            if status.get("type") == "retry" and not patient:
+                                raise OpenCodeError(status.get("message") or "its provider is not answering")
                         elif kind == "session.error":
                             error = props.get("error") or {}
                             raise OpenCodeError(

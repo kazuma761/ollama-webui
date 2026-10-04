@@ -18,9 +18,10 @@ async def main() -> int:
         missing = []
         print()
         for entry in await registry.list_models():
-            state = "ready" if entry.available else "not pulled"
+            cloud = entry.host not in health  # an OpenCode model: nothing to pull, no Ollama host
+            state = "ready" if entry.available else "not available" if cloud else "not pulled"
             print(f"  {entry.id:<28} {entry.model:<24} {entry.host:<8} {state}")
-            if not entry.available and health[entry.host]["ok"]:
+            if not entry.available and not cloud and health[entry.host]["ok"]:
                 missing.append(entry.model)
 
         if missing:

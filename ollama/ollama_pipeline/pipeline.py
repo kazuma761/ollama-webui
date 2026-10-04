@@ -76,34 +76,37 @@ async def picker_models(registry: Registry, router: Router) -> tuple[str | None,
 
 async def select_model(
     registry: Registry, router: Router, model_id: str | None, messages: list[dict[str, Any]]
-) -> tuple[ModelEntry, dict[str, Any] | None, ModelEntry | None]:
+) -> tuple[ModelEntry, dict[str, Any] | None, list[ModelEntry]]:
     """Resolves the model for one reply.
 
     Returns the entry, a `route` event when routed, and - when routing picked a
-    cloud model - the local model to fall back on if the cloud does not answer.
+    cloud model - the models to fall back on if it does not answer: the other
+    cloud models of its route, in their order, then one local model.
     """
     if not router.enabled or model_id not in (AUTO_ID, None):
-        return await registry.resolve(None if model_id == AUTO_ID else model_id), None, None
+        return await registry.resolve(None if model_id == AUTO_ID else model_id), None, []
 
     decision = await router.decide(messages)
     entries = {e.id: e for e in await registry.list_models()}
-    local = next(
-        (entries[m] for m in router.models() if m in entries and entries[m].available and entries[m].provider != OPENCODE),
-        None,
-    )
-    # The chosen model first; if it is not pulled, any other routed model, strongest first.
-    for candidate in dict.fromkeys([decision.model, *router.models()]):
-        entry = entries.get(candidate)
-        if entry and entry.available:
-            event = {"type": "route", "model": entry.id, "label": entry.label, **decision.event()}
-            if candidate != decision.model:
-                event["source"] = "fallback"
-            return entry, event, local if entry.provider == OPENCODE else None
+    route = router.config.route(decision.route) if decision.route else None
+    # The chosen model first, then the rest of its route, then any other routed model, local ones first.
+    order = dict.fromkeys([decision.model, *(route.models if route else ()), *router.models()])
+    usable = [entries[m] for m in order if m in entries and entries[m].available]
+    if usable:
+        entry, rest = usable[0], usable[1:]
+        event = {"type": "route", "model": entry.id, "label": entry.label, **decision.event()}
+        if entry.id != decision.model:
+            event["source"] = "fallback"
+        fallbacks = []
+        if entry.provider == OPENCODE:
+            fallbacks = [e for e in rest if e.provider == OPENCODE and route and e.id in route.models]
+            fallbacks += [e for e in rest if e.provider != OPENCODE][:1]
+        return entry, event, fallbacks
 
     # None of the routed models can run: use whatever can, or raise the usual clear error.
     entry = await registry.resolve(None)
     event = {"type": "route", "model": entry.id, "label": entry.label, **decision.event(), "source": "fallback"}
-    return entry, event, None
+    return entry, event, []
 
 
 def _context_notice(entry: ModelEntry, payload: list[dict[str, Any]], options: dict[str, Any]) -> str | None:
@@ -124,26 +127,29 @@ async def chat_stream(
     entry: ModelEntry,
     messages: list[dict[str, Any]],
     options: dict[str, Any] | None = None,
-    fallback: ModelEntry | None = None,
+    fallbacks: list[ModelEntry] | None = None,
 ) -> AsyncIterator[dict[str, Any]]:
     """Yields {"type": "route" | "notice" | "thinking" | "delta" | "done", ...} events for one reply."""
-    if entry.provider == OPENCODE:
-        if messages[-1].get("files") or messages[-1].get("images"):
-            yield {"type": "notice", "message": f"Attached files are not sent to {entry.label}; it only sees your text."}
+    fallbacks = list(fallbacks or [])
+    if entry.provider == OPENCODE and (messages[-1].get("files") or messages[-1].get("images")):
+        yield {"type": "notice", "message": f"Attached files are not sent to {entry.label}; it only sees your text."}
+    while entry.provider == OPENCODE:
         answered = False
         try:
-            async for event in registry.opencode.chat_stream(entry.model, messages):
+            # With another model lined up there is no point in waiting for this one to retry.
+            async for event in registry.opencode.chat_stream(entry.model, messages, patient=not fallbacks):
                 answered = answered or event["type"] == "delta"
                 yield {**event, "model": entry.id} if event["type"] == "done" else event
             return
         except OpenCodeError as exc:
-            # Nothing was shown yet and routing has a local model to offer: answer there instead.
-            if answered or fallback is None:
+            # Nothing was shown yet and routing has another model to offer: answer there instead.
+            if answered or not fallbacks:
                 raise
-            yield {"type": "route", "model": fallback.id, "label": fallback.label, "route": None,
+            failed, entry = entry, fallbacks.pop(0)
+            instead = f"{entry.label} answers instead" if entry.provider == OPENCODE else "answered locally instead"
+            yield {"type": "route", "model": entry.id, "label": entry.label, "route": None,
                    "source": "fallback", "confidence": None}
-            yield {"type": "notice", "message": f"{entry.label} could not answer ({exc}) - answered locally instead."}
-            entry = fallback
+            yield {"type": "notice", "message": f"{failed.label} could not answer ({exc}) - {instead}."}
 
     can_see = entry.vision is not False
     if not can_see and messages and messages[-1].get("images"):

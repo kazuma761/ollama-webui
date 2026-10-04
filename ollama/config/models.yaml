@@ -1,3 +1,22 @@
+# ==========================================================================
+# THE ONE FILE FOR MODELS. Nothing else in the project names a model.
+#
+# To use the Ollama models of this machine, go to `models:` below and change
+# the `model:` tag (and the `label:` shown in the picker) of these entries:
+#     id: general     the light model - mail, quick questions
+#     id: reasoning   the strongest local model - hard questions, documents
+#     id: vision      reads screenshots
+# then restart the app. `ollama list` shows the tags you have. Leave the ids
+# as they are: the routes under `router:` refer to them.
+# Any other model you have pulled shows up in the picker on its own
+# (`discover: true`). It needs an entry here only to get a label or a system
+# prompt, or to be used by Auto.
+# Check the result:  cd backend && uv run --inexact python -m ollama_pipeline
+#
+# A copy of this folder named ollama/config.local/ (not in git) replaces it on
+# a machine that has one. The check above prints which folder is in use.
+# ==========================================================================
+
 # Ollama servers the platform can talk to.
 # Today this is just your laptop; when you move to the company server add it
 # here (or override a URL with the env var OLLAMA_HOST_<NAME>, e.g.
@@ -35,7 +54,12 @@ router:
   instructions: Which kind of assistant should answer this request?
   default_route: simple  # light model
   heavy_route: complex   # strongest local model
-  expert_route: expert   # cloud; remove this line and the route below to stay fully local
+  # The next two routes are answered in the cloud. To stay fully local remove these
+  # two lines and both routes. Von chooses between the local routes only; whether a
+  # request is about software is decided in router.py (keywords, then two questions
+  # to Von), so the two descriptions below are for the reader.
+  code_route: code       # questions about software
+  expert_route: expert   # the hardest of those
   image_model: vision    # messages with screenshots go straight here
   routes:
     simple:
@@ -46,26 +70,37 @@ router:
     complex:
       model: reasoning
       description: >-
-        Work that needs careful thinking: writing or debugging code, logic
-        and maths problems, multi-step reasoning, technical design, analysing
-        or reviewing documents and data.
+        Work that needs careful thinking: analysing or reviewing documents,
+        contracts, reports and data, logic and maths problems, comparing
+        options, multi-step reasoning, code and technical questions.
+    code:
+      # A list is tried in order: the first model that answers is used.
+      model: [opencode-space-bunny, opencode, opencode-mimo, opencode-nemotron-lightning]
+      description: >-
+        Anything about software and programming: writing, fixing, explaining or
+        reviewing code, scripts, queries and configuration, error messages,
+        tools, APIs, databases and system design.
     expert:
-      model: opencode
+      model: [opencode, opencode-nemotron-ultra, opencode-space-bunny]
+      # A software question comes here when it also has the expert keywords in router.py.
       description: >-
         The hardest software engineering questions: designing a system or its
         architecture, scaling and trade-off decisions, large refactors and
         migrations, and bugs that are hard to find such as race conditions,
         deadlocks, memory leaks or failures that only happen sometimes.
 
-# OpenCode (https://github.com/anomalyco/opencode) answers the "expert" route
-# with its free cloud models. Needs the `opencode` command installed; nothing
-# else to configure. IMPORTANT: messages sent to this route leave this machine.
+# OpenCode (https://github.com/anomalyco/opencode) answers the "code" and
+# "expert" routes with its free cloud models. Needs OpenCode 1.x
+# (`npm i -g opencode-ai@1`); 2.x has a different server and does not work.
+# IMPORTANT: messages sent to these routes leave this machine.
 # Attached documents and images are never sent - those stay on local models.
-# If OpenCode is missing, offline or refuses, the local heavy model answers.
+# If a model does not answer, the next one in its route is tried, then the
+# local heavy model. The same happens when OpenCode is missing or offline.
 opencode:
-  command: opencode
+  command: opencode   # version 1.18.34; a full path to the program also works
   agent: plan      # keep a built-in agent: the free tier refuses custom ones
   timeout: 120     # seconds without any progress before answering locally instead
+  # home: /some/folder   # where the app's OpenCode keeps its own data; default is ollama/.opencode
 
 # Picked when the user has not chosen a model yet (and Auto is off). Falls back to the first
 # available model if this one is not pulled.
@@ -75,6 +110,7 @@ default_model: general
 # Ollama model tag on a host, plus an optional system prompt and options.
 # Several entries may point at the same tag with different prompts.
 models:
+  # ---- Local models (Ollama): change `model:` and `label:` to what this machine has ----
   - id: general
     label: Llama 3.2
     model: llama3.2:3b
@@ -99,12 +135,6 @@ models:
     options:
       temperature: 0.3
 
-  - id: opencode
-    label: OpenCode Big Pickle
-    provider: opencode
-    model: opencode/big-pickle   # any id from `opencode models`
-    description: Cloud (free tier) - architecture, hard debugging, complex code
-
   - id: coder
     label: Qwen Coder
     model: qwen2.5-coder:7b
@@ -125,3 +155,61 @@ models:
     system: |
       You are a product engineer. When given a screenshot, describe the UI
       precisely before answering the question.
+
+  # ---- Cloud models (OpenCode) ----
+  # OpenCode's free cloud models; `model` is an id from `opencode models`. The
+  # free list changes: an id OpenCode stops offering shows as unavailable and is
+  # skipped. Tested 2026-10-04 with a coding task and a bug hunt; all of these
+  # answered correctly. Left out: longcat-2.5-preview-free (a preview) and
+  # ling-3.0-flash-fin-free ("Endpoint is unavailable").
+  # What each provider does with prompts, from https://opencode.ai/docs/zen on
+  # that date: Space Bunny keeps nothing; Big Pickle, MiMo, Ling and Fledge
+  # "may be used to improve the model"; Nemotron is logged; Muse Spark trains
+  # future Meta models, which is why it is in no route.
+  - id: opencode
+    label: OpenCode Big Pickle
+    provider: opencode
+    model: opencode/big-pickle
+    description: Cloud (free) - architecture, hard debugging, complex code
+
+  - id: opencode-space-bunny
+    label: OpenCode Space Bunny
+    provider: opencode
+    model: opencode/space-bunny-free
+    description: Cloud (free) - coding, fastest in testing, keeps no data
+
+  - id: opencode-nemotron-ultra
+    label: OpenCode Nemotron 3 Ultra
+    provider: opencode
+    model: opencode/nemotron-3-ultra-free
+    description: Cloud (free) - coding and hard problems
+
+  - id: opencode-mimo
+    label: OpenCode MiMo V2.6 Flash
+    provider: opencode
+    model: opencode/mimo-v2.6-flash-free
+    description: Cloud (free) - coding
+
+  - id: opencode-nemotron-lightning
+    label: OpenCode Nemotron 3.5 Lightning
+    provider: opencode
+    model: opencode/nemotron-3.5-lightning-free
+    description: Cloud (free) - coding
+
+  - id: opencode-ling
+    label: OpenCode Ling 3.1 Flash
+    provider: opencode
+    model: opencode/ling-3.1-flash-free
+    description: Cloud (free) - coding, slowest in testing
+
+  - id: opencode-fledge
+    label: OpenCode Fledge Alpha
+    provider: opencode
+    model: opencode/fledge-alpha-free
+    description: Cloud (free) - coding, an alpha model
+
+  - id: opencode-muse-spark
+    label: OpenCode Muse Spark 1.3
+    provider: opencode
+    model: opencode/muse-spark-1.3-contributor-free
+    description: Cloud (free) - coding, prompts are used to train Meta models
