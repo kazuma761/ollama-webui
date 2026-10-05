@@ -102,6 +102,19 @@ opencode:
   timeout: 120     # seconds without any progress before answering locally instead
   # home: /some/folder   # where the app's OpenCode keeps its own data; default is ollama/.opencode
 
+# The Word-documents page (documents.html): fill a template, change a document,
+# write a new one. Only local models are used here - files never go to the cloud.
+# The model decides what goes where; the app's own code writes the Word file.
+documents:
+  # model: reasoning   # id of a local model below; default is the heavy route's model.
+                       # A larger model matches information to blanks more reliably.
+  max_jobs: 2          # document jobs asking the model at once; others wait their turn
+  second_check: false  # true = ask the model again about values it did not copy from
+                       # your files or instructions (slower; shown as "could not confirm")
+  keep_hours: 24       # uploaded and generated files are deleted from the server after this
+  allow_cloud: false   # true lets OpenCode's cloud models work on documents. For trying the
+                       # page on a machine without Ollama only - documents then leave this machine.
+
 # Picked when the user has not chosen a model yet (and Auto is off). Falls back to the first
 # available model if this one is not pulled.
 default_model: general

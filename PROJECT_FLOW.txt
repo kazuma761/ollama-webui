@@ -7,6 +7,7 @@ prompt (optionally attaching files or screenshots), and the reply streams back.
 
 FOLDERS (each has one job; calls only go frontend -> backend -> ollama)
   frontend/   index.html - the whole UI (HTML + CSS + JS in one file).
+              documents.html - the Word documents page (the Docs link).
               Talks to the backend only through /api/* over HTTP.
   backend/    FastAPI app (Python). Receives HTTP requests, calls the
               ollama_pipeline package, and serves frontend/ at "/".
@@ -25,6 +26,9 @@ FOLDERS (each has one job; calls only go frontend -> backend -> ollama)
                 ollama_pipeline/opencode.py   cloud answers via `opencode serve`
                 ollama_pipeline/pipeline.py   builds messages, streams reply
                 ollama_pipeline/documents.py  PDF/DOCX/text -> plain text
+                ollama_pipeline/wordfile.py   finds the blanks of a Word file, fills them
+                ollama_pipeline/wordedit.py   edit operations on a Word file; Markdown -> Word
+                ollama_pipeline/docgen.py     what the model is asked for the documents page
   run.sh      starts the backend on http://127.0.0.1:8000
   run.ps1     the same for Windows PowerShell
 

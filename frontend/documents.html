@@ -1,0 +1,540 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Fastshot — Word documents</title>
+<meta name="description" content="Fill a Word template, change a document, or write a new one.">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,100..900&display=block" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+button,input,textarea,select{font:inherit;color:inherit;background:none;border:0}
+svg{display:block}
+[hidden]{display:none!important}
+
+:root{
+  --glass:rgba(41,41,43,.955);
+  --panel:rgba(22,22,25,.90);
+  --line:rgba(214,228,255,.14);
+  --soft:rgba(255,255,255,.07);
+  --text:#ECECEF; --muted:#98999C; --dim:#77787B;
+  --accent:#F49D70; --warn:#FBBC94; --ok:#8FD3A8;
+}
+html,body{height:100%}
+body{
+  background:#0a0d12;color:var(--text);
+  font-family:Inter,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-size:14px;line-height:1.5;
+  font-synthesis:none;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;
+}
+:focus-visible{outline:2px solid #F8B285;outline-offset:3px;border-radius:6px}
+a{color:inherit;text-decoration:none}
+button{cursor:pointer}
+
+.bg{position:fixed;inset:0;width:100%;height:100%;object-fit:cover;z-index:0}
+.shade{position:fixed;inset:0;z-index:0;background:linear-gradient(180deg,rgba(8,10,14,.55),rgba(8,10,14,.78))}
+.page{position:relative;z-index:1;height:100%;overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.25) transparent}
+.wrap{max-width:900px;margin:0 auto;padding:clamp(18px,3.2vh,34px) clamp(16px,4vw,32px) 64px}
+
+/* Nav */
+.nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:clamp(26px,5vh,54px)}
+.brand{display:inline-flex;align-items:center;gap:12px;font-size:18.5px;font-weight:500;letter-spacing:-.0154em;text-shadow:0 1px 10px rgba(0,0,0,.3)}
+.brand svg{width:34px;height:34px}
+.links{display:flex;gap:6px}
+.links a{padding:7px 14px;border-radius:10px;font-size:15px;color:#D5D5D8;transition:background .18s ease}
+.links a:hover{background:var(--soft)}
+.links a[aria-current]{background:rgba(255,255,255,.11);color:#fff}
+
+/* Heading */
+h1{font-size:clamp(26px,4.2vw,36px);font-weight:410;letter-spacing:.0018em;line-height:1.12;text-shadow:0 2px 22px rgba(0,0,0,.3)}
+.lede{margin-top:10px;max-width:60ch;color:#D5D5D8;font-size:15px;text-shadow:0 1px 12px rgba(0,0,0,.35)}
+
+/* Modes */
+.modes{display:flex;flex-wrap:wrap;gap:6px;margin:26px 0 14px}
+.mode{
+  height:36px;padding:0 15px;border-radius:11px;font-size:13.5px;font-weight:500;color:#B9BABD;
+  background:linear-gradient(180deg,rgba(255,255,255,.088),rgba(255,255,255,.038));border:1px solid rgba(255,255,255,.06);
+}
+.mode:hover{color:#fff}
+.mode[aria-selected="true"]{color:#1d1d20;background:linear-gradient(163deg,#FBBC94,#F49D70 46%,#E88654);border-color:transparent}
+
+/* Cards */
+.card{
+  border-radius:22px;padding:clamp(16px,2.4vw,24px);margin-bottom:14px;
+  background:var(--glass);-webkit-backdrop-filter:blur(26px) saturate(112%);backdrop-filter:blur(26px) saturate(112%);
+  box-shadow:inset 0 0 0 1px var(--line),0 22px 60px rgba(0,0,0,.30);
+}
+.card h2{font-size:15px;font-weight:600;letter-spacing:-.005em}
+.card h2 small{font-weight:400;color:var(--muted);font-size:13px;margin-left:6px}
+.hint{color:var(--muted);font-size:13px}
+.row{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.gap{margin-top:16px}
+label.cap{display:block;font-size:12.5px;font-weight:500;color:var(--muted);margin-bottom:6px}
+
+/* File pickers */
+.drop{
+  display:flex;align-items:center;gap:12px;width:100%;padding:13px 14px;border-radius:14px;text-align:left;
+  background:rgba(255,255,255,.035);border:1px dashed rgba(255,255,255,.2);transition:background .18s ease,border-color .18s ease;
+}
+.drop:hover,.drop.over{background:rgba(255,255,255,.07);border-color:var(--accent)}
+.drop svg{width:22px;height:22px;flex:none;color:var(--muted)}
+.drop b{display:block;font-weight:500;font-size:14px}
+.drop span{display:block;color:var(--muted);font-size:12.5px}
+.drop.has{border-style:solid;border-color:rgba(255,255,255,.14)}
+.drop.has svg{color:var(--accent)}
+.pills{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.pill{display:inline-flex;align-items:center;gap:6px;height:27px;padding:0 6px 0 10px;border-radius:8px;font-size:12.5px;background:rgba(255,255,255,.07)}
+.pill button{width:17px;height:17px;border-radius:50%;line-height:1;color:var(--muted)}
+.pill button:hover{color:#fff;background:rgba(255,255,255,.14)}
+
+textarea,.in,select{
+  width:100%;padding:10px 12px;border-radius:12px;background:rgba(0,0,0,.26);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.09);color:var(--text);font-size:14px;line-height:1.45;
+}
+textarea{min-height:84px;resize:vertical;display:block}
+textarea::placeholder,.in::placeholder{color:#77787B}
+textarea:focus,.in:focus,select:focus{outline:none;box-shadow:inset 0 0 0 1px rgba(244,157,112,.7)}
+select{width:auto;max-width:100%;padding-right:30px;appearance:none;cursor:pointer;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 5'%3E%3Cpath fill='%2398999C' d='M1 0l3 3 3-3 1 1-4 4-4-4Z'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 11px center;background-size:8px}
+select option{background:#1c1c1f}
+
+.btn{
+  height:40px;padding:0 20px;border-radius:12px;font-size:14px;font-weight:520;color:#1d1d20;
+  background:linear-gradient(163deg,#FBBC94,#F49D70 46%,#E88654);box-shadow:0 3px 12px rgba(210,110,60,.34);
+}
+.btn:hover{filter:brightness(1.07)} .btn:active{transform:scale(.98)}
+.btn[disabled]{opacity:.45;cursor:default;filter:none;transform:none}
+.btn.ghost{color:var(--text);background:linear-gradient(180deg,#3d3d3f,#1d1d20);box-shadow:inset 0 1px 0 rgba(255,255,255,.10)}
+.grow{flex:1}
+
+/* Status */
+.status{display:flex;align-items:center;gap:9px;color:var(--muted);font-size:13px;min-height:22px}
+.status i{width:7px;height:7px;border-radius:50%;background:var(--accent);animation:pulse 1s ease-in-out infinite}
+.status.err{color:var(--warn)} .status.err i,.status.idle i{animation:none;background:currentColor;opacity:.6}
+@keyframes pulse{0%,100%{opacity:.25}50%{opacity:1}}
+
+/* Blanks */
+.fields{display:grid;gap:8px;margin-top:14px}
+.f{display:grid;grid-template-columns:minmax(120px,34%) 1fr;gap:6px 14px;align-items:start;padding:10px 12px;border-radius:13px;background:rgba(255,255,255,.04)}
+.f .name{font-weight:500;font-size:13.5px;overflow-wrap:anywhere}
+.f .ctx{color:var(--dim);font-size:12px;margin-top:2px;overflow-wrap:anywhere}
+.f .ctx em{font-style:normal;color:var(--accent)}
+.f textarea{min-height:38px;padding:8px 10px;border-radius:10px;font-size:13.5px}
+.f.section textarea{min-height:92px}
+.tag{display:inline-block;margin-top:5px;padding:1px 8px;border-radius:999px;font-size:11.5px;font-weight:500}
+.tag.source,.tag.prompt{color:var(--ok);background:rgba(143,211,168,.12)}
+.tag.model,.tag.unsupported{color:var(--warn);background:rgba(251,188,148,.13)}
+.tag.kind{color:var(--muted);background:rgba(255,255,255,.07);margin:0 0 0 6px}
+
+/* Results */
+.list{margin-top:10px;display:grid;gap:5px;font-size:13.5px}
+.list li{list-style:none;padding-left:18px;position:relative}
+.list li::before{content:"";position:absolute;left:3px;top:.62em;width:6px;height:6px;border-radius:50%;background:var(--ok)}
+.list li.skip{color:var(--warn)} .list li.skip::before{background:var(--warn)}
+.live{white-space:pre-wrap;font-size:13.5px;line-height:1.55;max-height:340px;overflow-y:auto;scrollbar-width:thin;padding:12px 14px;border-radius:12px;background:rgba(0,0,0,.28)}
+
+/* Rough preview of the document's text */
+.paper{margin-top:14px;padding:22px clamp(16px,4vw,34px);border-radius:10px;background:#F7F7F5;color:#1b1b1d;max-height:460px;overflow-y:auto;font-size:13.5px;line-height:1.55}
+.paper p{margin:0 0 8px;white-space:pre-wrap;overflow-wrap:anywhere;min-height:.6em}
+.paper .l0{font-size:22px;font-weight:600;margin:0 0 12px}
+.paper .l1{font-size:17px;font-weight:650;margin:14px 0 6px;color:#1F3F66}
+.paper .l2{font-size:15px;font-weight:650;margin:12px 0 5px;color:#2B5A8C}
+.paper .l3{font-size:14px;font-weight:650;margin:10px 0 4px}
+.paper .bullet{padding-left:16px;position:relative}
+.paper .bullet::before{content:"•";position:absolute;left:3px}
+.paper table{border-collapse:collapse;margin:6px 0 12px;width:100%}
+.paper td{border:1px solid #c9c9c6;padding:5px 8px;vertical-align:top;white-space:pre-wrap;font-size:13px}
+.note{color:var(--dim);font-size:12px;margin-top:8px}
+
+@media (max-width:620px){
+  .f{grid-template-columns:1fr}
+  .links a{padding:7px 10px;font-size:14px}
+  .brand span{display:none}
+}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+</style>
+</head>
+<body>
+<video class="bg" autoplay muted loop playsinline preload="auto"
+  src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260826_124724_bc041163-d651-425f-aea3-2acc1efc2c96.mp4"></video>
+<div class="shade"></div>
+
+<div class="page"><div class="wrap">
+  <header class="nav">
+    <a class="brand" href="index.html" aria-label="Fastshot home">
+      <svg viewBox="0 0 34 34" aria-hidden="true"><circle cx="17" cy="17" r="17" fill="#9C86CE"/><circle cx="17" cy="17" r="8.6" fill="#fff"/><circle cx="17" cy="17" r="3.7" fill="#151519"/></svg>
+      <span>Fastshot</span>
+    </a>
+    <nav class="links" aria-label="Primary">
+      <a href="index.html">Chat</a>
+      <a href="documents.html" aria-current="page">Documents</a>
+    </nav>
+  </header>
+
+  <h1>Word documents</h1>
+  <p class="lede" id="lede">Fill a template, change a document, or write a new one. Your files are worked on by the models on this machine and are deleted from it after a day.</p>
+
+  <div class="modes" role="tablist" aria-label="What to do">
+    <button class="mode" role="tab" data-mode="fill" aria-selected="true">Fill a template</button>
+    <button class="mode" role="tab" data-mode="edit" aria-selected="false">Change a document</button>
+    <button class="mode" role="tab" data-mode="create" aria-selected="false">Write a new one</button>
+  </div>
+
+  <!-- What goes in -->
+  <section class="card" id="inputs">
+    <div id="main-block">
+      <label class="cap" id="main-cap">Template</label>
+      <button type="button" class="drop" id="main-drop">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg>
+        <span><b id="main-title">Choose a Word template</b><span id="main-sub">.docx or .dotx, up to 20 MB. Its look is kept exactly.</span></span>
+      </button>
+    </div>
+
+    <div class="gap" id="source-block">
+      <label class="cap" id="source-cap">Information to use <span style="font-weight:400">(optional)</span></label>
+      <button type="button" class="drop" id="source-drop">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+        <span><b>Add files to take the information from</b><span>Word, PDF or text. Only their text is read.</span></span>
+      </button>
+      <div class="pills" id="sources"></div>
+    </div>
+
+    <div class="gap">
+      <label class="cap" for="instructions" id="inst-cap">What should go in?</label>
+      <textarea id="instructions" placeholder="For example: offer letter for Priya Sharma, Senior Data Engineer, joining 14 July 2026. Take the salary from the attached note."></textarea>
+    </div>
+
+    <div class="row gap">
+      <select id="model" aria-label="Model"></select>
+      <span class="grow"></span>
+      <button type="button" class="btn" id="go" disabled>Suggest values</button>
+    </div>
+    <div class="status idle gap" id="status" hidden><i></i><span></span></div>
+  </section>
+
+  <!-- Blanks to review (fill) -->
+  <section class="card" id="review" hidden>
+    <h2>Blanks in this template <small id="review-count"></small></h2>
+    <p class="hint" style="margin-top:4px">Check each value before the file is made. A blank you leave empty stays as it is in the template.</p>
+    <div class="fields" id="fields"></div>
+    <div class="row gap">
+      <span class="hint grow" id="review-hint"></span>
+      <button type="button" class="btn" id="make">Create Word file</button>
+    </div>
+  </section>
+
+  <!-- Live text (create) -->
+  <section class="card" id="writing" hidden>
+    <h2>Writing <small id="writing-model"></small></h2>
+    <div class="live gap" id="live"></div>
+  </section>
+
+  <!-- Result -->
+  <section class="card" id="result" hidden>
+    <div class="row">
+      <h2 class="grow" id="result-title">Your document</h2>
+      <a class="btn" id="download" href="#" download>Download .docx</a>
+    </div>
+    <p class="hint" id="result-summary" style="margin-top:6px"></p>
+    <ul class="list" id="changes"></ul>
+    <div class="paper" id="paper"></div>
+    <p class="note">Text preview only. Fonts, colours, the letterhead and page layout are in the downloaded file.</p>
+
+    <div class="gap">
+      <label class="cap" for="refine">Change something in this document</label>
+      <textarea id="refine" style="min-height:58px" placeholder="For example: centre the title, make the headings blue, replace ACME with Globex, shorten the second paragraph."></textarea>
+      <div class="row" style="margin-top:10px">
+        <span class="status idle grow" id="refine-status" hidden><i></i><span></span></span>
+        <span class="grow"></span>
+        <button type="button" class="btn ghost" id="apply">Apply changes</button>
+      </div>
+    </div>
+  </section>
+
+  <input type="file" id="main-file" accept=".docx,.dotx" hidden>
+  <input type="file" id="source-file" multiple hidden>
+</div></div>
+
+<script>
+(() => {
+  const API = (window.FASTSHOT_API || '').replace(/\/$/, '');
+  const $ = (id) => document.getElementById(id);
+  const node = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
+  const state = { mode: 'fill', job: null, style: null, name: '', fields: [], sources: [], busy: false, result: null };
+
+  const TEXT = {
+    fill:   { cap: 'Template', title: 'Choose a Word template', sub: '.docx or .dotx, up to 20 MB. Its look is kept exactly.',
+              inst: 'What should go in?', go: 'Suggest values', source: true,
+              ph: 'For example: offer letter for Priya Sharma, Senior Data Engineer, joining 14 July 2026. Take the salary from the attached note.' },
+    edit:   { cap: 'Document', title: 'Choose a Word document', sub: '.docx or .dotx, up to 20 MB. Only what you ask for is changed.',
+              inst: 'What should change?', go: 'Apply changes', source: false,
+              ph: 'For example: centre the title, justify the body text, replace ACME with Globex everywhere, add a row for March with 40 and 52.' },
+    create: { cap: 'Letterhead or style to use (optional)', title: 'Choose a Word file to take the look from', sub: 'Its header, footer, logo and styles are kept; its text is replaced.',
+              inst: 'What should the document say?', go: 'Write document', source: true,
+              ph: 'For example: a one-page leave policy summary for all employees: 24 days paid leave, 10 public holidays, how to apply.' },
+  };
+  const ORIGIN = { source: 'from your files', prompt: 'from your instructions', model: 'written by the model - check', unsupported: 'could not be confirmed - check' };
+
+  /* ── Small helpers ── */
+  function status(el, text, kind) {
+    el.hidden = !text;
+    el.className = 'status ' + (kind || '') + (el.id === 'status' ? ' gap' : ' grow');
+    el.lastElementChild.textContent = text || '';
+  }
+  async function failure(res) {
+    const detail = (await res.json().catch(() => ({}))).detail;
+    return new Error(typeof detail === 'string' ? detail : 'Request failed (' + res.status + ')');
+  }
+  async function stream(path, body, onEvent) {
+    const res = await fetch(API + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    if (!res.ok) throw await failure(res);
+    const reader = res.body.getReader(), decoder = new TextDecoder();
+    let buffer = '';
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      let cut;
+      while ((cut = buffer.indexOf('\n')) >= 0) {
+        const line = buffer.slice(0, cut).trim();
+        buffer = buffer.slice(cut + 1);
+        if (!line) continue;
+        const event = JSON.parse(line);
+        if (event.type === 'error') throw new Error(event.message);
+        onEvent(event);
+      }
+    }
+  }
+  function setBusy(busy) {
+    state.busy = busy;
+    for (const id of ['go', 'make', 'apply']) $(id).disabled = busy || (id === 'go' && !ready());
+  }
+  const ready = () => state.mode === 'create' ? !!$('instructions').value.trim() : !!state.job;
+
+  /* ── Models ── */
+  async function loadModels() {
+    try {
+      const res = await fetch(API + '/api/documents/config');
+      if (!res.ok) throw 0;
+      const data = await res.json();
+      const select = $('model');
+      select.replaceChildren();
+      for (const m of data.models) {
+        const option = node('option', '', m.label + (m.available ? '' : ' (not available)'));
+        option.value = m.id; option.disabled = !m.available; option.selected = m.id === data.default;
+        select.append(option);
+      }
+      if (!data.models.some((m) => m.available)) status($('status'), 'No local model is available. Start Ollama and pull a model.', 'err');
+      if (data.cloud) $('lede').textContent = 'Fill a template, change a document, or write a new one. Test setup: cloud models are allowed here, so files you use may leave this machine.';
+    } catch { status($('status'), 'The backend is not reachable. Start it with ./run.sh.', 'err'); }
+  }
+
+  /* ── Modes ── */
+  function setMode(mode) {
+    state.mode = mode;
+    const t = TEXT[mode];
+    document.querySelectorAll('.mode').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.mode === mode)));
+    $('main-cap').textContent = t.cap; $('inst-cap').textContent = t.inst; $('instructions').placeholder = t.ph; $('go').textContent = t.go;
+    $('source-block').hidden = !t.source;
+    state.job = null; state.style = null; state.fields = []; state.result = null; state.name = '';
+    $('main-drop').classList.remove('has'); $('main-title').textContent = t.title; $('main-sub').textContent = t.sub;
+    for (const id of ['review', 'writing', 'result']) $(id).hidden = true;
+    status($('status'), ''); setBusy(false);
+  }
+  document.querySelectorAll('.mode').forEach((b) => b.addEventListener('click', () => { if (!state.busy) setMode(b.dataset.mode); }));
+
+  /* ── Files ── */
+  function wire(drop, input, handle) {
+    drop.addEventListener('click', () => input.click());
+    input.addEventListener('change', () => { handle([...input.files]); input.value = ''; });
+    drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('over'); });
+    drop.addEventListener('dragleave', () => drop.classList.remove('over'));
+    drop.addEventListener('drop', (e) => { e.preventDefault(); drop.classList.remove('over'); handle([...e.dataTransfer.files]); });
+  }
+  async function uploadMain(files) {
+    const file = files[0];
+    if (!file || state.busy) return;
+    setBusy(true); status($('status'), 'Reading ' + file.name);
+    try {
+      const form = new FormData(); form.append('file', file);
+      const res = await fetch(API + '/api/documents/upload', { method: 'POST', body: form });
+      if (!res.ok) throw await failure(res);
+      const data = await res.json();
+      state.job = data.job; state.name = data.name; state.fields = data.fields;
+      if (state.mode === 'create') state.style = data.job;
+      $('main-drop').classList.add('has'); $('main-title').textContent = data.name;
+      $('main-sub').textContent = data.paragraphs + ' paragraphs, ' + data.tables + ' table' + (data.tables === 1 ? '' : 's')
+        + (state.mode === 'fill' ? ', ' + data.fields.length + ' blank' + (data.fields.length === 1 ? '' : 's') + ' found' : '');
+      status($('status'), '');
+      if (state.mode === 'fill') showFields(data);
+    } catch (err) { status($('status'), err.message, 'err'); }
+    setBusy(false);
+  }
+  async function addSources(files) {
+    for (const file of files) {
+      try {
+        const form = new FormData(); form.append('file', file);
+        const res = await fetch(API + '/api/files', { method: 'POST', body: form });
+        if (!res.ok) throw await failure(res);
+        const data = await res.json();
+        state.sources.push({ name: data.name, content: data.content });
+      } catch (err) { status($('status'), err.message, 'err'); }
+    }
+    renderSources();
+  }
+  function renderSources() {
+    $('sources').replaceChildren(...state.sources.map((s, i) => {
+      const pill = node('span', 'pill', s.name), x = node('button', '', '×');
+      x.type = 'button'; x.setAttribute('aria-label', 'Remove ' + s.name);
+      x.addEventListener('click', () => { state.sources.splice(i, 1); renderSources(); });
+      pill.append(x); return pill;
+    }));
+  }
+  wire($('main-drop'), $('main-file'), uploadMain);
+  wire($('source-drop'), $('source-file'), addSources);
+  $('instructions').addEventListener('input', () => setBusy(state.busy));
+
+  /* ── Fill: the blanks ── */
+  function showFields(data) {
+    const box = $('fields'); box.replaceChildren();
+    $('review-count').textContent = data.fields.length ? data.fields.length + ' found' : '';
+    $('review-hint').textContent = '';
+    if (!data.fields.length) {
+      $('review').hidden = true;
+      status($('status'), 'No blanks were found in this file. To put new text on its letterhead, use "Write a new one" and choose it as the style.', 'idle');
+      return;
+    }
+    for (const f of data.fields) {
+      const row = node('div', 'f' + (f.kind === 'section' ? ' section' : ''));
+      const left = node('div'), right = node('div');
+      const name = node('div', 'name', f.label);
+      if (f.places > 1) name.append(node('span', 'tag kind', 'x' + f.places));
+      if (f.kind === 'section') name.append(node('span', 'tag kind', 'section'));
+      const ctx = node('div', 'ctx');
+      const parts = f.context.split('[____]');
+      ctx.append(parts[0]); if (parts.length > 1) { ctx.append(node('em', '', '▁▁▁')); ctx.append(parts.slice(1).join('')); }
+      if (f.options.length) ctx.append(' Options: ' + f.options.join(' / '));
+      left.append(name, ctx);
+      const input = node('textarea'); input.dataset.id = f.id; input.rows = f.kind === 'section' ? 4 : 1;
+      input.setAttribute('aria-label', f.label);
+      input.addEventListener('input', () => { const tag = right.querySelector('.tag'); if (tag) tag.remove(); });
+      right.append(input);
+      row.append(left, right); box.append(row);
+    }
+    $('review').hidden = false;
+  }
+  function putValues(values) {
+    for (const [id, v] of Object.entries(values)) {
+      const input = document.querySelector('#fields textarea[data-id="' + id + '"]');
+      if (!input) continue;
+      input.value = v.value;
+      const old = input.parentElement.querySelector('.tag'); if (old) old.remove();
+      if (ORIGIN[v.origin]) input.parentElement.append(node('span', 'tag ' + v.origin, ORIGIN[v.origin]));
+    }
+  }
+
+  /* ── Results ── */
+  function paint(preview) {
+    const paper = $('paper'); paper.replaceChildren();
+    for (const item of preview || []) {
+      if (item.type === 'table') {
+        const table = node('table');
+        for (const row of item.rows) { const tr = node('tr'); for (const cell of row) tr.append(node('td', '', cell)); table.append(tr); }
+        paper.append(table); continue;
+      }
+      const cls = item.style === 'Title' ? 'l0' : item.level ? 'l' + Math.min(item.level, 3) : /^List/.test(item.style) ? 'bullet' : '';
+      const p = node('p', cls, item.text);
+      if (item.align !== 'left') p.style.textAlign = item.align;
+      paper.append(p);
+    }
+  }
+  function showResult(data, title, summary) {
+    state.result = { job: data.job, version: data.version }; state.job = data.job;
+    $('result-title').textContent = title;
+    $('result-summary').textContent = summary || '';
+    $('download').href = API + data.download;
+    const list = $('changes'); list.replaceChildren();
+    for (const line of data.applied || []) list.append(node('li', '', line));
+    for (const line of data.skipped || []) list.append(node('li', 'skip', 'Not done - ' + line));
+    paint(data.preview);
+    $('result').hidden = false;
+    $('result').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  /* ── Actions ── */
+  async function suggest() {
+    setBusy(true); status($('status'), 'Asking the model');
+    try {
+      await stream('/api/documents/' + state.job + '/propose',
+        { model: $('model').value || null, instructions: $('instructions').value, sources: state.sources }, (e) => {
+          if (e.type === 'progress') status($('status'), e.message);
+          else if (e.type === 'values') putValues(e.values);
+          else if (e.type === 'done') { status($('status'), ''); $('review-hint').textContent = e.filled + ' of ' + e.blanks + ' blanks have a suggestion.'; }
+        });
+      $('review').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } catch (err) { status($('status'), err.message, 'err'); }
+    setBusy(false);
+  }
+  async function make() {
+    setBusy(true);
+    const values = {};
+    document.querySelectorAll('#fields textarea').forEach((t) => { if (t.value.trim()) values[t.dataset.id] = t.value; });
+    try {
+      const res = await fetch(API + '/api/documents/' + state.job + '/fill', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ values }) });
+      if (!res.ok) throw await failure(res);
+      const data = await res.json();
+      const left = data.empty.length ? ' Left empty: ' + data.empty.slice(0, 6).join(', ') + (data.empty.length > 6 ? ' ...' : '') + '.' : '';
+      showResult(data, 'Filled: ' + state.name, data.filled.length + ' blank' + (data.filled.length === 1 ? '' : 's') + ' filled.' + left);
+    } catch (err) { $('review-hint').textContent = err.message; }
+    setBusy(false);
+  }
+  async function change(instructions, where) {
+    if (!instructions.trim()) return;
+    setBusy(true); status(where, 'Asking the model');
+    try {
+      await stream('/api/documents/' + state.job + '/edit', { model: $('model').value || null, instructions }, (e) => {
+        if (e.type === 'progress') status(where, e.message);
+        else if (e.type === 'result') {
+          status(where, '');
+          showResult(e, 'Changed: ' + state.name, e.summary || (e.applied.length ? '' : 'Nothing was changed.'));
+          $('refine').value = '';
+        }
+      });
+    } catch (err) { status(where, err.message, 'err'); }
+    setBusy(false);
+  }
+  async function write() {
+    setBusy(true); status($('status'), 'Asking the model');
+    let text = '', frame = 0;
+    const live = $('live'); live.textContent = ''; $('writing').hidden = false; $('result').hidden = true;
+    const draw = () => { frame = 0; live.textContent = text; live.scrollTop = live.scrollHeight; };
+    try {
+      await stream('/api/documents/create',
+        { model: $('model').value || null, instructions: $('instructions').value, sources: state.sources, style_job: state.style }, (e) => {
+          if (e.type === 'model') $('writing-model').textContent = e.label;
+          else if (e.type === 'progress' || e.type === 'notice') status($('status'), e.message);
+          else if (e.type === 'thinking') status($('status'), 'Thinking');
+          else if (e.type === 'delta') { text += e.content; status($('status'), 'Writing'); if (!frame) frame = requestAnimationFrame(draw); }
+          else if (e.type === 'result') { draw(); status($('status'), ''); state.name = e.name; showResult(e, e.name, 'Built from the text above.'); }
+        });
+    } catch (err) { status($('status'), err.message, 'err'); }
+    cancelAnimationFrame(frame); draw();
+    setBusy(false);
+  }
+  $('go').addEventListener('click', () => {
+    if (state.busy) return;
+    if (state.mode === 'fill') suggest();
+    else if (state.mode === 'edit') change($('instructions').value, $('status'));
+    else write();
+  });
+  $('make').addEventListener('click', () => { if (!state.busy) make(); });
+  $('apply').addEventListener('click', () => { if (!state.busy) change($('refine').value, $('refine-status')); });
+
+  setMode('fill');
+  loadModels();
+})();
+</script>
+</body>
+</html>

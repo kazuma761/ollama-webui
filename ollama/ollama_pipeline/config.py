@@ -39,6 +39,17 @@ class OpenCodeConfig:
 
 
 @dataclass(frozen=True)
+class DocumentsConfig:
+    """Settings of the Word-documents page."""
+
+    model: str = ""  # id of the local model that reads and fills documents; empty = the heavy route's model
+    max_jobs: int = 2  # document jobs asking the model at the same time; the rest wait their turn
+    second_check: bool = False  # ask the model a second time whether values it did not copy are supported
+    keep_hours: int = 24  # uploaded and generated files are deleted after this long
+    allow_cloud: bool = False  # true lets OpenCode's cloud models work on documents - for testing only
+
+
+@dataclass(frozen=True)
 class Route:
     name: str
     models: tuple[str, ...]  # ids of entries under `models:`; the first one that can answer is used
@@ -84,6 +95,7 @@ class PipelineConfig:
     default_options: dict[str, Any] = field(default_factory=dict)
     router: RouterConfig = field(default_factory=RouterConfig)
     opencode: OpenCodeConfig = field(default_factory=OpenCodeConfig)
+    documents: DocumentsConfig = field(default_factory=DocumentsConfig)
 
 
 def config_dir() -> Path:
@@ -149,6 +161,21 @@ def _router(raw: dict[str, Any], model_ids: set[str]) -> RouterConfig:
     return config
 
 
+def _documents(raw: dict[str, Any], models: dict[str, ModelAlias]) -> DocumentsConfig:
+    model = raw.get("model") or ""
+    if model and model not in models:
+        raise ValueError(f"models.yaml: documents.model '{model}' is not a defined model")
+    if model and models[model].provider != "ollama" and not raw.get("allow_cloud"):
+        raise ValueError(f"models.yaml: documents.model '{model}' must be a local (Ollama) model")
+    return DocumentsConfig(
+        model=model,
+        max_jobs=max(1, int(raw.get("max_jobs", 2))),
+        second_check=bool(raw.get("second_check", False)),
+        keep_hours=max(1, int(raw.get("keep_hours", 24))),
+        allow_cloud=bool(raw.get("allow_cloud", False)),
+    )
+
+
 def load_config(directory: Path | None = None) -> PipelineConfig:
     directory = directory or config_dir()
     log.info("Config: %s", directory)
@@ -203,4 +230,5 @@ def load_config(directory: Path | None = None) -> PipelineConfig:
             for key, value in (raw.get("opencode") or {}).items()
             if key in ("command", "agent", "timeout", "home")
         }),
+        documents=_documents(raw.get("documents") or {}, {m.id: m for m in models}),
     )

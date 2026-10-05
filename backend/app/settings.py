@@ -17,6 +17,7 @@ class Settings:
     reload: bool
     cors_origins: list[str]
     frontend_dir: Path
+    documents_dir: Path
 
 
 settings = Settings(
@@ -25,4 +26,5 @@ settings = Settings(
     reload=os.environ.get("RELOAD", "false").lower() in {"1", "true", "yes"},
     cors_origins=[o.strip() for o in os.environ.get("CORS_ORIGINS", "").split(",") if o.strip()],
     frontend_dir=Path(os.environ.get("FRONTEND_DIR") or BACKEND_DIR.parent / "frontend"),
+    documents_dir=Path(os.environ.get("DOCUMENTS_DIR") or BACKEND_DIR / "data" / "documents"),
 )

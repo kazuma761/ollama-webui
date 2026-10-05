@@ -230,6 +230,37 @@ block fill, then fold; the answer must appear word by word, not as one block.
 If a reply does arrive in one piece, look at what sits between browser and
 backend (a proxy that buffers) before changing the code.
 
+## Word documents page (work in progress)
+
+`frontend/documents.html`, reached from the **Docs** link on the main page.
+Three tabs: fill a template, change a document, write a new one. Result is a
+downloadable `.docx`.
+
+- **The model never writes the Word file.** It answers in JSON (which blank
+  gets which value, or which edit operations to run) and the app's own code
+  applies that to a copy of the uploaded file, so the rest of the file is
+  untouched. Code: `ollama_pipeline/wordfile.py` (find blanks, fill),
+  `wordedit.py` (fixed list of edit operations, Markdown -> Word),
+  `docgen.py` (prompts and JSON-schema calls), `backend/app/documents.py`
+  (uploads, versions, downloads).
+- **Local models only.** `documents.allow_cloud` in `models.yaml` is false and
+  must stay false on the server; it exists only to try the page on a machine
+  without Ollama.
+- The user reviews every suggested value before the file is made. Values are
+  tagged by where they came from (their files, their instructions, or written
+  by the model).
+- Files are kept in `backend/data/documents/` under random ids and deleted
+  after `documents.keep_hours`.
+- Needs `python-docx` (in `requirements.txt` and the uv lock). Accepts `.docx`
+  and `.dotx`; refuses old `.doc`, macro files and password-protected files.
+
+Status: the Word engine is tested without a model (blank detection, filling
+with formatting kept, edit operations, building a file). **The model step has
+not been run against any model yet, and the page has not been clicked
+through.** Known gap: a template that is an already-filled sample (for
+example a resume template with dummy text and no blanks) has nothing the
+blank finder recognises, so "fill" does little with it.
+
 ## Your task on this machine
 
 1. Get the app running against real Ollama (Setup below).
