@@ -11,6 +11,38 @@ back. With "Auto", a router sends each message to a light model, a reasoning
 model or a vision model on this machine, or, for questions about software, to
 OpenCode's free cloud models.
 
+## Running the `6-documents` branch on the server
+
+This branch adds the Word documents page. On a machine that already runs the
+app, these are the only steps:
+
+1. **Get the branch.** `git fetch && git checkout 6-documents`
+2. **Install the one new package** (`python-docx`, which brings `lxml`):
+   `cd backend && uv sync --extra router --inexact`
+   Without uv: `pip install -r requirements.txt` from the repo root.
+3. **Pull the documents model:** `ollama pull qwen3:14b` (about 9 GB).
+4. **If this machine has `ollama/config.local/models.yaml`, update it.** That
+   file replaces `ollama/config/models.yaml` completely, so the new parts must
+   be copied into it or the page starts with the wrong model:
+   - the whole `documents:` block (with `model: documents`, `allow_cloud: false`);
+   - the model entry `- id: documents` (`qwen3:14b`) under `models:`.
+   No `config.local`? Nothing to do: `ollama/config/models.yaml` already has both.
+5. **Check, then restart.** `cd backend && uv run --inexact python -m ollama_pipeline`
+   must list `documents  qwen3:14b  ready`. Then stop the app and start it
+   again (`./run.sh`, or `run.ps1` on Windows).
+6. **Open the page:** <http://127.0.0.1:8000/documents.html>, or the **Docs**
+   link on the main page. The model picker on it should show "Qwen 3 14B".
+
+Memory: `qwen3:14b` takes about 9 GB before any context, so it will not sit on
+a 16 GB GPU next to both chat models. Ollama swaps models in and out as needed
+(slower first reply after a swap). Check `ollama ps` while testing.
+
+Uploaded and generated files go to `backend/data/documents/` (deleted after a
+day); saved templates go to `backend/data/templates/` (kept). Neither is in git.
+
+What to test on this branch is listed under "Word documents page" below,
+in "Not done, check these on the server".
+
 ## Start here on a new machine
 
 Five steps. "Setup" further down has the details and the reasons.
@@ -19,7 +51,7 @@ Five steps. "Setup" further down has the details and the reasons.
    [uv](https://docs.astral.sh/uv/) and Python 3.12+). Without uv:
    `pip install -r requirements.txt` from the repo root.
 2. **Ollama** running, with the models this machine will use pulled
-   (`ollama list` shows them).
+   (`ollama list` shows them). The Word documents page needs `qwen3:14b`.
 3. **OpenCode 1.18.34, exactly that version:**
    `npm install -g opencode-ai@1.18.34`, then `opencode --version` must print
    `1.18.34`. Not the package `@opencode/cli`: that is 2.x and does not work.

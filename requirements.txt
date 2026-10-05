@@ -10,6 +10,7 @@
 #
 # Not Python, install separately (see AGENTS.md, "Setup"):
 #   - Ollama, with the models named in ollama/config/models.yaml
+#     (the Word documents page uses qwen3:14b:  ollama pull qwen3:14b)
 #   - Node.js, then OpenCode 1.18.34:  npm install -g opencode-ai@1.18.34
 #
 # Do not edit by hand. After changing a pyproject.toml, regenerate everything
