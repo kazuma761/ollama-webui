@@ -49,6 +49,11 @@ class Registry:
     def client(self, host: str) -> OllamaClient:
         return self._clients[host]
 
+    def warm_up(self) -> None:
+        """Starts anything slow to start in the background, so the first chat does not wait for it."""
+        if any(alias.provider == OPENCODE for alias in self.config.models):
+            self.opencode.warm_up()
+
     async def _installed(self, host: str) -> list[dict[str, Any]] | None:
         """Tags pulled on a host, or None when the host is unreachable."""
         try:
@@ -187,4 +192,4 @@ class Registry:
 
     async def aclose(self) -> None:
         await asyncio.gather(*(c.aclose() for c in self._clients.values()))
-        self.opencode.close()
+        await self.opencode.aclose()

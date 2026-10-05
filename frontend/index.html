@@ -289,6 +289,20 @@ button{cursor:pointer}
 .msg .meta{font-size:var(--ui-sm);font-weight:500;color:#98999C;margin-bottom:5px;display:flex;gap:10px;justify-content:space-between}
 .msg .files{font-size:var(--ui-sm);color:#98999C;margin-bottom:4px}
 .msg .note{font-size:var(--ui-sm);line-height:1.45;color:#FBBC94;margin-bottom:6px}
+/* A model's reasoning, shown live while it thinks; folds away once the answer starts. */
+.think{margin-bottom:8px;font-size:var(--ui-sm);color:#8B8C8E}
+.think summary{display:inline-flex;align-items:center;gap:7px;cursor:pointer;list-style:none;font-weight:500;color:#98999C;user-select:none}
+.think summary::-webkit-details-marker{display:none}
+.think summary::before{content:"";width:6px;height:6px;border-radius:50%;background:#F49D70;animation:dot 1s ease-in-out infinite}
+.think.done summary::before{background:#5E5F62;animation:none}
+.think-text{margin-top:6px;padding:2px 0 2px 10px;border-left:2px solid rgba(255,255,255,.10);white-space:pre-wrap;line-height:1.5;max-height:8.5em;overflow-y:auto;scrollbar-width:thin}
+.think.done .think-text{max-height:18em}
+/* Caret at the end of a reply that is still being written. */
+.msg.live .body>.txt:last-child::after,.msg.live .body>pre:last-child code::after{
+  content:"";display:inline-block;width:.45em;height:1em;margin-left:2px;vertical-align:-.12em;border-radius:1px;
+  background:#F49D70;animation:caret 1s steps(1) infinite;
+}
+@keyframes caret{50%{opacity:0}}
 .msg .txt{white-space:pre-wrap}
 .msg .txt+.txt,.msg .txt+pre,.msg pre+.txt{margin-top:10px}
 .msg pre{
@@ -433,7 +447,7 @@ button{cursor:pointer}
   .msg{animation:e-msg .32s var(--e-soft) both}
 }
 @media (prefers-reduced-motion:reduce){
-  *,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
 }
 </style>
 </head>
@@ -872,11 +886,35 @@ button{cursor:pointer}
 
     let answer = '';
     let answeredBy = state.model; /* with Auto, replaced by the model the router picked */
+    let thought = '';
+    let think = null; /* the live "Thinking" block, created when the first reasoning arrives */
     let frame = 0;
+    const startThinking = () => {
+      const box = node('details', 'think');
+      box.open = true;
+      const label = node('summary', '', 'Thinking…');
+      const text = node('div', 'think-text');
+      box.append(label, text);
+      out.body.before(box);
+      return { box, label, text, since: performance.now(), closed: false };
+    };
+    const endThinking = () => {
+      if (!think || think.closed) return;
+      think.closed = true;
+      think.text.textContent = thought;
+      think.box.classList.add('done');
+      think.box.open = false;
+      think.label.textContent = 'Thought for ' + Math.max(1, Math.round((performance.now() - think.since) / 1000)) + 's';
+    };
+    /* Runs at most once per frame, however many pieces of text arrived since the last one. */
     const paint = () => {
       frame = 0;
       const stick = nearBottom();
-      out.body.innerHTML = render(answer);
+      if (think && !think.closed) {
+        think.text.textContent = thought;
+        think.text.scrollTop = think.text.scrollHeight;
+      }
+      if (answer) out.body.innerHTML = render(answer);
       if (stick) toBottom();
     };
     const fail = (text) => {
@@ -885,6 +923,7 @@ button{cursor:pointer}
     };
 
     setBusy(true);
+    out.bubble.classList.add('live');
     state.abort = new AbortController();
     try {
       const res = await fetch(API + '/api/chat', {
@@ -919,7 +958,12 @@ button{cursor:pointer}
               + (event.confidence != null ? ' (confidence ' + event.confidence + ')' : '');
           } else if (event.type === 'notice') {
             out.body.before(node('div', 'note', event.message));
+          } else if (event.type === 'thinking') {
+            if (!think) think = startThinking();
+            thought += event.content;
+            if (!frame) frame = requestAnimationFrame(paint);
           } else if (event.type === 'delta') {
+            endThinking();
             answer += event.content;
             if (!frame) frame = requestAnimationFrame(paint);
           } else if (event.type === 'done') {
@@ -941,6 +985,8 @@ button{cursor:pointer}
       }
     } finally {
       cancelAnimationFrame(frame);
+      endThinking();
+      out.bubble.classList.remove('live');
       if (answer) {
         paint();
         history.push({ role: 'assistant', content: answer, model: answeredBy });

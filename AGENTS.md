@@ -35,15 +35,26 @@ route in `models.yaml`.
 
 - Tested on macOS with OpenCode 1.18.34 and the real free model
   `opencode/big-pickle`. **Not tested on Windows or Linux.** On Windows check
-  that the `opencode` shim starts from Python and that Stop kills it
-  (`taskkill /T` in `_kill_tree`).
-- It runs `opencode run --agent plan --format json` in an empty temp folder,
-  with the prompt on stdin. Text arrives a block at a time, not word by word.
+  that the `opencode` shim starts from Python (`_server_client`), that the
+  server is gone after the backend stops (`taskkill /T` in `_kill`), and that
+  no `opencode serve` process is left behind.
+- The backend starts its own `opencode serve` (127.0.0.1, random port, random
+  password, empty temp folder) at startup and talks to it the way OpenCode's
+  own `opencode run` does: create a session, send the prompt, read the event
+  stream. The log prints `OpenCode: server ready at …` when it is up.
+- **Replies stream live.** Text comes from `message.part.delta` events and
+  reaches the browser as it is written; first words usually within 5-10 s.
+  Each reply is a throwaway session that is aborted on Stop and then deleted.
 - **Do not customise the agent, its prompt, or which tools exist.** OpenCode's
   service answers "free tier can only be used from within OpenCode" (403) for
   anything but a built-in agent. Do not work around that by faking a client.
-- Shell, edit and web tools are set to permission "ask"; headless mode rejects
-  those, so OpenCode cannot run commands or touch files here. Keep it so.
+- Shell, edit, web and outside-folder access are set to permission "ask", and
+  the client answers every `permission.asked` event with "reject" (plus a
+  message so the model carries on in text). OpenCode therefore cannot run
+  commands, change files, fetch URLs or read outside its empty folder. A
+  request that is never answered stays pending; nothing is approved by
+  default. Keep it so, and never reply "once" or "always". Every tool attempt
+  is logged (`OpenCode: rejected its request to use 'bash'`).
 - Privacy rules, keep them: attached files and images are never sent; in Auto
   a conversation that has had any attachment stays on local models.
 - If OpenCode is missing, refuses, errors or times out, the local heavy model
@@ -53,9 +64,35 @@ route in `models.yaml`.
   the `expert` route into it, or the route will not exist here.
 
 Checks: (a) "design the architecture for a chat service" → header shows
-"Auto · OpenCode Big Pickle"; (b) follow with "make it shorter" → stays;
-(c) same question with a PDF attached → local reasoning model; (d) rename the
-command in config to something that does not exist → local model answers.
+"Auto · OpenCode Big Pickle" and the text grows as it is written, with an
+orange caret at the end until it finishes; (b) follow with "make it shorter" →
+stays; (c) same question with a PDF attached → local reasoning model;
+(d) rename the command in config to something that does not exist → local
+model answers; (e) press Stop mid-reply → text stops at once; (f) pick
+OpenCode in the picker and ask it to "run `uname -s` with your shell tool" →
+the server log shows the rejection and the reply contains no real output of a
+command; (g) stop the backend → `opencode serve` is no longer running.
+
+## Live generation in the UI
+
+Nothing should "pop out in one go". What the user sees while a reply is made:
+
+- **Answer text** grows as it arrives, for Ollama and OpenCode alike, with an
+  orange caret at the end until the reply is complete.
+- **Thinking** (models that reason first, e.g. `qwen3`): the reasoning text
+  streams into a "Thinking…" block above the answer. When the answer starts
+  the block folds to "Thought for Ns"; clicking it opens it again.
+- Before anything has arrived, three dots.
+
+Where it lives: the backend sends `thinking` and `delta` events
+(`pipeline.py`, `opencode.py`); `send()` in `frontend/index.html` paints them
+once per animation frame. A browser tab in the background only repaints about
+once a second, so judge smoothness with the tab visible.
+
+Check on this machine: ask `qwen3` a coding question and watch the Thinking
+block fill, then fold; the answer must appear word by word, not as one block.
+If a reply does arrive in one piece, look at what sits between browser and
+backend (a proxy that buffers) before changing the code.
 
 ## Your task on this machine
 
@@ -142,9 +179,10 @@ and on the GPU. If Ollama unloads one each time the route changes, set
 
 Confirmed with Ollama 0.32.5 and Von 1.3.7:
 - `qwen3` is a thinking model. Thinking arrives as separate `thinking` events
-  (ignored by the UI, which shows dots until the answer starts). On older
-  Ollama versions it may arrive inline as `<think>…</think>` text instead.
-  On slow hardware the dots can last a minute.
+  and is shown live in the "Thinking…" block (added after that test run, so
+  not yet seen with real Ollama). On older Ollama versions it may arrive
+  inline as `<think>…</think>` text instead, which would show up in the answer.
+  On slow hardware the thinking can last a minute.
 - Vision detection uses `capabilities` from Ollama's `/api/show`, which
   0.32.5 reports.
 - `von.decide(...)` returns `.choice` and `.confidence` as the router expects
