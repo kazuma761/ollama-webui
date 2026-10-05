@@ -254,12 +254,55 @@ downloadable `.docx`.
 - Needs `python-docx` (in `requirements.txt` and the uv lock). Accepts `.docx`
   and `.dotx`; refuses old `.doc`, macro files and password-protected files.
 
-Status: the Word engine is tested without a model (blank detection, filling
-with formatting kept, edit operations, building a file). **The model step has
-not been run against any model yet, and the page has not been clicked
-through.** Known gap: a template that is an already-filled sample (for
-example a resume template with dummy text and no blanks) has nothing the
-blank finder recognises, so "fill" does little with it.
+### Designed templates (a resume, a report with a fixed look)
+
+Such a file has no blanks: it is full of sample text and its layout lives in
+the body (tables, text boxes). It goes through the **Template library** tab:
+
+1. **Prepare, once.** The model labels every line: `fixed` (a heading that
+   stays), `field` (one value), or `group_item` (part of a repeating block:
+   job 2's title, its bullets). A person reviews the colours on the page,
+   corrects by clicking a line, and saves. Stored in
+   `backend/data/templates/<id>/` (template.docx, labels.json, slotmap.json);
+   not deleted by `keep_hours`.
+2. **Fill, any number of times.** The model moves the user's content into the
+   slot map's shape (`docgen.extract`), the user reviews it, and
+   `render.py` writes it into a copy of the template: repeated blocks are
+   copied for more items and removed for fewer, text boxes are written in both
+   their copies, skill-chip boxes can be dropped but not added.
+
+Code: `slotmap.py` (labels -> slot map, JSON schema for the model),
+`render.py` (fill + clone/remove), `docgen.prepare` / `docgen.extract`.
+
+Rules to keep:
+- "Write a new one" never replaces the body of a designed template
+  (`WordFile.is_letterhead()`); it only writes onto a real letterhead.
+- Text boxes are numbered `t1`, `t2`, ... (modern copy only);
+  `WordFile.save()` copies changes into the fallback copy. Do not resize shapes.
+- JSON calls send `think: false` to thinking models (`ModelEntry.thinking`).
+- The documents model is `documents.model` in `models.yaml` (`qwen3:14b`).
+
+Status. Tested without a model, on the brown two-column resume template:
+text boxes read and written in both copies; slot map built from hand labels;
+a made-up resume with 4 jobs (2-5 bullets), 2 schools and fewer skills
+rendered with the design kept and no sample text left in the XML; a
+follow-up edit changed only the profile box; library routes; the refusal to
+write over a designed template. Looked at with macOS Quick Look only.
+
+**Not done, check these on the server with `qwen3:14b`:**
+- `prepare` and `extract` have never been run against any model. Count how
+  many of the brown template's 37 lines the model labels right before
+  correction (expected labels: fields name, title, phone, email, address,
+  linkedin, summary; groups jobs x3, education, skills, additional_skills;
+  six fixed headings).
+- The Template library tab has not been clicked through in a browser.
+- No file was opened in Word or LibreOffice. Open one result in Word and
+  confirm there is no repair prompt (copied text boxes get new drawing ids).
+- LibreOffice is not installed here, so the PDF preview path
+  (`_pdf` in `backend/app/documents.py`) is untested; it is skipped when
+  `soffice` is missing.
+- Only the resume template was tried; a second kind (report, letter with a
+  table) still needs to go through prepare -> fill.
 
 ## Your task on this machine
 

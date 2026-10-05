@@ -9,6 +9,7 @@ import json
 import re
 import secrets
 import shutil
+import subprocess
 import time
 from collections.abc import AsyncIterator
 from pathlib import Path
@@ -20,9 +21,12 @@ from ollama_pipeline import (
     UnsupportedDocument,
     WordFile,
     analyze_word,
+    build_slotmap,
     edit_word,
     fill_word,
     from_markdown,
+    render_template,
+    slotmap_summary,
     tidy_markdown,
 )
 from pydantic import BaseModel, Field
@@ -84,6 +88,63 @@ class Store:
         (folder / f"v{version}.docx").write_bytes(data)
         (folder / "meta.json").write_text(json.dumps(meta))
         return version
+
+
+class Library:
+    """Prepared templates. Unlike uploads these are kept until someone deletes them."""
+
+    def __init__(self, root: Path):
+        self.root = root
+        root.mkdir(parents=True, exist_ok=True)
+
+    def folder(self, template: str) -> Path:
+        folder = self.root / template
+        if not _JOB.match(template) or not folder.is_dir():
+            raise HTTPException(404, "That template is not in the library.")
+        return folder
+
+    def create(self, name: str, data: bytes) -> str:
+        template = secrets.token_urlsafe(18)
+        folder = self.root / template
+        folder.mkdir()
+        (folder / "template.docx").write_bytes(data)
+        title = re.sub(r"\.(docx|dotx)$", "", name, flags=re.IGNORECASE)
+        self.write(template, "meta", {"name": title, "file": name, "created": time.strftime("%Y-%m-%d")})
+        return template
+
+    def read(self, template: str, part: str) -> dict | None:
+        path = self.folder(template) / f"{part}.json"
+        return json.loads(path.read_text()) if path.exists() else None
+
+    def write(self, template: str, part: str, value: dict) -> None:
+        (self.folder(template) / f"{part}.json").write_text(json.dumps(value))
+
+    def word(self, template: str) -> tuple[str, bytes]:
+        return self.read(template, "meta")["file"], (self.folder(template) / "template.docx").read_bytes()
+
+    def entries(self) -> list[dict]:
+        found = []
+        for folder in sorted(self.root.iterdir()):
+            if folder.is_dir() and _JOB.match(folder.name) and (folder / "meta.json").exists():
+                slotmap = self.read(folder.name, "slotmap")
+                found.append({
+                    "id": folder.name, **self.read(folder.name, "meta"),
+                    "ready": slotmap is not None, "summary": slotmap_summary(slotmap) if slotmap else None,
+                })
+        return sorted(found, key=lambda entry: entry["name"].lower())
+
+
+class PrepareRequest(BaseModel):
+    model: str | None = None
+
+
+class SlotmapRequest(BaseModel):
+    name: str | None = None
+    labels: dict[str, dict] | None = Field(default=None, description="Reviewed labels, one per paragraph id; left out to only rename")
+
+
+class RenderRequest(BaseModel):
+    values: dict
 
 
 class Source(BaseModel):
@@ -202,6 +263,9 @@ async def create(body: CreateRequest, request: Request):
     """Streams a new document as it is written, then builds the Word file from it."""
     store = request.app.state.store
     base = store.read(body.style_job, 0)[:2] if body.style_job else None
+    if base and not await run_in_threadpool(lambda: WordFile(*base).is_letterhead()):
+        # Its body is the design. Writing a new body would delete the layout, so it is refused up front.
+        raise HTTPException(409, "This file is a designed template. Use Fill a template so its layout is kept.")
     sources = [s.model_dump() for s in body.sources]
 
     async def events() -> AsyncIterator[dict]:
@@ -231,3 +295,140 @@ def download(job: str, request: Request, version: int | None = None):
     stem = re.sub(r"\.(docx|dotx)$", "", name, flags=re.IGNORECASE)
     filename = f"{stem}.docx" if label in ("uploaded", "written") else f"{stem} ({label}).docx"
     return FileResponse(store.root / job / f"v{version}.docx", media_type=DOCX, filename=filename)
+
+
+# ── The template library: designed templates, prepared once and filled many times ──
+
+
+@router.get("/templates")
+def templates(request: Request):
+    return {"templates": request.app.state.library.entries()}
+
+
+@router.post("/templates")
+def add_template(request: Request, file: UploadFile):
+    """Stores a designed template. It can be filled once its paragraphs have been labelled."""
+    name = file.filename or "template.docx"
+    data = file.file.read(MAX_UPLOAD_BYTES + 1)
+    if len(data) > MAX_UPLOAD_BYTES:
+        raise HTTPException(413, f"{name} is over 20 MB")
+    try:
+        word = WordFile(name, data)
+    except UnsupportedDocument as exc:
+        raise HTTPException(415, str(exc)) from exc
+    library = request.app.state.library
+    template = library.create(name, data)
+    return {"id": template, **library.read(template, "meta"), "preview": word.preview(), "labels": {}}
+
+
+@router.get("/templates/{template}")
+def template_detail(template: str, request: Request):
+    library = request.app.state.library
+    slotmap = library.read(template, "slotmap")
+    return {
+        "id": template, **library.read(template, "meta"), "preview": WordFile(*library.word(template)).preview(),
+        "labels": library.read(template, "labels") or {}, "summary": slotmap_summary(slotmap) if slotmap else None,
+    }
+
+
+@router.post("/templates/{template}/prepare")
+async def prepare_template(template: str, body: PrepareRequest, request: Request):
+    """Streams the model's proposal for what each paragraph of the template is. Nothing is saved yet."""
+    library = request.app.state.library
+    name, data = library.word(template)
+
+    async def events() -> AsyncIterator[dict]:
+        word = await run_in_threadpool(WordFile, name, data)
+        async for event in request.app.state.documents.prepare(body.model, word):
+            if event["type"] != "labels":
+                yield event
+                continue
+            slotmap, problems = build_slotmap(word, event["labels"])
+            yield {"type": "prepared", "labels": event["labels"], "summary": slotmap_summary(slotmap), "problems": problems}
+
+    return _stream(events())
+
+
+@router.put("/templates/{template}/slotmap")
+def save_slotmap(template: str, body: SlotmapRequest, request: Request):
+    """Saves the reviewed labels and the slot map built from them; also renames."""
+    library = request.app.state.library
+    meta = library.read(template, "meta")
+    if body.name and body.name.strip():
+        meta["name"] = body.name.strip()[:80]
+        library.write(template, "meta", meta)
+    if body.labels is None:
+        return {"id": template, **meta}
+    slotmap, problems = build_slotmap(WordFile(*library.word(template)), body.labels)
+    if not slotmap["fields"] and not slotmap["groups"]:
+        raise HTTPException(422, "Nothing in this template is marked as replaceable yet.")
+    library.write(template, "labels", body.labels)
+    library.write(template, "slotmap", slotmap)
+    return {"id": template, **meta, "summary": slotmap_summary(slotmap), "problems": problems}
+
+
+@router.delete("/templates/{template}")
+def delete_template(template: str, request: Request):
+    shutil.rmtree(request.app.state.library.folder(template))
+    return {"deleted": template}
+
+
+@router.post("/templates/{template}/extract")
+async def extract(template: str, body: ProposeRequest, request: Request):
+    """Streams the user's content, pulled into the shape of the template's slot map, for review."""
+    library = request.app.state.library
+    slotmap = library.read(template, "slotmap")
+    if slotmap is None:
+        raise HTTPException(409, "This template has not been prepared yet.")
+    name, data = library.word(template)
+    sources = [s.model_dump() for s in body.sources]
+
+    async def events() -> AsyncIterator[dict]:
+        word = await run_in_threadpool(WordFile, name, data)
+        yield {"type": "shape", "summary": slotmap_summary(slotmap)}
+        async for event in request.app.state.documents.extract(body.model, word, slotmap, body.instructions, sources):
+            yield event
+
+    return _stream(events())
+
+
+@router.post("/templates/{template}/render")
+def render(template: str, body: RenderRequest, request: Request):
+    """Fills a copy of the template with the reviewed values and stores it as a new document."""
+    library = request.app.state.library
+    slotmap = library.read(template, "slotmap")
+    if slotmap is None:
+        raise HTTPException(409, "This template has not been prepared yet.")
+    name, data = library.word(template)
+    result, report = render_template(name, data, slotmap, body.values)
+    person = str(body.values.get("name") or "").strip().title()
+    title = f"{person} - {library.read(template, 'meta')['name']}" if person else library.read(template, "meta")["name"]
+    job = request.app.state.store.create(re.sub(r'[\\/:*?"<>|]+', " ", title)[:90] + ".docx", result, "Written")
+    return {"job": job, "version": 0, "download": _download(job, 0), "name": f"{title}.docx", "pdf": _pdf(request, job), **report}
+
+
+def _pdf(request: Request, job: str) -> str | None:
+    """A PDF of the newest version for an exact on-screen preview. Needs LibreOffice; None without it."""
+    office = shutil.which("soffice") or shutil.which("libreoffice")
+    if not office:
+        return None
+    folder = request.app.state.store.root / job
+    newest = max(folder.glob("v*.docx"), key=lambda path: int(path.stem[1:]))
+    try:
+        subprocess.run(
+            [office, "--headless", "--convert-to", "pdf", "--outdir", str(folder), str(newest)],
+            capture_output=True, timeout=90, check=True,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return f"/api/documents/{job}/preview.pdf?version={newest.stem[1:]}" if newest.with_suffix(".pdf").exists() else None
+
+
+@router.get("/{job}/preview.pdf")
+def preview_pdf(job: str, request: Request, version: int | None = None):
+    store = request.app.state.store
+    _, _, version = store.read(job, version)
+    path = store.root / job / f"v{version}.pdf"
+    if not path.exists():
+        raise HTTPException(404, "No PDF preview for this version.")
+    return FileResponse(path, media_type="application/pdf")

@@ -27,7 +27,7 @@ from docx.text.paragraph import Paragraph
 from docx.text.run import Run
 
 from .wordfile import (
-    W_P, W_PPR, W_TBL, W_TC, W_TR, Block, WordFile, clean_copy, empty_copy,
+    W_P, W_PPR, W_TBL, W_TC, W_TR, W_TXBX, Block, WordFile, clean_copy, empty_copy,
     paragraph_text, replace_span, text_runs, write_paragraph,
 )
 
@@ -119,7 +119,7 @@ class Editor:
             except KeyError as exc:
                 raise _Skip(str(exc.args[0])) from None
         elif target == "all":
-            blocks = [b for b in word.blocks if b.where == "body"]
+            blocks = [b for b in word.blocks if b.where in ("body", "textbox")]
         elif target == "headings":
             blocks = [b for b in word.blocks if word.heading_level(b.element) is not None or word.style_name(b.element) == "Title"]
         elif target == "body":
@@ -233,7 +233,7 @@ class Editor:
             parent = element.getparent()
             properties = element.find(W_PPR)
             holds_break = properties is not None and properties.find(qn("w:sectPr")) is not None
-            only_one = parent.tag == W_TC and len(list(parent.iterchildren(W_P))) == 1
+            only_one = parent.tag in (W_TC, W_TXBX) and len(list(parent.iterchildren(W_P))) == 1
             if holds_break or only_one:
                 write_paragraph(element, "")  # the paragraph itself has to stay
             else:
@@ -498,6 +498,9 @@ def from_markdown(markdown: str, base: tuple[str, bytes] | None = None) -> bytes
         raise ValueError("there is nothing to write")
     if base:
         word = WordFile(*base)
+        if not word.is_letterhead():
+            # Its body is the design: replacing it would throw the layout away.
+            raise ValueError("This file is a designed template. Use Fill a template so its layout is kept.")
         document = word.doc
         body = document.element.body
         for child in list(body):

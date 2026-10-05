@@ -44,6 +44,8 @@ _OLE_MAGIC = b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1"  # old .doc, or a password-prot
 W_P, W_R, W_TBL, W_TR, W_TC = qn("w:p"), qn("w:r"), qn("w:tbl"), qn("w:tr"), qn("w:tc")
 W_PPR, W_RPR, W_SDT, W_TXBX = qn("w:pPr"), qn("w:rPr"), qn("w:sdt"), qn("w:txbxContent")
 W_VAL = qn("w:val")
+_MC = "{http://schemas.openxmlformats.org/markup-compatibility/2006}"
+MC_ALTERNATE, MC_CHOICE, MC_FALLBACK = _MC + "AlternateContent", _MC + "Choice", _MC + "Fallback"
 
 # A run made only of these can have its text replaced without losing anything else.
 _TEXT_ONLY = {qn(f"w:{tag}") for tag in ("rPr", "t", "tab", "br", "cr", "noBreakHyphen", "softHyphen", "lastRenderedPageBreak")}
@@ -79,8 +81,9 @@ class Block:
 
     id: str
     element: Any  # the w:p element
-    where: str  # "body" | "header" | "footer"
+    where: str  # "body" | "header" | "footer" | "textbox"
     cell: tuple[int, int, int] | None = None  # (table, row, column), counted from 1
+    anchor: str | None = None  # for a text box paragraph: the id of the paragraph the box hangs on
 
 
 @dataclass
@@ -174,6 +177,16 @@ def text_runs(paragraph: Any) -> list[Any]:
             continue  # a page break must survive
         runs.append(run)
     return runs
+
+
+def box_paragraphs(paragraph: Any) -> list[Any]:
+    """The paragraphs of the text boxes hanging on a paragraph: the modern copy of each, in order."""
+    found = []
+    for box in paragraph.iter(W_TXBX):
+        if _inside(box, paragraph, (W_TXBX, MC_FALLBACK)):
+            continue
+        found.extend(inner for inner in box.iter(W_P) if not _inside(inner, box, (W_TXBX,)))
+    return found
 
 
 def spans(paragraph: Any) -> tuple[str, list[tuple[Any, int, int]]]:
@@ -372,6 +385,7 @@ class WordFile:
 
     def _index(self) -> None:
         body = self.doc.element.body
+        self._boxes = 0
         cells: dict[int, tuple[int, int, int]] = {}
         for table in body.iter(W_TBL):
             if _inside(table, body, (W_TXBX,)):
@@ -385,14 +399,21 @@ class WordFile:
         def add(root: Any, where: str, prefix: str, count: int) -> int:
             for paragraph in root.iter(W_P):
                 if _inside(paragraph, root, (W_TXBX,)):
-                    continue  # text boxes are left alone
+                    continue  # reached through the paragraph its text box hangs on, below
                 count += 1
                 cell = next((cells[id(a)] for a in paragraph.iterancestors(W_TC) if id(a) in cells), None)
-                self.blocks.append(Block(f"{prefix}{count}", paragraph, where, cell))
+                anchor = Block(f"{prefix}{count}", paragraph, where, cell)
+                self.blocks.append(anchor)
+                # Word stores each text box twice: a modern copy (mc:Choice) and one for old
+                # versions (mc:Fallback). Only the modern one is numbered; save() copies changes over.
+                for inner in box_paragraphs(paragraph):
+                    self._boxes += 1
+                    self.blocks.append(Block(f"t{self._boxes}", inner, "textbox", None, anchor.id))
             return count
 
         add(body, "body", "p", 0)
         seen: list[Any] = []
+        self._parts: list[Any] = []  # header and footer roots
         headers = footers = 0
         for section in self.doc.sections:
             for kind in ("header", "first_page_header", "even_page_header", "footer", "first_page_footer", "even_page_footer"):
@@ -403,6 +424,7 @@ class WordFile:
                 if any(element is known for known in seen):
                     continue
                 seen.append(element)
+                self._parts.append(element)
                 if "header" in kind:
                     headers = add(element, "header", "h", headers)
                 else:
@@ -455,7 +477,37 @@ class WordFile:
 
     @staticmethod
     def _cell_text(cell: Any) -> str:
-        return " ".join(t for t in (paragraph_text(p).strip() for p in cell.iter(W_P)) if t)
+        own = (p for p in cell.iter(W_P) if not _inside(p, cell, (W_TXBX,)))
+        return " ".join(t for t in (paragraph_text(p).strip() for p in own) if t)
+
+    def is_letterhead(self) -> bool:
+        """True when the design lives in headers and footers and the body is (nearly) empty.
+
+        Only then may new text replace the body. A body with tables, pictures,
+        text boxes or real text *is* the design and must be filled, not replaced.
+        """
+        body = self.doc.element.body
+        if self.tables or body.find(f".//{qn('w:drawing')}") is not None or body.find(f".//{qn('w:pict')}") is not None:
+            return False
+        written = [b for b in self.blocks if b.where == "body" and paragraph_text(b.element).strip()]
+        return len(written) <= 3 and sum(len(paragraph_text(b.element)) for b in written) <= 300
+
+    def sync_text_boxes(self) -> None:
+        """Copies every changed text box into its copy for old Word versions, so both say the same."""
+        roots = [self.doc.element.body, *self._parts]
+        for root in roots:
+            for pair in root.iter(MC_ALTERNATE):
+                modern = [b for b in pair.iter(W_TXBX) if _inside(b, pair, (MC_CHOICE,)) and not _inside(b, pair, (MC_FALLBACK,))]
+                old = [b for b in pair.iter(W_TXBX) if _inside(b, pair, (MC_FALLBACK,))]
+                if len(modern) != len(old):
+                    continue
+                for new, stale in zip(modern, old):
+                    if [paragraph_text(p) for p in new.iter(W_P)] == [paragraph_text(p) for p in stale.iter(W_P)]:
+                        continue
+                    for child in list(stale):
+                        stale.remove(child)
+                    for child in new:
+                        stale.append(copy.deepcopy(child))
 
     # ── Finding the blanks ──
 
@@ -744,9 +796,9 @@ class WordFile:
             lines.append(f"(table {t} has {len(rows)} rows and {max((len(r) for r in rows), default=0)} columns)")
         for block in self.blocks:
             text = " ".join(paragraph_text(block.element).split())
-            if not text and not block.cell:
+            if not text and (not block.cell or block.where == "textbox"):
                 continue
-            notes = [self.style_name(block.element)] if block.where == "body" else [block.where]
+            notes = [self.style_name(block.element)] if block.where == "body" else [block.where.replace("textbox", "text box")]
             if block.cell:
                 notes.append("table %d, row %d, column %d" % block.cell)
             align = self.alignment(block.element)
@@ -757,35 +809,49 @@ class WordFile:
         return "\n".join(lines)
 
     def preview(self) -> list[dict[str, Any]]:
-        """The body as plain blocks for a rough on-screen preview: text, headings and tables, no fonts."""
-        items: list[dict[str, Any]] = []
+        """The file as plain blocks for a rough on-screen preview: text, headings and tables, no fonts.
 
-        def walk(parent: Any) -> None:
+        Every paragraph keeps its id, also inside table cells, and a text box's
+        paragraphs follow the paragraph the box hangs on.
+        """
+        boxes: dict[str, list[Block]] = {}
+        for block in self.blocks:
+            if block.anchor:
+                boxes.setdefault(block.anchor, []).append(block)
+
+        def entry(block: Block) -> dict[str, Any]:
+            element = block.element
+            return {
+                "type": "p", "id": block.id, "text": paragraph_text(element), "level": self.heading_level(element),
+                "align": self.alignment(element), "style": self.style_name(element), "box": block.where == "textbox",
+            }
+
+        def walk(parent: Any) -> list[dict[str, Any]]:
+            items: list[dict[str, Any]] = []
             for child in parent.iterchildren():
                 if child.tag == W_P:
                     block = self._by_element.get(id(child))
+                    if block is None:
+                        continue
+                    inner = [entry(b) for b in boxes.get(block.id, []) if paragraph_text(b.element).strip()]
                     text = paragraph_text(child)
-                    if block is None or (not text.strip() and (not items or items[-1].get("type") != "p" or not items[-1]["text"])):
-                        continue  # runs of empty lines collapse to nothing
-                    items.append({
-                        "type": "p", "id": block.id, "text": text, "level": self.heading_level(child),
-                        "align": self.alignment(child), "style": self.style_name(child),
-                    })
+                    blank_before = not items or items[-1]["type"] != "p" or not items[-1]["text"]
+                    if text.strip() or not (inner or blank_before):
+                        items.append(entry(block))
+                    items.extend(inner)
                 elif child.tag == W_TBL:
-                    rows = [
-                        ["\n".join(t for t in (paragraph_text(p) for p in cell.iter(W_P)) if t.strip()) for cell in row.iterchildren(W_TC)]
-                        for row in child.iterchildren(W_TR)
-                    ]
+                    rows = [[walk(cell) for cell in row.iterchildren(W_TC)] for row in child.iterchildren(W_TR)]
                     items.append({"type": "table", "rows": rows})
                 elif child.tag == W_SDT:
                     content = child.find(qn("w:sdtContent"))
                     if content is not None:
-                        walk(content)
+                        items.extend(walk(content))
+            return items
 
-        walk(self.doc.element.body)
-        return items
+        return walk(self.doc.element.body)
 
     def save(self) -> bytes:
+        self.sync_text_boxes()
         out = io.BytesIO()
         self.doc.save(out)
         data = out.getvalue()
@@ -802,6 +868,7 @@ def analyze(name: str, data: bytes) -> dict[str, Any]:
         "preview": word.preview(),
         "paragraphs": len(word.blocks),
         "tables": len(word.tables),
+        "letterhead": word.is_letterhead(),
     }
 
 

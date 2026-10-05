@@ -26,7 +26,9 @@ from typing import Any
 
 from .errors import PipelineError
 from .registry import ModelEntry, Registry
+from . import slotmap as slots
 from .wordedit import OPERATIONS, TARGETS
+from .wordfile import WordFile, paragraph_text
 
 BATCH = 12  # blanks asked for in one request; small models lose track of longer lists
 CHARS_PER_TOKEN = 3.0  # deliberately low, so a source chunk surely fits
@@ -96,6 +98,33 @@ Write it in Markdown:
 Rules:
 - Write only the document itself: no introduction before it, no remark after it, no code fence around it.
 - Use only facts from the instructions and the source text. Where a detail is needed and missing, write it as [detail to add] instead of inventing it."""
+
+_PREPARE_SYSTEM = """You label the paragraphs of a Word template so that it can be filled with other people's content later. The template is full of SAMPLE text that will be replaced.
+
+For every paragraph id you are asked about, give:
+- role: "fixed" for a section heading or label that stays as it is (like "EDUCATION" or "CONTACT"); "field" for a single value that will be replaced (a name, an email, a profile text, a date, a title); "group_item" for a line that is part of a block that repeats (one job among several jobs, one school, one skill among several skills, one row of a list).
+- name: a short snake_case name for what the line is, for example name, job_title, phone, email, address, linkedin, summary, title, company_dates, bullets, degree, school_dates, skill, date, recipient, subject.
+- group: only for group_item: the name of the repeating block, in plural, for example jobs, education, skills, projects, items. Otherwise "".
+- instance: only for group_item: which item of its group the line belongs to, counted from 1. Otherwise 0.
+
+Rules:
+- All lines of one item share the same group and the same instance number.
+- The same kind of line gets the same name in every item: if the first job's first line is "title", every job's first line is "title".
+- Bullet lines of one item all get the same name, "bullets".
+- Something that appears once in the document (the person's name, a phone number, a profile text) is a "field", never a "group_item".
+- One school or one job is still a group with a single item: group "education", instance 1.
+- Lines marked (section heading) are already known to be fixed; they are shown so you can see where each section starts.
+- Answer with JSON only, one key per paragraph id you were asked about."""
+
+_EXTRACT_SYSTEM = """You move a person's content into the slots of a Word template. You get the slots, the user's instructions and source text.
+
+Rules:
+- Fill every slot from the instructions or the source text. Copy names, dates, numbers, places and wording exactly as they are written there.
+- A list slot gets one item for every entry in the source, in the source's order: every job, every school, every skill. Do not merge entries and do not drop any.
+- The samples only show what KIND of text belongs in a slot and how it is written. Never copy a sample into your answer.
+- If the source has nothing for a slot, answer with an empty string "" (or an empty list). Never invent a name, a date, a number or an employer.
+- Only when the instructions ask you to write something (for example a profile text) may you write it yourself, from the facts in the source.
+- Answer with JSON only."""
 
 _EDIT_SCHEMA = {
     "type": "object",
@@ -237,7 +266,9 @@ class DocumentService:
             return answer if isinstance(answer, dict) else {}
         messages = [{"role": "system", "content": system}, {"role": "user", "content": user}]
         options = {**entry.options, "temperature": 0.1}  # the same question should get the same answer
-        answer = await self.registry.client(entry.host).chat_json(entry.model, messages, schema, options)
+        answer = await self.registry.client(entry.host).chat_json(
+            entry.model, messages, schema, options, think=False if entry.thinking else None
+        )
         return answer if isinstance(answer, dict) else {}
 
     # ── Filling a template ──
@@ -332,6 +363,108 @@ class DocumentService:
             "BLANKS TO FILL:\n" + "\n".join(lines) + f"\n\nAnswer as JSON: {{{example}, ...}}"
         )
 
+    # ── Preparing a designed template (once) ──
+
+    async def prepare(self, model_id: str | None, word: WordFile) -> AsyncIterator[dict[str, Any]]:
+        """Labels every paragraph of a template. Yields progress, then one `labels` event."""
+        entry = await self._entry(model_id)
+        labels = slots.guess(word)
+        asked, lines = [], []
+        for block in word.blocks:
+            text = " ".join(paragraph_text(block.element).split())
+            if not text or block.where not in ("body", "textbox"):
+                continue
+            shown = text if len(text) <= 150 else text[:147] + "..."
+            notes = []
+            if block.where == "textbox":
+                notes.append("text box")
+            if word.style_name(block.element).lower().startswith("list"):
+                notes.append("bullet")
+            if block.id in labels:
+                lines.append((None, f"{block.id} (section heading): {shown}"))
+                continue
+            asked.append(block.id)
+            lines.append((block.id, f"{block.id}{' [' + ', '.join(notes) + ']' if notes else ''}: {shown}"))
+
+        # Too long for one request: cut at section headings, never in the middle of a section.
+        limit = self._budget(entry)
+        parts: list[list[tuple[str | None, str]]] = [[]]
+        for line in lines:
+            if line[0] is None and sum(len(text) for _, text in parts[-1]) > limit * 0.6:
+                parts.append([])
+            parts[-1].append(line)
+
+        if self._slots.locked():
+            yield {"type": "progress", "message": "Waiting for other document jobs to finish"}
+        async with self._slots:
+            yield {"type": "model", "id": entry.id, "label": entry.label}
+            for number, part in enumerate(parts, 1):
+                ids = [block_id for block_id, _ in part if block_id]
+                if not ids:
+                    continue
+                yield {"type": "progress", "message": f"Labelling the template's {len(asked)} lines" + (f" (part {number} of {len(parts)})" if len(parts) > 1 else "")}
+                one = {
+                    "type": "object",
+                    "properties": {
+                        "role": {"type": "string", "enum": ["fixed", "field", "group_item"]},
+                        "name": {"type": "string"}, "group": {"type": "string"}, "instance": {"type": "integer"},
+                    },
+                    "required": ["role", "name", "group", "instance"],
+                }
+                listing = "\n".join(text for _, text in part)
+                answer = await self._ask(entry, _PREPARE_SYSTEM, f"TEMPLATE:\n{listing}\n\nLabel these ids: {', '.join(ids)}", {
+                    "type": "object", "properties": {block_id: one for block_id in ids}, "required": ids,
+                })
+                for block_id in ids:
+                    label = answer.get(block_id)
+                    if isinstance(label, dict) and label.get("role") in ("fixed", "field", "group_item"):
+                        labels[block_id] = {
+                            "role": label["role"], "name": slots.snake(label.get("name")),
+                            "group": slots.snake(label.get("group")) if label["role"] == "group_item" else "",
+                            "instance": label.get("instance") if label["role"] == "group_item" and isinstance(label.get("instance"), int) else 0,
+                        }
+            yield {"type": "labels", "labels": labels, "asked": len(asked)}
+
+    # ── Filling a prepared template ──
+
+    async def extract(
+        self, model_id: str | None, word: WordFile, slotmap: dict[str, Any], instructions: str, sources: list[dict[str, str]]
+    ) -> AsyncIterator[dict[str, Any]]:
+        """Pulls the user's content into the slot map's shape. Yields progress and `values` events."""
+        entry = await self._entry(model_id)
+        instructions = instructions.strip()
+        source_text = _sources_text(sources)
+        if not instructions and not source_text:
+            raise PipelineError("Add a file to take the content from, or say what should go in.")
+        limit = self._budget(entry)
+        if len(source_text) > limit:
+            yield {"type": "notice", "message": f"Your files are longer than {entry.label} can read at once; only the first part was used."}
+        source = source_text[:limit]
+        # A short source goes in one request; a long one is asked about one group at a time,
+        # so each answer stays small enough for a small model to get right.
+        whole = len(source) < 6000
+        parts: list[str | None] = [None] if whole else ["", *[g["name"] for g in slotmap["groups"]]]
+
+        if self._slots.locked():
+            yield {"type": "progress", "message": "Waiting for other document jobs to finish"}
+        async with self._slots:
+            yield {"type": "model", "id": entry.id, "label": entry.label}
+            for number, only in enumerate(parts, 1):
+                schema = slots.values_schema(slotmap, only)
+                if not schema["properties"]:
+                    continue
+                what = "everything" if only is None else ("the single values" if only == "" else only.replace("_", " "))
+                yield {"type": "progress", "message": f"Reading your content: {what}" + (f" ({number} of {len(parts)})" if len(parts) > 1 else "")}
+                request = (
+                    f"INSTRUCTIONS FROM THE USER:\n{instructions or '(none)'}\n\n"
+                    f"SOURCE TEXT:\n{source or '(no source documents)'}\n\n"
+                    f"SLOTS TO FILL:\n{slots.describe(word, slotmap, only)}"
+                )
+                answer = await self._ask(entry, _EXTRACT_SYSTEM, request, schema)
+                values = {key: answer[key] for key in schema["properties"] if key in answer}
+                yield {"type": "values", "values": values, "origins": _origins(values, source_text, instructions)}
+            yield {"type": "done"}
+
     # ── Changing a document ──
 
     async def plan(self, model_id: str | None, outline: str, instructions: str) -> AsyncIterator[dict[str, Any]]:
@@ -391,6 +524,25 @@ class DocumentService:
                     yield {"type": "thinking", "content": message["thinking"]}
                 if message.get("content"):
                     yield {"type": "delta", "content": message["content"]}
+
+
+def _origins(values: dict[str, Any], sources: str, instructions: str) -> dict[str, str]:
+    """Where each extracted value comes from, keyed like `jobs.0.bullets.2`."""
+    found: dict[str, str] = {}
+
+    def walk(value: Any, path: str) -> None:
+        if isinstance(value, str):
+            if value.strip():
+                found[path] = origin_of(value, sources, instructions)
+        elif isinstance(value, list):
+            for number, item in enumerate(value):
+                walk(item, f"{path}.{number}")
+        elif isinstance(value, dict):
+            for key, item in value.items():
+                walk(item, f"{path}.{key}" if path else key)
+
+    walk(values, "")
+    return found
 
 
 def tidy_markdown(text: str) -> str:

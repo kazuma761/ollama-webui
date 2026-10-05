@@ -106,7 +106,7 @@ opencode:
 # write a new one. Only local models are used here - files never go to the cloud.
 # The model decides what goes where; the app's own code writes the Word file.
 documents:
-  # model: reasoning   # id of a local model below; default is the heavy route's model.
+  model: documents     # id of a local model below (qwen3:14b).
                        # A larger model matches information to blanks more reliably.
   max_jobs: 2          # document jobs asking the model at once; others wait their turn
   second_check: false  # true = ask the model again about values it did not copy from
@@ -128,18 +128,21 @@ models:
     label: Llama 3.2
     model: llama3.2:3b
     host: local
-    description: Fast general-purpose assistant
+    description: Fast general-purpose assistant and document analysis
     system: |
       You are an internal assistant for our engineering team. Be direct and
-      concise. Use Markdown, and fenced code blocks for any code.
+      concise. Use Markdown, and fenced code blocks for any code. When documents
+      are attached, base your answer on their content and say so if something is
+      not in them or you are unsure. If the user asks for a summary, give a short
+      one first, then a longer one if they ask for it.
     options:
       temperature: 0.7
 
   - id: reasoning
-    label: Qwen 3 14B
-    model: qwen3:14b
+    label: Qwen Fast
+    model: qwen-fast:latest
     host: local
-    description: Reasoning, code and document analysis
+    description: Reasoning and document analysis
     system: |
       You are a careful senior engineer and analyst. Work through the problem
       step by step, then give a clear final answer. Use fenced code blocks
@@ -149,8 +152,8 @@ models:
       temperature: 0.3
 
   - id: coder
-    label: Qwen Coder
-    model: qwen2.5-coder:7b
+    label: Qwen Fast Code
+    model: qwen-fast:latest
     host: local
     description: Code generation and review
     system: |
@@ -160,14 +163,22 @@ models:
       temperature: 0.2
 
   - id: vision
-    label: Gemma 3 Vision
-    model: gemma3:4b
+    label: MiniCPM-V
+    model: minicpm-v:latest
     host: local
     description: Reads screenshots and images
     vision: true
     system: |
       You are a product engineer. When given a screenshot, describe the UI
       precisely before answering the question.
+
+  # Used by the Word-documents page (see `documents:` above): labelling a
+  # template and moving content into it needs the strongest local model.
+  - id: documents
+    label: Qwen 3 14B
+    model: qwen3:14b
+    host: local
+    description: Word templates and documents
 
   # ---- Cloud models (OpenCode) ----
   # OpenCode's free cloud models; `model` is an id from `opencode models`. The

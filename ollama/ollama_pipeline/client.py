@@ -74,10 +74,18 @@ class OllamaClient:
             raise self._unavailable(exc) from exc
 
     async def chat_json(
-        self, model: str, messages: list[dict[str, Any]], schema: dict[str, Any], options: dict[str, Any] | None = None
+        self, model: str, messages: list[dict[str, Any]], schema: dict[str, Any], options: dict[str, Any] | None = None,
+        *, think: bool | None = None,
     ) -> Any:
-        """One answer, held by Ollama to the given JSON schema, as a Python object."""
+        """One answer, held by Ollama to the given JSON schema, as a Python object.
+
+        `think=False` switches a thinking model's reasoning off: for a fixed-form
+        answer it only costs time, and it can leave the answer itself empty. It
+        is only sent when given, because models without thinking reject the setting.
+        """
         payload: dict[str, Any] = {"model": model, "messages": messages, "stream": False, "format": schema}
+        if think is not None:
+            payload["think"] = think
         if options:
             payload["options"] = options
         data = await self._request("POST", "/api/chat", json=payload, timeout=JSON_TIMEOUT)

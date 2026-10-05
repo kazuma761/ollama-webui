@@ -8,7 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from .settings import settings  # isort: skip - loads .env before the pipeline reads the environment
 from ollama_pipeline import DocumentService, Registry, Router, load_config
 
-from .documents import Store, router as documents_router
+from .documents import Library, Store, router as documents_router
 from .routes import router
 
 # uvicorn only sets up its own loggers; without this the pipeline's INFO lines
@@ -27,6 +27,7 @@ async def lifespan(app: FastAPI):
     app.state.router.warm_up()
     app.state.documents = DocumentService(app.state.registry)
     app.state.store = Store(settings.documents_dir, config.documents.keep_hours)
+    app.state.library = Library(settings.documents_dir.parent / "templates")
     yield
     await app.state.registry.aclose()
 

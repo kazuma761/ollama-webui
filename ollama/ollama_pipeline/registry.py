@@ -21,6 +21,7 @@ class ModelEntry:
     description: str = ""
     available: bool = False
     vision: bool | None = None  # None = the server did not report capabilities
+    thinking: bool = False  # the model reasons before it answers (Ollama capability "thinking")
     configured: bool = False
     size: int | None = None
     parameter_size: str | None = None
@@ -109,6 +110,7 @@ class Registry:
                     description=alias.description,
                     available=tag is not None,
                     vision=vision,
+                    thinking="thinking" in caps,
                     configured=True,
                     size=tag.get("size") if tag else None,
                     parameter_size=(tag.get("details") or {}).get("parameter_size") if tag else None,
@@ -135,6 +137,7 @@ class Registry:
                             description=f"Pulled on {host}",
                             available=True,
                             vision="vision" in caps if caps else None,
+                            thinking="thinking" in caps,
                             size=tag.get("size"),
                             parameter_size=(tag.get("details") or {}).get("parameter_size"),
                             options=dict(self.config.default_options),

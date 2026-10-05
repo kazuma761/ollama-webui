@@ -147,6 +147,35 @@ select option{background:#1c1c1f}
 .paper table{border-collapse:collapse;margin:6px 0 12px;width:100%}
 .paper td{border:1px solid #c9c9c6;padding:5px 8px;vertical-align:top;white-space:pre-wrap;font-size:13px}
 .note{color:var(--dim);font-size:12px;margin-top:8px}
+.paper td>p:last-child{margin-bottom:0}
+.paper .boxed{background:#ECEEF5;border-radius:4px;padding:2px 6px}
+
+/* Template library */
+.tpl{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:11px 13px;border-radius:13px;background:rgba(255,255,255,.04);margin-top:8px}
+.tpl b{font-weight:500} .tpl small{display:block;color:var(--muted);font-size:12.5px}
+.mini{height:30px;padding:0 12px;border-radius:9px;font-size:12.5px;font-weight:500;color:#D5D5D8;background:rgba(255,255,255,.08)}
+.mini:hover{background:rgba(255,255,255,.15);color:#fff}
+.mini.go{color:#1d1d20;background:var(--accent)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;margin:10px 0 0;font-size:12.5px;color:var(--muted)}
+.legend i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.r-fixed{background:#cfcfcb} .r-field{background:#9fdcb5} .r-group{background:#a9c7f5} .r-none{background:#f3d9a4}
+.labelled p[data-id]{cursor:pointer;border-radius:4px;padding:1px 5px;margin-left:-5px;border-left:3px solid transparent}
+.labelled p[data-id]:hover{outline:1px solid #8a8a86}
+.labelled p[data-role="fixed"]{background:#e6e6e2;border-left-color:#a9a9a4}
+.labelled p[data-role="field"]{background:#dff3e6;border-left-color:#4fae78}
+.labelled p[data-role="group_item"]{background:#e1ecfd;border-left-color:#5b8fe0}
+.labelled p[data-role=""]{background:#fbf0d6;border-left-color:#d9a93c}
+.labelled p.sel{outline:2px solid #E88654}
+.labelled p[data-id]::after{content:attr(data-tag);margin-left:8px;font-size:10.5px;font-weight:600;color:#5d5d59;white-space:nowrap}
+.editor{display:flex;flex-wrap:wrap;align-items:end;gap:10px;margin-top:12px;padding:12px;border-radius:13px;background:rgba(0,0,0,.26)}
+.editor label{display:block;font-size:11.5px;color:var(--muted);margin-bottom:4px}
+.editor .in{padding:7px 9px;border-radius:9px;font-size:13px}
+.editor select{padding:7px 28px 7px 9px;border-radius:9px;font-size:13px}
+.item{margin-top:10px;padding:10px 12px;border-radius:13px;background:rgba(255,255,255,.04)}
+.item h3{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:#D5D5D8}
+.item h3 span{flex:1}
+.gtitle{margin-top:18px;font-size:13.5px;font-weight:600;display:flex;align-items:center;gap:10px}
+.gtitle span{flex:1}
 
 @media (max-width:620px){
   .f{grid-template-columns:1fr}
@@ -180,7 +209,48 @@ select option{background:#1c1c1f}
     <button class="mode" role="tab" data-mode="fill" aria-selected="true">Fill a template</button>
     <button class="mode" role="tab" data-mode="edit" aria-selected="false">Change a document</button>
     <button class="mode" role="tab" data-mode="create" aria-selected="false">Write a new one</button>
+    <button class="mode" role="tab" data-mode="library" aria-selected="false">Template library</button>
   </div>
+
+  <!-- Template library -->
+  <section class="card" id="library" hidden>
+    <h2>Saved templates <small id="lib-count"></small></h2>
+    <p class="hint" style="margin-top:4px">For designed templates such as a resume or a report with a fixed look. Prepare one once; after that it can be filled from any file and keeps its design.</p>
+    <div id="tpl-list"></div>
+    <button type="button" class="drop gap" id="tpl-drop">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+      <span><b>Add a designed template</b><span>.docx or .dotx with sample text in it.</span></span>
+    </button>
+    <div class="status idle gap" id="lib-status" hidden><i></i><span></span></div>
+  </section>
+
+  <section class="card" id="prep" hidden>
+    <div class="row">
+      <h2 class="grow" id="prep-title">Prepare template</h2>
+      <button type="button" class="btn ghost" id="prep-run">Label with the model</button>
+    </div>
+    <p class="hint" style="margin-top:4px">Every line of the template needs a label saying what it is. Let the model propose them, then click any line to correct it.</p>
+    <div class="legend">
+      <span><i class="r-fixed"></i>stays as it is</span><span><i class="r-field"></i>single value</span>
+      <span><i class="r-group"></i>part of a repeating block</span><span><i class="r-none"></i>not labelled yet</span>
+    </div>
+    <div class="status idle gap" id="prep-status" hidden><i></i><span></span></div>
+    <div class="paper labelled" id="prep-paper"></div>
+    <div class="editor" id="label-editor" hidden>
+      <div><label for="le-role">This line</label><select id="le-role">
+        <option value="fixed">stays as it is</option><option value="field">single value</option>
+        <option value="group_item">part of a repeating block</option><option value="">not labelled</option></select></div>
+      <div><label for="le-name">Name</label><input class="in" id="le-name" size="14" placeholder="e.g. email"></div>
+      <div><label for="le-group">Block</label><input class="in" id="le-group" size="12" placeholder="e.g. jobs"></div>
+      <div><label for="le-inst">Item no.</label><input class="in" id="le-inst" type="number" min="1" style="width:70px"></div>
+      <span class="hint grow" id="le-text"></span>
+    </div>
+    <p class="hint gap" id="prep-summary"></p>
+    <div class="row gap">
+      <input class="in grow" id="tpl-name" placeholder="Name in the library" aria-label="Name in the library" style="min-width:180px">
+      <button type="button" class="btn" id="tpl-save">Save to library</button>
+    </div>
+  </section>
 
   <!-- What goes in -->
   <section class="card" id="inputs">
@@ -225,6 +295,17 @@ select option{background:#1c1c1f}
     </div>
   </section>
 
+  <!-- Content to review (library) -->
+  <section class="card" id="shape" hidden>
+    <h2>Your content <small id="shape-count"></small></h2>
+    <p class="hint" style="margin-top:4px">Check it before the file is made. Lists take one line per entry. Anything left empty is removed from the template.</p>
+    <div id="shape-form"></div>
+    <div class="row gap">
+      <span class="hint grow" id="shape-hint"></span>
+      <button type="button" class="btn" id="shape-make">Create Word file</button>
+    </div>
+  </section>
+
   <!-- Live text (create) -->
   <section class="card" id="writing" hidden>
     <h2>Writing <small id="writing-model"></small></h2>
@@ -253,6 +334,7 @@ select option{background:#1c1c1f}
     </div>
   </section>
 
+  <input type="file" id="tpl-file" accept=".docx,.dotx" hidden>
   <input type="file" id="main-file" accept=".docx,.dotx" hidden>
   <input type="file" id="source-file" multiple hidden>
 </div></div>
@@ -262,7 +344,7 @@ select option{background:#1c1c1f}
   const API = (window.FASTSHOT_API || '').replace(/\/$/, '');
   const $ = (id) => document.getElementById(id);
   const node = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
-  const state = { mode: 'fill', job: null, style: null, name: '', fields: [], sources: [], busy: false, result: null };
+  const state = { mode: 'fill', job: null, style: null, name: '', fields: [], sources: [], busy: false, result: null, tpl: null, use: null, shape: null };
 
   const TEXT = {
     fill:   { cap: 'Template', title: 'Choose a Word template', sub: '.docx or .dotx, up to 20 MB. Its look is kept exactly.',
@@ -274,6 +356,8 @@ select option{background:#1c1c1f}
     create: { cap: 'Letterhead or style to use (optional)', title: 'Choose a Word file to take the look from', sub: 'Its header, footer, logo and styles are kept; its text is replaced.',
               inst: 'What should the document say?', go: 'Write document', source: true,
               ph: 'For example: a one-page leave policy summary for all employees: 24 days paid leave, 10 public holidays, how to apply.' },
+    library:{ cap: 'Template', title: '', sub: '', inst: 'Anything to add? (optional)', go: 'Read my content', source: true,
+              ph: 'For example: write a three-sentence profile for a backend role. Leave out the internship.' },
   };
   const ORIGIN = { source: 'from your files', prompt: 'from your instructions', model: 'written by the model - check', unsupported: 'could not be confirmed - check' };
 
@@ -309,9 +393,10 @@ select option{background:#1c1c1f}
   }
   function setBusy(busy) {
     state.busy = busy;
-    for (const id of ['go', 'make', 'apply']) $(id).disabled = busy || (id === 'go' && !ready());
+    for (const id of ['go', 'make', 'apply', 'prep-run', 'tpl-save', 'shape-make']) $(id).disabled = busy || (id === 'go' && !ready());
   }
-  const ready = () => state.mode === 'create' ? !!$('instructions').value.trim() : !!state.job;
+  const ready = () => state.mode === 'create' ? !!$('instructions').value.trim()
+    : state.mode === 'library' ? !!state.use && (state.sources.length > 0 || !!$('instructions').value.trim()) : !!state.job;
 
   /* ── Models ── */
   async function loadModels() {
@@ -338,10 +423,16 @@ select option{background:#1c1c1f}
     document.querySelectorAll('.mode').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.mode === mode)));
     $('main-cap').textContent = t.cap; $('inst-cap').textContent = t.inst; $('instructions').placeholder = t.ph; $('go').textContent = t.go;
     $('source-block').hidden = !t.source;
+    $('source-cap').firstChild.textContent = 'Information to use ';
     state.job = null; state.style = null; state.fields = []; state.result = null; state.name = '';
     $('main-drop').classList.remove('has'); $('main-title').textContent = t.title; $('main-sub').textContent = t.sub;
-    for (const id of ['review', 'writing', 'result']) $(id).hidden = true;
+    for (const id of ['review', 'writing', 'result', 'prep', 'shape']) $(id).hidden = true;
+    state.tpl = null; state.use = null; state.shape = null;
+    $('library').hidden = mode !== 'library';
+    $('inputs').hidden = mode === 'library';
+    $('main-block').hidden = mode === 'library';
     status($('status'), ''); setBusy(false);
+    if (mode === 'library') loadLibrary();
   }
   document.querySelectorAll('.mode').forEach((b) => b.addEventListener('click', () => { if (!state.busy) setMode(b.dataset.mode); }));
 
@@ -368,6 +459,12 @@ select option{background:#1c1c1f}
       $('main-sub').textContent = data.paragraphs + ' paragraphs, ' + data.tables + ' table' + (data.tables === 1 ? '' : 's')
         + (state.mode === 'fill' ? ', ' + data.fields.length + ' blank' + (data.fields.length === 1 ? '' : 's') + ' found' : '');
       status($('status'), '');
+      if (state.mode !== 'edit' && !data.letterhead && !data.fields.length) {
+        /* Its body is the design and it has no blanks: neither filling blanks nor writing over it would keep the layout. */
+        setBusy(false); setMode('library'); await addTemplate([file]);
+        status($('lib-status'), 'This file is a designed template, so it was opened here: label it once and it can be filled with its layout kept.', 'idle');
+        return;
+      }
       if (state.mode === 'fill') showFields(data);
     } catch (err) { status($('status'), err.message, 'err'); }
     setBusy(false);
@@ -382,7 +479,7 @@ select option{background:#1c1c1f}
         state.sources.push({ name: data.name, content: data.content });
       } catch (err) { status($('status'), err.message, 'err'); }
     }
-    renderSources();
+    renderSources(); setBusy(state.busy);
   }
   function renderSources() {
     $('sources').replaceChildren(...state.sources.map((s, i) => {
@@ -436,20 +533,25 @@ select option{background:#1c1c1f}
   }
 
   /* ── Results ── */
-  function paint(preview) {
-    const paper = $('paper'); paper.replaceChildren();
-    for (const item of preview || []) {
+  function blocks(items, into) {
+    for (const item of items || []) {
       if (item.type === 'table') {
         const table = node('table');
-        for (const row of item.rows) { const tr = node('tr'); for (const cell of row) tr.append(node('td', '', cell)); table.append(tr); }
-        paper.append(table); continue;
+        for (const row of item.rows) {
+          const tr = node('tr');
+          for (const cell of row) { const td = node('td'); if (typeof cell === 'string') td.textContent = cell; else blocks(cell, td); tr.append(td); }
+          table.append(tr);
+        }
+        into.append(table); continue;
       }
       const cls = item.style === 'Title' ? 'l0' : item.level ? 'l' + Math.min(item.level, 3) : /^List/.test(item.style) ? 'bullet' : '';
-      const p = node('p', cls, item.text);
+      const p = node('p', cls + (item.box ? ' boxed' : ''), item.text);
       if (item.align !== 'left') p.style.textAlign = item.align;
-      paper.append(p);
+      if (item.text.trim()) p.dataset.id = item.id;
+      into.append(p);
     }
   }
+  function paint(preview, paper) { paper = paper || $('paper'); paper.replaceChildren(); blocks(preview, paper); }
   function showResult(data, title, summary) {
     state.result = { job: data.job, version: data.version }; state.job = data.job;
     $('result-title').textContent = title;
@@ -457,8 +559,11 @@ select option{background:#1c1c1f}
     $('download').href = API + data.download;
     const list = $('changes'); list.replaceChildren();
     for (const line of data.applied || []) list.append(node('li', '', line));
+    for (const line of data.warnings || []) list.append(node('li', 'skip', line));
     for (const line of data.skipped || []) list.append(node('li', 'skip', 'Not done - ' + line));
     paint(data.preview);
+    document.querySelectorAll('#result .pdf').forEach((n) => n.remove());
+    if (data.pdf) { const view = node('object', 'pdf'); view.data = API + data.pdf; view.type = 'application/pdf'; view.style.cssText = 'width:100%;height:520px;margin-top:14px;border-radius:10px'; $('paper').before(view); }
     $('result').hidden = false;
     $('result').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
@@ -523,9 +628,192 @@ select option{background:#1c1c1f}
     cancelAnimationFrame(frame); draw();
     setBusy(false);
   }
+  /* ── Template library ── */
+  const ROLE_TAG = { fixed: 'stays', field: 'value', group_item: 'block', '': 'not labelled' };
+  async function loadLibrary() {
+    try {
+      const res = await fetch(API + '/api/documents/templates');
+      const list = (await res.json()).templates;
+      $('lib-count').textContent = list.length ? list.length + '' : '';
+      $('tpl-list').replaceChildren(...list.map((t) => {
+        const row = node('div', 'tpl'), text = node('div', 'grow');
+        const what = t.ready ? t.summary.fields.length + ' values, ' + t.summary.groups.map((g) => g.name.replace(/_/g, ' ')).join(', ') : 'not prepared yet';
+        text.append(node('b', '', t.name), node('small', '', what + ' - added ' + t.created));
+        const use = node('button', 'mini go', 'Fill'), edit = node('button', 'mini', t.ready ? 'Review labels' : 'Prepare');
+        const rename = node('button', 'mini', 'Rename'), del = node('button', 'mini', 'Delete');
+        for (const b of [use, edit, rename, del]) b.type = 'button';
+        use.hidden = !t.ready;
+        use.addEventListener('click', () => useTemplate(t));
+        edit.addEventListener('click', () => openTemplate(t.id));
+        rename.addEventListener('click', async () => {
+          const name = prompt('New name', t.name);
+          if (name && name.trim()) { await fetch(API + '/api/documents/templates/' + t.id + '/slotmap', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }) }); loadLibrary(); }
+        });
+        del.addEventListener('click', async () => {
+          if (confirm('Delete "' + t.name + '" from the library?')) { await fetch(API + '/api/documents/templates/' + t.id, { method: 'DELETE' }); if (state.tpl && state.tpl.id === t.id) $('prep').hidden = true; loadLibrary(); }
+        });
+        row.append(text, use, edit, rename, del); return row;
+      }));
+    } catch { status($('lib-status'), 'The backend is not reachable.', 'err'); }
+  }
+  async function addTemplate(files) {
+    const file = files[0]; if (!file) return;
+    status($('lib-status'), 'Reading ' + file.name);
+    try {
+      const form = new FormData(); form.append('file', file);
+      const res = await fetch(API + '/api/documents/templates', { method: 'POST', body: form });
+      if (!res.ok) throw await failure(res);
+      status($('lib-status'), ''); showPrep(await res.json()); loadLibrary();
+    } catch (err) { status($('lib-status'), err.message, 'err'); }
+  }
+  async function openTemplate(id) {
+    const res = await fetch(API + '/api/documents/templates/' + id);
+    if (res.ok) showPrep(await res.json());
+  }
+  function showPrep(data) {
+    state.tpl = { id: data.id, labels: data.labels || {}, selected: null };
+    $('prep-title').textContent = 'Prepare: ' + data.name; $('tpl-name').value = data.name;
+    $('prep-summary').textContent = ''; status($('prep-status'), ''); $('label-editor').hidden = true;
+    for (const id of ['inputs', 'shape', 'result']) $(id).hidden = true;
+    paint(data.preview, $('prep-paper')); paintLabels();
+    $('prep').hidden = false; $('prep').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  function paintLabels() {
+    let open = 0;
+    document.querySelectorAll('#prep-paper p[data-id]').forEach((p) => {
+      const l = state.tpl.labels[p.dataset.id] || { role: '' };
+      p.dataset.role = l.role || '';
+      p.dataset.tag = l.role === 'group_item' ? (l.group || '?') + ' ' + (l.instance || '?') + ' / ' + (l.name || '?') : l.role === 'field' ? (l.name || '?') : ROLE_TAG[l.role || ''];
+      p.classList.toggle('sel', p.dataset.id === state.tpl.selected);
+      if (!l.role) open += 1;
+    });
+    return open;
+  }
+  $('prep-paper').addEventListener('click', (e) => {
+    const p = e.target.closest('p[data-id]'); if (!p || !state.tpl) return;
+    state.tpl.selected = p.dataset.id;
+    const l = state.tpl.labels[p.dataset.id] || { role: '' };
+    $('le-role').value = l.role || ''; $('le-name').value = l.name || ''; $('le-group').value = l.group || ''; $('le-inst').value = l.instance || '';
+    $('le-text').textContent = p.dataset.id + ': ' + p.textContent.slice(0, 60);
+    $('label-editor').hidden = false; paintLabels();
+  });
+  for (const id of ['le-role', 'le-name', 'le-group', 'le-inst']) $(id).addEventListener('input', () => {
+    if (!state.tpl || !state.tpl.selected) return;
+    const role = $('le-role').value;
+    if (!role) delete state.tpl.labels[state.tpl.selected];
+    else state.tpl.labels[state.tpl.selected] = { role, name: $('le-name').value.trim(), group: role === 'group_item' ? $('le-group').value.trim() : '', instance: role === 'group_item' ? parseInt($('le-inst').value, 10) || 1 : 0 };
+    paintLabels();
+  });
+  function describeShape(summary, problems) {
+    const groups = summary.groups.map((g) => g.name.replace(/_/g, ' ') + ' (' + g.instances + ' in the sample)').join(', ');
+    return summary.fields.length + ' single values' + (groups ? '; repeating: ' + groups : '') + '.' + ((problems || []).length ? ' Left out: ' + problems.join('; ') + '.' : '');
+  }
+  async function prepare() {
+    setBusy(true); status($('prep-status'), 'Asking the model');
+    try {
+      await stream('/api/documents/templates/' + state.tpl.id + '/prepare', { model: $('model').value || null }, (e) => {
+        if (e.type === 'progress') status($('prep-status'), e.message);
+        else if (e.type === 'prepared') { state.tpl.labels = e.labels; const open = paintLabels(); status($('prep-status'), ''); $('prep-summary').textContent = 'Proposed: ' + describeShape(e.summary, e.problems) + (open ? ' ' + open + ' lines still need a label.' : '') + ' Check the colours, then save.'; }
+      });
+    } catch (err) { status($('prep-status'), err.message, 'err'); }
+    setBusy(false);
+  }
+  async function saveTemplate() {
+    setBusy(true);
+    try {
+      const res = await fetch(API + '/api/documents/templates/' + state.tpl.id + '/slotmap', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: $('tpl-name').value, labels: state.tpl.labels }) });
+      if (!res.ok) throw await failure(res);
+      const data = await res.json();
+      $('prep-summary').textContent = 'Saved. ' + describeShape(data.summary, data.problems); loadLibrary();
+    } catch (err) { $('prep-summary').textContent = err.message; }
+    setBusy(false);
+  }
+  function useTemplate(t) {
+    state.use = t; state.shape = null;
+    for (const id of ['prep', 'shape', 'result']) $(id).hidden = true;
+    $('inputs').hidden = false; $('source-cap').firstChild.textContent = 'Content for "' + t.name + '" ';
+    status($('status'), ''); setBusy(false); $('inputs').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  /* The extracted content as an editable form, in the shape of the template's slot map. */
+  function field(label, value, origin, big) {
+    const row = node('div', 'f' + (big ? ' section' : '')), right = node('div');
+    const input = node('textarea'); input.value = value || ''; input.rows = big ? 4 : 1; input.setAttribute('aria-label', label);
+    input.addEventListener('input', () => { const tag = right.querySelector('.tag'); if (tag) tag.remove(); });
+    right.append(input); if (value && ORIGIN[origin]) right.append(node('span', 'tag ' + origin, ORIGIN[origin]));
+    row.append(node('div', 'name', label.replace(/_/g, ' ')), right);
+    return { row, input };
+  }
+  function showShape() {
+    const { summary, values, origins } = state.shape, form = $('shape-form'); form.replaceChildren();
+    const read = { fields: {}, groups: {} };
+    const single = node('div', 'fields');
+    for (const name of summary.fields) { const f = field(name, values[name], origins[name], (values[name] || '').length > 120); read.fields[name] = f.input; single.append(f.row); }
+    form.append(single);
+    for (const g of summary.groups) {
+      const head = node('div', 'gtitle'), holder = node('div'), add = node('button', 'mini', 'Add one');
+      head.append(node('span', '', g.name.replace(/_/g, ' ') + (g.kind === 'boxes' ? ' (room for ' + g.instances + ')' : '')), add); add.type = 'button';
+      form.append(head, holder); read.groups[g.name] = [];
+      const simple = g.fields.length === 1 && !g.lists.length;
+      const addItem = (item, n) => {
+        const box = node('div', 'item'), title = node('h3'), remove = node('button', 'mini', 'Remove'), entry = { fields: {}, lists: {} };
+        remove.type = 'button'; title.append(node('span', '', g.name.replace(/_/g, ' ').replace(/s$/, '') + ' ' + (read.groups[g.name].length + 1)), remove); box.append(title);
+        const rows = node('div', 'fields'); rows.style.marginTop = '8px';
+        for (const name of g.fields) { const v = simple ? item : (item || {})[name]; const f = field(name, v, origins[g.name + '.' + n + (simple ? '' : '.' + name)]); entry.fields[name] = f.input; rows.append(f.row); }
+        for (const name of g.lists) { const lines = ((item || {})[name] || []); const f = field(name + ' (one per line)', lines.join('\n'), lines.length ? origins[g.name + '.' + n + '.' + name + '.0'] : '', true); entry.lists[name] = f.input; rows.append(f.row); }
+        box.append(rows); holder.append(box); read.groups[g.name].push(entry);
+        remove.addEventListener('click', () => { box.remove(); read.groups[g.name] = read.groups[g.name].filter((x) => x !== entry); });
+      };
+      (Array.isArray(values[g.name]) ? values[g.name] : []).forEach(addItem);
+      add.addEventListener('click', () => addItem(simple ? '' : {}, -1));
+      g.simple = simple;
+    }
+    state.shape.read = read;
+    $('shape-count').textContent = 'for ' + state.use.name;
+    $('shape').hidden = false; $('shape').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  async function readContent() {
+    setBusy(true); status($('status'), 'Asking the model');
+    const shape = { summary: null, values: {}, origins: {} };
+    try {
+      await stream('/api/documents/templates/' + state.use.id + '/extract',
+        { model: $('model').value || null, instructions: $('instructions').value, sources: state.sources }, (e) => {
+          if (e.type === 'shape') shape.summary = e.summary;
+          else if (e.type === 'progress' || e.type === 'notice') status($('status'), e.message);
+          else if (e.type === 'values') { Object.assign(shape.values, e.values); Object.assign(shape.origins, e.origins); }
+          else if (e.type === 'done') status($('status'), '');
+        });
+      state.shape = shape; showShape();
+    } catch (err) { status($('status'), err.message, 'err'); }
+    setBusy(false);
+  }
+  async function makeFromLibrary() {
+    setBusy(true);
+    const { summary, read } = state.shape, values = {};
+    for (const [name, input] of Object.entries(read.fields)) values[name] = input.value.trim();
+    for (const g of summary.groups) values[g.name] = read.groups[g.name].map((entry) => {
+      if (g.simple) return entry.fields[g.fields[0]].value.trim();
+      const item = {};
+      for (const [name, input] of Object.entries(entry.fields)) item[name] = input.value.trim();
+      for (const [name, input] of Object.entries(entry.lists)) item[name] = input.value.split('\n').map((x) => x.trim()).filter(Boolean);
+      return item;
+    }).filter((item) => typeof item === 'string' ? item : Object.values(item).some((v) => v.length));
+    try {
+      const res = await fetch(API + '/api/documents/templates/' + state.use.id + '/render', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ values }) });
+      if (!res.ok) throw await failure(res);
+      const data = await res.json(); state.name = data.name;
+      showResult(data, data.name, 'Made from "' + state.use.name + '", with its design kept.' + (data.pdf ? '' : ' Open the downloaded file to see the exact look.'));
+    } catch (err) { $('shape-hint').textContent = err.message; }
+    setBusy(false);
+  }
+  wire($('tpl-drop'), $('tpl-file'), addTemplate);
+  $('prep-run').addEventListener('click', () => { if (!state.busy && state.tpl) prepare(); });
+  $('tpl-save').addEventListener('click', () => { if (!state.busy && state.tpl) saveTemplate(); });
+  $('shape-make').addEventListener('click', () => { if (!state.busy && state.shape) makeFromLibrary(); });
+
   $('go').addEventListener('click', () => {
     if (state.busy) return;
-    if (state.mode === 'fill') suggest();
+    if (state.mode === 'library') readContent();
+    else if (state.mode === 'fill') suggest();
     else if (state.mode === 'edit') change($('instructions').value, $('status'));
     else write();
   });
