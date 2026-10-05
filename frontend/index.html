@@ -970,6 +970,7 @@ button{cursor:pointer}
             out.name.title = 'Routed by ' + event.source
               + (event.route ? ' to "' + event.route + '"' : '')
               + (event.confidence != null ? ' (confidence ' + event.confidence + ')' : '');
+            if (event.note) out.body.before(node('div', 'note', event.note));
           } else if (event.type === 'notice') {
             out.body.before(node('div', 'note', event.message));
           } else if (event.type === 'thinking') {

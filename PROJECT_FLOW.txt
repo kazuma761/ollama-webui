@@ -48,12 +48,20 @@ AUTO-ROUTING ("Auto" in the model picker, the default when enabled)
   `router:` in ollama/config/models.yaml. Each route = a description + a model.
   Order of decision for the latest user message:
     1. Has an image            -> router.image_model (vision model)
-    2. A short follow-up ("make it shorter") stays on the model already answering
-    3. A software question in a chat with nothing attached -> a cloud route,
+    2. A software question in a chat with nothing attached -> a cloud route,
        when one is configured: "expert" for system design and hard-to-find
        bugs, "code" for the rest. It is recognised by clear signs (a language
-       name, a code snippet, pasted commands, "fix this bug") or, when Von is
-       installed, by Von answering yes to two questions about it
+       name, a code snippet, pasted commands, "fix this bug", "code this",
+       "build a website"), or by the chat already being about software: the
+       request before it was a software one, or the last reply has code in
+       it ("add error handling to it"). A request for an email, a translation
+       or a summary does not follow the thread and stays local. This is
+       checked first, so a local reply never holds later code questions back.
+       If the chat has attachments the question stays local and the reply
+       says why.
+    3. A short follow-up ("make it shorter") stays on the local model already
+       answering. When Von is installed it can also send software the signs
+       above missed to the cloud, by answering yes to two questions about it
     4. Von is installed and its confidence >= min_confidence -> Von's choice
        between the local routes. Von unsure -> stays on the model already
        answering, if that is a local one
