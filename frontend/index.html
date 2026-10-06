@@ -833,8 +833,23 @@ button{cursor:pointer}
       return text ? '<div class="txt">' + inline(text) + '</div>' : '';
     }).join('');
   }
-  const nearBottom = () => el.thread.scrollHeight - el.thread.scrollTop - el.thread.clientHeight < 80;
-  const toBottom = () => { el.thread.scrollTop = el.thread.scrollHeight; };
+  /* Keeps a scrolling box at its end while text is added, but only while the reader is at the
+     end. Scrolling up, by any amount and by any means, lets go at once - the page must never
+     pull against the reader - and scrolling back down to the end picks it up again. */
+  function follower(box) {
+    let on = true;
+    let last = 0;
+    const gap = () => box.scrollHeight - box.scrollTop - box.clientHeight;
+    const end = () => { box.scrollTop = box.scrollHeight; last = box.scrollTop; };
+    box.addEventListener('scroll', () => {
+      const top = box.scrollTop;
+      if (top < last) on = gap() < 2; /* the reader moved up - unless the box only got shorter under them */
+      else if (top > last && gap() < 80) on = true;
+      last = top;
+    }, { passive: true });
+    return { go() { on = true; end(); }, keep() { if (on) end(); } };
+  }
+  const follow = follower(el.thread);
 
   function addUser(message, names) {
     const bubble = node('div', 'msg user');
@@ -882,7 +897,7 @@ button{cursor:pointer}
     addUser(message, attached.map((a) => a.name));
     const model = current();
     const out = addBot(model ? model.label : 'Fastshot');
-    toBottom();
+    follow.go();
 
     let answer = '';
     let answeredBy = state.model; /* with Auto, replaced by the model the router picked */
@@ -896,7 +911,7 @@ button{cursor:pointer}
       const text = node('div', 'think-text');
       box.append(label, text);
       out.body.before(box);
-      return { box, label, text, since: performance.now(), closed: false };
+      return { box, label, text, follow: follower(text), since: performance.now(), closed: false };
     };
     const endThinking = () => {
       if (!think || think.closed) return;
@@ -909,13 +924,12 @@ button{cursor:pointer}
     /* Runs at most once per frame, however many pieces of text arrived since the last one. */
     const paint = () => {
       frame = 0;
-      const stick = nearBottom();
       if (think && !think.closed) {
         think.text.textContent = thought;
-        think.text.scrollTop = think.text.scrollHeight;
+        think.follow.keep();
       }
       if (answer) out.body.innerHTML = render(answer);
-      if (stick) toBottom();
+      follow.keep();
     };
     const fail = (text) => {
       out.bubble.classList.add('err');
@@ -956,6 +970,7 @@ button{cursor:pointer}
             out.name.title = 'Routed by ' + event.source
               + (event.route ? ' to "' + event.route + '"' : '')
               + (event.confidence != null ? ' (confidence ' + event.confidence + ')' : '');
+            if (event.note) out.body.before(node('div', 'note', event.note));
           } else if (event.type === 'notice') {
             out.body.before(node('div', 'note', event.message));
           } else if (event.type === 'thinking') {

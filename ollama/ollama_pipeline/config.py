@@ -34,13 +34,19 @@ class OpenCodeConfig:
     command: str = "opencode"
     agent: str = "plan"  # must be one of OpenCode's built-in agents for the free tier to answer
     timeout: int = 120  # seconds without any progress before giving up
+    # Where the app's own OpenCode keeps its data, apart from any OpenCode the user runs.
+    home: str = str(Path(__file__).resolve().parent.parent / ".opencode")
 
 
 @dataclass(frozen=True)
 class Route:
     name: str
-    model: str  # id of an entry under `models:`
+    models: tuple[str, ...]  # ids of entries under `models:`; the first one that can answer is used
     description: str  # what the router is told this route is for
+
+    @property
+    def model(self) -> str:
+        return self.models[0]
 
 
 @dataclass(frozen=True)
@@ -53,6 +59,7 @@ class RouterConfig:
     routes: list[Route] = field(default_factory=list)
     default_route: str = ""  # light model, used for easy requests
     heavy_route: str = ""  # strongest local model, used for hard requests
+    code_route: str = ""  # optional cloud route for questions about software
     expert_route: str = ""  # optional cloud route for the hardest engineering questions
     image_model: str | None = None
 
@@ -111,10 +118,15 @@ def _read(path: Path) -> dict[str, Any]:
 
 
 def _router(raw: dict[str, Any], model_ids: set[str]) -> RouterConfig:
-    routes = [Route(name, r["model"], r.get("description") or name) for name, r in (raw.get("routes") or {}).items()]
+    routes = [
+        # `model:` is one id, or a list to try in order.
+        Route(name, tuple(r["model"]) if isinstance(r["model"], list) else (r["model"],), r.get("description") or name)
+        for name, r in (raw.get("routes") or {}).items()
+    ]
     for route in routes:
-        if route.model not in model_ids:
-            raise ValueError(f"models.yaml: route '{route.name}' uses unknown model '{route.model}'")
+        for model in route.models:
+            if model not in model_ids:
+                raise ValueError(f"models.yaml: route '{route.name}' uses unknown model '{model}'")
     names = [r.name for r in routes]
     config = RouterConfig(
         enabled=bool(raw.get("enabled", False)) and bool(routes),
@@ -125,10 +137,11 @@ def _router(raw: dict[str, Any], model_ids: set[str]) -> RouterConfig:
         routes=routes,
         default_route=raw.get("default_route") or (names[0] if names else ""),
         heavy_route=raw.get("heavy_route") or (names[-1] if names else ""),
+        code_route=raw.get("code_route") or "",
         expert_route=raw.get("expert_route") or "",
         image_model=raw.get("image_model"),
     )
-    for key in ("default_route", "heavy_route", "expert_route"):
+    for key in ("default_route", "heavy_route", "code_route", "expert_route"):
         if routes and getattr(config, key) and getattr(config, key) not in names:
             raise ValueError(f"models.yaml: router.{key} '{getattr(config, key)}' is not a defined route")
     if config.image_model and config.image_model not in model_ids:
@@ -186,6 +199,8 @@ def load_config(directory: Path | None = None) -> PipelineConfig:
         default_options=raw.get("default_options") or {},
         router=_router(raw.get("router") or {}, {m.id for m in models}),
         opencode=OpenCodeConfig(**{
-            key: value for key, value in (raw.get("opencode") or {}).items() if key in ("command", "agent", "timeout")
+            key: value
+            for key, value in (raw.get("opencode") or {}).items()
+            if key in ("command", "agent", "timeout", "home")
         }),
     )

@@ -48,11 +48,27 @@ AUTO-ROUTING ("Auto" in the model picker, the default when enabled)
   `router:` in ollama/config/models.yaml. Each route = a description + a model.
   Order of decision for the latest user message:
     1. Has an image            -> router.image_model (vision model)
-    2. A short follow-up ("make it shorter") stays on the model already answering
-    3. Von is installed and its confidence >= min_confidence -> Von's route
-       (Von unsure -> stays on the model already answering, if there is one)
-    4. Otherwise: keyword rules (code/logic/maths/long/attached file -> heavy
+    2. A software question in a chat with nothing attached -> a cloud route,
+       when one is configured: "expert" for system design and hard-to-find
+       bugs, "code" for the rest. It is recognised by clear signs (a language
+       name, a code snippet, pasted commands, "fix this bug", "code this",
+       "build a website"), or by the chat already being about software: the
+       request before it was a software one, or the last reply has code in
+       it ("add error handling to it"). A request for an email, a translation
+       or a summary does not follow the thread and stays local. This is
+       checked first, so a local reply never holds later code questions back.
+       If the chat has attachments the question stays local and the reply
+       says why.
+    3. A short follow-up ("make it shorter") stays on the local model already
+       answering. When Von is installed it can also send software the signs
+       above missed to the cloud, by answering yes to two questions about it
+    4. Von is installed and its confidence >= min_confidence -> Von's choice
+       between the local routes. Von unsure -> stays on the model already
+       answering, if that is a local one
+    5. Otherwise: keyword rules (code/logic/maths/long/attached file -> heavy
        route, everything else -> default route)
+  Each decision is one line in the server log ("Router: ...").
+  A route can list several models; the first that can answer is used.
   If the chosen model is not pulled, another routed model is used instead.
   Von missing, loading, failing or slow never blocks a chat: rules take over.
   Von (optional, https://github.com/wfzyx/von): a 395M decision model, CPU,
@@ -61,20 +77,24 @@ AUTO-ROUTING ("Auto" in the model picker, the default when enabled)
   Without it, set `backend: rules` or just leave it - rules are the fallback.
   Picking a specific model in the picker bypasses routing completely.
 
-OPENCODE (cloud route, optional)
-  The "expert" route sends the hardest engineering questions - architecture,
-  system design, hard debugging - to OpenCode's free cloud models
-  (https://github.com/anomalyco/opencode). The backend starts its own
+OPENCODE (cloud routes, optional)
+  The "code" route sends questions about software, and the "expert" route the
+  hardest of them - architecture, system design, hard debugging - to
+  OpenCode's free cloud models (https://github.com/anomalyco/opencode).
+  Everything else stays on the local models. The backend starts its own
   password-protected `opencode serve` on 127.0.0.1 and streams replies from
-  it. Needs only the `opencode` command installed. Config: `opencode:` + the `expert` route in
-  models.yaml; remove `expert_route` to stay fully local.
+  it. Needs OpenCode 1.x installed. Config: `opencode:`, the `opencode*`
+  models and the two routes in models.yaml; remove `code_route` and
+  `expert_route` to stay fully local.
   - These messages LEAVE THIS MACHINE. Attachments are never sent, and a
     conversation that has had an attachment stays on local models.
   - OpenCode runs in an empty temp folder; every request it makes to run a
     command, edit a file, fetch a URL or read elsewhere is rejected.
   - The free tier only works with OpenCode's built-in agent, unmodified.
-  - If OpenCode is missing, refuses or times out, the local heavy model
-    answers instead and the reply says so.
+  - If a model does not answer, the next one in its route does; after the
+    last, or if OpenCode is missing, the local heavy model. The reply says so.
+  - The free models differ in what their providers do with prompts; see the
+    comment above them in models.yaml.
   - The reply streams live; the first words usually take 5-10 s.
 
 DOCUMENTS
@@ -88,7 +108,10 @@ DOCUMENTS
 
 REQUIREMENTS
   - macOS, Linux or Windows
-  - Python 3.11+ and uv (https://docs.astral.sh/uv/)
+  - Python 3.11+ and uv (https://docs.astral.sh/uv/), or pip with
+    requirements.txt. The Von router needs Python 3.12+.
+  - For the cloud routes: Node.js and OpenCode 1.18.34
+        npm install -g opencode-ai@1.18.34       (2.x does not work)
   - Ollama (https://ollama.com/download), running, with at least one model:
         ollama pull llama3.2:3b
   - Internet for the background video and Inter font (frontend loads them)

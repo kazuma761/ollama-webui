@@ -8,7 +8,56 @@ not seen before. Read this first, then `PROJECT_FLOW.txt` for the code map.
 A local chat web app on top of Ollama. A user picks a model (or "Auto"), sends
 a prompt with optional PDF/DOCX/text/image attachments, and the reply streams
 back. With "Auto", a router sends each message to a light model, a reasoning
-model, or a vision model.
+model or a vision model on this machine, or, for questions about software, to
+OpenCode's free cloud models.
+
+## Start here on a new machine
+
+Five steps. "Setup" further down has the details and the reasons.
+
+1. **Python packages.** `cd backend && uv sync --extra router` (needs
+   [uv](https://docs.astral.sh/uv/) and Python 3.12+). Without uv:
+   `pip install -r requirements.txt` from the repo root.
+2. **Ollama** running, with the models this machine will use pulled
+   (`ollama list` shows them).
+3. **OpenCode 1.18.34, exactly that version:**
+   `npm install -g opencode-ai@1.18.34`, then `opencode --version` must print
+   `1.18.34`. Not the package `@opencode/cli`: that is 2.x and does not work.
+4. **Models: one file, `ollama/config/models.yaml`.** The header at its top
+   names the three entries to change. Nothing else in the project names a
+   model.
+5. **Check, then run.** `cd backend && uv run --inexact python -m ollama_pipeline`
+   lists every model as ready or not. Then `./run.sh` (Windows:
+   `powershell -ExecutionPolicy Bypass -File run.ps1`) and open
+   <http://127.0.0.1:8000>. The server log should show `Router: Von is ready`
+   and `OpenCode: server ready at …`.
+
+## Latest changes — 4 October 2026, on the Windows test laptop
+
+What the last working session added, for whoever picks this up next:
+
+- **Routing.** Questions about software now go to OpenCode: everyday coding
+  to a new `code` route, the hardest to `expert`. Everything else stays on the
+  local models. Software is recognised by keywords and, failing that, by two
+  questions to Von. See "OpenCode routes" below.
+- **Routing decisions are logged**, one line each (`Router: …`).
+- **Eight free OpenCode models**, several per route, with the next one taking
+  over when one fails. What each provider does with prompts is written above
+  them in `models.yaml`.
+- **OpenCode is pinned and kept apart.** The app starts it with updates off
+  and gives it folders of its own (`opencode.home`), so another OpenCode on
+  the machine cannot break it.
+- **Scrolling.** While a reply is written the chat follows it only if the
+  reader is at the bottom; scrolling up is no longer pulled back
+  (`follower()` in `frontend/index.html`).
+- **`requirements.txt`** for pip, generated from `backend/uv.lock`.
+- **`models.yaml`** has a header saying what to edit, with the local models
+  first.
+- That laptop's own config (`ollama/config.local/`, not in git) uses
+  `qwen3-gpu:latest` as the reasoning model and `num_gpu: 99` on the light
+  one; see the next section for why.
+- Every check in this file was run again there and passes. Still not tested:
+  Linux, a 16 GB GPU, `qwen3:14b`, two local models loaded at once.
 
 ## Current status — read before trusting anything
 
@@ -18,32 +67,112 @@ model, or a vision model.
   All eleven checks in "What to verify" pass there, with Von 1.3.7 loaded
   (10 by pointing the backend at a port with no Ollama, not by stopping it).
 - **Not run anywhere yet:** `qwen3:14b`, a 16 GB GPU, and two routed models
-  loaded at once. On 4 GB no routed model fits fully on the GPU at `num_ctx`
-  8192 and Ollama swaps models on every route change, so nothing measured
-  there says how fast the server will be.
+  loaded at once. On 4 GB Ollama swaps models on every route change, so
+  nothing measured there says how fast the server will be.
+- Left to itself, Ollama puts no routed model fully on a 4 GB GPU at `num_ctx`
+  8192: `qwen3:4b` ran 45% on the CPU at 17 tokens/s. Forcing every layer onto
+  the GPU fits: `num_gpu: 99` in an entry's `options`, or in the model itself
+  as `qwen3-gpu` on that laptop does. Measured: 45 tokens/s for `qwen3:4b`,
+  56 for `llama3.2:3b` (37 before). Worth trying on any GPU that is short of
+  memory; a model that does not fit this way fails to load.
 - So on the server the open questions are about hardware: do the models fit,
   do both routed models stay loaded, and how long do replies take. Expect
   small integration bugs anyway. Fix them, and report what you changed.
 
-## OpenCode route (cloud) — added after the Ollama test run
+## OpenCode routes (cloud) — added after the Ollama test run
 
-With Auto, the hardest engineering questions (architecture and system design,
-hard-to-find bugs such as deadlocks, races and memory leaks, large refactors)
-go to OpenCode's free cloud models instead of Ollama. Code:
-`ollama/ollama_pipeline/opencode.py`; config: `opencode:` and the `expert`
-route in `models.yaml`.
+With Auto, questions about software go to OpenCode's free cloud models instead
+of Ollama: everyday coding to the `code` route, and the hardest (architecture
+and system design, hard-to-find bugs such as deadlocks, races and memory
+leaks, large refactors) to the `expert` route. Mail, bills, documents and
+other reasoning stay on the local models. Code:
+`ollama/ollama_pipeline/opencode.py`; config: `opencode:`, the `opencode*`
+models and the `code` and `expert` routes in `models.yaml`.
 
-- Tested on macOS with OpenCode 1.18.34 and the real free model
-  `opencode/big-pickle`. **Not tested on Windows or Linux.** On Windows check
-  that the `opencode` shim starts from Python (`_server_client`), that the
-  server is gone after the backend stops (`taskkill /T` in `_kill`), and that
-  no `opencode serve` process is left behind.
+- Tested with OpenCode 1.18.34 and the real free model `opencode/big-pickle`
+  on macOS and on Windows 11; checks (a) to (g) below pass on both. **Not
+  tested on Linux.** On Windows the server starts from Python and no
+  `opencode serve` is left after a clean stop, a crash, or a killed process
+  tree (the last one leaves the empty temp folder behind). Not tried: killing
+  only the backend process.
+- **Use OpenCode 1.18.34; 2.x does not work.** `@opencode/cli` 2.0.22 is a
+  different npm package from the same authors. Its `serve` only has
+  `/api/...` routes (`POST /session` answers 405), so every cloud model shows
+  as unavailable and Auto quietly answers locally. Install the tested version
+  with `npm install -g opencode-ai@1.18.34`.
+- **If `opencode` on this machine is already a 2.x**, leave it and install the
+  old one into a folder: `npm install --prefix <folder> opencode-ai@1.18.34`,
+  then set `opencode.command` in `models.yaml` to
+  `<folder>/node_modules/.bin/opencode`.
+- **1.x and 2.x cannot share OpenCode's default data folder.** Once 2.x has
+  run, 1.x stops with "Database is not empty and has no session table". The
+  app therefore gives its OpenCode folders of its own: `opencode.home` in
+  `models.yaml`, by default `ollama/.opencode/` (not in git, safe to delete).
+  It also starts it with `OPENCODE_DISABLE_AUTOUPDATE`, so the installed
+  version is the one that runs.
+- How a message gets to the cloud (`router.py`), in this order:
+  1. Clear signs of software (`_SOFTWARE`: language names, code snippets,
+     pasted commands, file names like `app.py`, "write a code for", "fix this
+     bug", "git commit") send it there without asking Von.
+  2. Otherwise Von is asked whether the request is about software
+     (`_von_says_software`): two questions, and it must pass both. This is
+     what catches plain wording such as "make a landing page for my coffee
+     shop" or "can you build me a snake game".
+  3. `_EXPERT` then picks `expert` over `code`.
+  Everything else stays local, where Von chooses between `simple` and
+  `complex` as before. The server log has one line per decision, e.g.
+  `Router: code -> opencode-space-bunny (von, 0.902)`: read it first when a
+  message went somewhere unexpected.
+- Why two questions and not a third choice for Von. With `code` or `expert`
+  added to its choices Von was unsure on more than half of the sample
+  requests, so keyword rules decided and coding requests in plain words went
+  to the local model. One yes/no question alone was either too eager (it
+  called "hey" software) or too cautious. Passing both, on 35 samples: 15 of
+  16 software requests caught, 2 of 19 others let through (both asked for a
+  "script", for a film and for a school event). Each question costs Von about
+  0.4 s on a laptop CPU, so routing takes up to about a second.
+- `_SOFTWARE` is narrow on purpose: an everyday message it matches leaves the
+  machine without Von being asked, so words that are also everyday words
+  ("class", "error", "script", "java") are not in it.
+- **Software is checked before stickiness.** A code question goes to the cloud
+  even when a local model answered the message before it. A message with no
+  software word of its own ("add error handling to it") also goes there when
+  the chat is already about software: the request before it was a software
+  one, the last reply contains a code block, or a cloud model answered last
+  (`_cloud_route`, `_in_software_thread`; the reply header says "Routed by
+  context"). Requests for an email, translation or summary (`_EVERYDAY`) do
+  not follow the thread and go back to a local model. The "stay on the model
+  already answering" rule now applies to local models only.
+- When a software question stays local because the chat has attachments, the
+  reply carries a note saying so. Without it this looks like a routing bug.
+- Checks: after a local reply ask "now write it in html" and "can you code
+  this" → OpenCode; after a reply with code ask "add error handling to it" →
+  OpenCode ("context"); after an OpenCode reply ask "write an email to my boss
+  about it" → local light model; attach a PDF, then ask for code → local, with
+  the note.
+- Each cloud route lists several models (`model: [a, b, c]`). The first one
+  OpenCode offers answers. If it fails, the next answers and the reply says
+  so; after the last, the local heavy model. With another model lined up the
+  first failure is enough and OpenCode's own retries are not waited for: a
+  broken first model cost under 3 s in testing, against 75 s.
+- Models, tested 2026-10-04 with a coding task and a bug hunt: eight of the
+  nine free models that are not previews answered both correctly.
+  `ling-3.0-flash-fin-free` answered "Endpoint is unavailable" and is left out,
+  like `longcat-2.5-preview-free`. The free list changes; `opencode models`
+  shows the current one, and an id that is gone shows as unavailable.
+- **What the providers do with prompts differs** (https://opencode.ai/docs/zen
+  on that date). Space Bunny keeps nothing, which is why it is first in the
+  `code` route. Big Pickle, MiMo, Ling and Fledge "may be used to improve the
+  model". Nemotron is logged. Muse Spark trains future Meta models, so it is
+  in the picker but in no route. Check these before changing a route's order.
 - The backend starts its own `opencode serve` (127.0.0.1, random port, random
   password, empty temp folder) at startup and talks to it the way OpenCode's
   own `opencode run` does: create a session, send the prompt, read the event
   stream. The log prints `OpenCode: server ready at …` when it is up.
 - **Replies stream live.** Text comes from `message.part.delta` events and
   reaches the browser as it is written; first words usually within 5-10 s.
+  On an open question `big-pickle` can reason for over a minute first (87 s
+  for check (a) on one run); the Thinking block shows that as it happens.
   Each reply is a throwaway session that is aborted on Stop and then deleted.
 - **Do not customise the agent, its prompt, or which tools exist.** OpenCode's
   service answers "free tier can only be used from within OpenCode" (403) for
@@ -71,7 +200,14 @@ stays; (c) same question with a PDF attached → local reasoning model;
 model answers; (e) press Stop mid-reply → text stops at once; (f) pick
 OpenCode in the picker and ask it to "run `uname -s` with your shell tool" →
 the server log shows the rejection and the reply contains no real output of a
-command; (g) stop the backend → `opencode serve` is no longer running.
+command; (g) stop the backend → `opencode serve` is no longer running;
+(h) "write a python function for binary search and explain its complexity" →
+"Auto · OpenCode Space Bunny", and so does "make a landing page for my coffee
+shop" (tooltip: "Routed by von"); (i) follow with a longer request for an email →
+a local model answers; (j) put a model that fails first in a route
+(`opencode/ling-3.0-flash-fin-free` did on the test day) → the next model
+answers within seconds and the reply says which one could not. An id
+OpenCode does not offer at all is skipped without a note.
 
 ## Live generation in the UI
 
@@ -105,15 +241,24 @@ backend (a proxy that buffers) before changing the code.
 ## Setup
 
 Requirements: Python 3.11+ (3.12+ for Von), [uv](https://docs.astral.sh/uv/),
-[Ollama](https://ollama.com/download) running. Ask the user before installing
-Ollama or pulling models — models are several GB each.
+[Ollama](https://ollama.com/download) running, and for the cloud routes
+Node.js with OpenCode 1.18.34. Ask the user before installing Ollama or
+pulling models — models are several GB each.
 
 ```bash
+cd backend && uv sync --extra router    # Python packages, with the Von router
+npm install -g opencode-ai@1.18.34      # OpenCode, the tested version
 ollama pull llama3.2:3b      # "simple" route
 ollama pull qwen3:14b        # "complex" route (~9 GB)
 ollama pull gemma3:4b        # screenshots (optional)
 ./run.sh                     # http://127.0.0.1:8000
 ```
+
+Without uv, `pip install -r requirements.txt` from the repo root installs the
+same pinned versions (tested in a fresh environment on Windows), and
+`cd backend && python -m app` starts the server. The versions in use on the
+test laptop: Python 3.13, uv 0.11, Node 24, Ollama 0.32.5, OpenCode 1.18.34,
+Von 1.3.7.
 
 `run.sh` needs bash and `lsof` (macOS/Linux/WSL). On plain Windows run
 `powershell -ExecutionPolicy Bypass -File run.ps1` instead.
@@ -128,12 +273,21 @@ Check hosts and which configured models are pulled:
 cd backend && uv run --inexact python -m ollama_pipeline
 ```
 
+### Models: one file
+
+`ollama/config/models.yaml` is the only place that names models: the Ollama
+tags, the OpenCode ids, and which route uses which. To use other local models,
+change the `model:` tag and the `label:` of the `general`, `reasoning` and
+`vision` entries (the file's header says the same) and restart. Any other
+model pulled in Ollama appears in the picker by itself (`discover: true`).
+`python -m ollama_pipeline` shows what is ready.
+
 ### Fit the models to this machine's hardware
 
 Check GPU memory first (`nvidia-smi`, or system info on a Mac).
-`ollama/config/` targets the production server. On any other machine copy that
-folder to `ollama/config.local/` and edit the copy: it is ignored by git and
-used automatically when present. The server log and
+`ollama/config/` targets the production server: edit it there. On any other
+machine copy that folder to `ollama/config.local/` and edit the copy: it is
+ignored by git and used automatically when present. The server log and
 `python -m ollama_pipeline` print which folder is in use. In `models.yaml`:
 
 - If `qwen3:14b` does not fit, point the `reasoning` entry at a smaller tag
@@ -162,7 +316,7 @@ Send these with **Auto** selected. Each reply's header shows the model used
 | # | Do this | Expected |
 | - | ------- | -------- |
 | 1 | "write an email to my manager asking for leave" | light model answers |
-| 2 | "write a python function for binary search and explain its complexity" | reasoning model answers |
+| 2 | "review this contract clause and tell me the risks for the tenant: the tenant pays all repairs" | reasoning model answers |
 | 3 | After #2, "make it shorter" | stays on the reasoning model |
 | 4 | Attach a text PDF, ask a question about its content | reasoning model; answer uses the PDF |
 | 5 | Attach a .docx, ask about it | same |
@@ -179,9 +333,10 @@ and on the GPU. If Ollama unloads one each time the route changes, set
 
 Confirmed with Ollama 0.32.5 and Von 1.3.7:
 - `qwen3` is a thinking model. Thinking arrives as separate `thinking` events
-  and is shown live in the "Thinking…" block (added after that test run, so
-  not yet seen with real Ollama). On older Ollama versions it may arrive
-  inline as `<think>…</think>` text instead, which would show up in the answer.
+  and is shown live in the "Thinking…" block (seen with real Ollama: it
+  filled for 61 s, then folded to "Thought for 61s"). On older Ollama
+  versions it may arrive inline as `<think>…</think>` text instead, which
+  would show up in the answer.
   On slow hardware the thinking can last a minute.
 - Vision detection uses `capabilities` from Ollama's `/api/show`, which
   0.32.5 reports.
@@ -198,14 +353,18 @@ Confirmed with Ollama 0.32.5 and Von 1.3.7:
 ```
 frontend/index.html              whole UI (one file)
 backend/app/routes.py            API endpoints
-ollama/config/models.yaml        hosts, models, routes, num_ctx  ← most changes go here
+ollama/config/models.yaml        every model, route and num_ctx  ← the one file for models
 ollama/config.local/             optional per-machine copy of config/, not in git
+ollama/.opencode/                the app's OpenCode keeps its own data here, not in git
 ollama/ollama_pipeline/
   router.py                      which model answers (Von + keyword rules)
-  pipeline.py                    builds the prompt, streams the reply
+  pipeline.py                    builds the prompt, streams the reply, falls back
   registry.py                    which models exist / are pulled
+  opencode.py                    runs OpenCode's server and streams from it
   documents.py                   PDF/DOCX/text → text
   client.py                      raw calls to Ollama
+requirements.txt                 pinned Python packages for pip, made from backend/uv.lock
+run.sh, run.ps1                  start the app (macOS/Linux, Windows)
 ```
 
 ## Rules
@@ -220,7 +379,8 @@ ollama/ollama_pipeline/
 - Backend or `ollama/` changes need a server restart. Frontend changes only
   need a browser refresh.
 - New Python dependency: add it to the right `pyproject.toml`, then
-  `cd backend && uv sync --inexact` (plain `uv sync` removes the Von extra).
+  `cd backend && uv sync --inexact` (plain `uv sync` removes the Von extra),
+  and regenerate `requirements.txt` with the command in its header.
 - Do not commit `.env`, model weights or the user's documents.
 - Work on a branch and open a pull request against `main`; do not push to
   `main` directly.

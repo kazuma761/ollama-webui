@@ -4,6 +4,12 @@ The decision comes from Von (a small non-generative decision model) when it
 is installed and confident. In every other case - Von missing, still
 loading, erroring, slow or unsure - plain keyword rules decide instead, so
 routing can never be the reason a chat fails.
+
+Requests about software can have routes of their own whose models run in the
+cloud. Those are taken on clear keywords, on a chat that is already about
+software, or on a confident Von - and never by a conversation that has had an
+attachment. They are checked before anything that keeps a chat on the model
+already answering, so a local reply never holds later code questions back.
 """
 
 from __future__ import annotations
@@ -32,23 +38,94 @@ _HARD = re.compile(
     r"code|coding|function|class|method|bug|debug|error|exception|traceback|stack trace|compile|"
     r"algorithm|complexity|refactor|optimi[sz]e|regex|sql|query|schema|api|endpoint|script|"
     r"python|javascript|typescript|java|rust|golang|c\+\+|c#|bash|docker|kubernetes|"
-    r"prove|proof|derive|calculate|equation|probability|logic|logical|reasoning|"
+    r"prove|proof|derive|solve|calculate|equation|probability|logic|logical|reasoning|"
     r"architecture|design a|trade-?offs?|step[- ]by[- ]step|analy[sz]e|evaluate|compare|"
     r"root cause|why does|why is|explain why"
     r")\b",
     re.IGNORECASE,
 )
-# Signals for the expert (cloud) route: system design and the kinds of bug that are hard to find.
+# Signals that a request is about software, for the cloud routes. Deliberately narrow, the
+# opposite of _HARD: a coding question that is missed only gets a local answer, but an everyday
+# message that matches leaves this machine. So nothing that is also an everyday word ("class",
+# "error", "script", "java", "react"); Von picks up what these miss.
+_SOFTWARE = re.compile(
+    r"```|`[^`\n]+`|==|!=|&&|\|\||\+=|\w\s*=\s*[\[{]|\b\w+\.\w+\(|\b(print|printf|println|len|range)\(|\bc\+\+|\bc#|"
+    # pasted commands: `$name = ...`, `2>&1`, ` --flag`, file names such as app.py or tool.exe
+    r"\$\w+\s*=|2>&1|\s--[a-z][\w-]+|\b[\w-]+\.(py|js|ts|jsx|tsx|json|ya?ml|html|css|sh|ps1|exe|sql|cpp|java|go|rs)\b|"
+    r"\b("
+    r"(write|give|create|make|generate|show|need|want)\w* (me )?(a |an |the |some )?code|"
+    # "code" on its own, but not the everyday kinds (zip code, promo code, dress code ...)
+    r"(?<!zip )(?<!pin )(?<!qr )(?<!otp )(?<!area )(?<!promo )(?<!dress )(?<!postal )(?<!coupon )"
+    r"(?<!country )(?<!discount )(?<!security )(?<!verification )code(?! of conduct)|"
+    r"implement\w*|"
+    r"(build|make|create|develop|design)\w* (me )?(a |an |the |this |that |it as an? )?([\w-]+ )?"
+    r"(app|web ?site|web ?page|landing page|web ?app|chat ?bot|dashboard|browser extension|plugin)|"
+    r"(write|create|make|build)\w* (me )?(a |an )?(\w+ )?program (to|that|which)|node_modules|"
+    r"python|javascript|typescript|golang|kotlin|php|sql|mysql|postgres\w*|sqlite|mongodb|redis|"
+    r"html|css|json|yaml|xml|regex|powershell|linux|(bash|shell) script|"
+    r"git|github|gitlab|docker\w*|kubernetes|k8s|npm|nginx|node\.?js|django|fastapi|numpy|pytorch|tensorflow|"
+    r"source code|codebase|coding|programming|programmer|apis?|endpoint|backend|frontend|"
+    r"(write|fix|debug|refactor|review|optimi[sz]e|explain|run|test)\w* (the |this |my |some |that |your )?code|"
+    r"writ\w+ (a |an |the |me a )?(\w+ )?function|(fix|find|found|debug)\w* (the |this |my |a |that )?bug|"
+    r"stack ?trace|traceback|syntax error|runtime error|compiler|compile error|compilation|null pointer|"
+    r"segfault|segmentation fault|unit tests?|pull request|merge conflict|graphql|dockerfile|localhost|"
+    r"algorithm|recursion|binary search|time complexity|data structures?|linked list|hash ?(map|table)|"
+    r"(for|while|infinite) loop|database (schema|query|table|index|migration)|debug\w*|refactor\w*|"
+    r"microservices?|system design|software (architecture|design|engineering)|"
+    r"design (a|an|the|our|my) [\w\s-]{0,40}(system|service|platform|pipeline|backend|schema|api)|"
+    r"race conditions?|deadlock\w*|memory leaks?|concurrency|thread[- ]safe\w*|heisenbug|"
+    r"load balanc\w+|message queue|event[- ]driven"
+    r")\b",
+    re.IGNORECASE,
+)
+# Among requests about software, the ones for the expert route: system design and the kinds
+# of bug that are hard to find.
 _EXPERT = re.compile(
     r"\b("
     r"architecture|architect|system design|design (a|an|the|our|my) [\w\s-]{0,40}(system|service|platform|pipeline|backend|schema|api)|"
     r"microservices?|distributed|scalab\w+|high availability|load balanc\w+|event[- ]driven|message queue|"
-    r"race condition|deadlock|memory leak|concurrency|thread[- ]safe\w*|segfault|segmentation fault|"
-    r"bottleneck|intermittent\w*|flaky|heisenbug|hard to (debug|reproduce)|"
+    r"race conditions?|deadlock\w*|memory leaks?|concurrency|thread[- ]safe\w*|segfault|segmentation fault|"
+    r"bottlenecks?|intermittent\w*|flaky|heisenbug|hard to (debug|reproduce)|"
     r"refactor\w*|migrat\w+|design patterns?|trade-?offs?"
     r")\b",
     re.IGNORECASE,
 )
+# What Von is asked when the keywords above find nothing: is this request about software?
+# Two questions, and a request goes to the cloud only if it passes both. Tried on 35 sample
+# requests, the first alone also says yes to "hey" and to an email about a website, and the
+# second alone to a maths problem; together they caught 15 of 16 software requests and let
+# through 2 of 19 others (both asked for a "script" - for a film and for a school event).
+_SOFTWARE_QUESTION = "Is this request about software?"
+_SOFTWARE_YES = (
+    "Software, code or websites: writing, fixing, explaining or reviewing code, scripts, commands, "
+    "queries or configuration; building an app, a website or a web page; error messages, "
+    "developer tools, APIs, databases, system design."
+)
+_SOFTWARE_NO = (
+    "Anything else: emails, messages and letters, translation, summaries, bills and invoices, "
+    "contracts and documents, maths and logic problems, general knowledge, advice, small talk."
+)
+_SOFTWARE_MIN = 0.85
+_SOFTWARE_CONFIRM = (
+    "Is the user asking for help with code, programming, building a website or app, "
+    "or a technical computer problem?"
+)
+
+# In a chat that is already about software, a request for one of these goes back to a local
+# model instead of following the thread to the cloud.
+_EVERYDAY = re.compile(
+    r"\b("
+    r"(write|draft|compose|send|prepare)\w* (me )?(a |an |the |my )?(\w+ )?(e-?mail|mail|message|letter|reply|note|post|caption|essay|poem|story|speech)|"
+    r"translat\w+|summar\w+|rephrase|reword|paraphrase|proof-?read|grammar|"
+    r"leave (application|letter|request)|cover letter|resume|invoice|whatsapp|linkedin"
+    r")\b",
+    re.IGNORECASE,
+)
+_KEPT_LOCAL = (
+    "Answered by a local model: this chat has attached files, and those never go to OpenCode. "
+    "Start a new chat to ask OpenCode."
+)
+
 _LONG_REQUEST_CHARS = 800
 # A message this short with no hard signal ("make it shorter", "and in French?") is
 # treated as a follow-up to whatever the current model was already doing.
@@ -59,11 +136,13 @@ _FOLLOW_UP_WORDS = 8
 class Decision:
     model: str  # id of the model entry to use
     route: str | None  # route name, None for the image rule
-    source: str  # "von" | "rules" | "sticky" | "image"
+    source: str  # "von" | "rules" | "context" | "sticky" | "image"
     confidence: float | None = None
+    note: str | None = None  # shown to the user with the reply
 
     def event(self) -> dict[str, Any]:
-        return {"route": self.route, "source": self.source, "confidence": self.confidence}
+        event = {"route": self.route, "source": self.source, "confidence": self.confidence}
+        return {**event, "note": self.note} if self.note else event
 
 
 def _last_user(messages: list[dict[str, Any]]) -> dict[str, Any]:
@@ -73,6 +152,17 @@ def _last_user(messages: list[dict[str, Any]]) -> dict[str, Any]:
 def _previous_model(messages: list[dict[str, Any]]) -> str | None:
     """The model that wrote the latest reply, as recorded by the frontend."""
     return next((m.get("model") for m in reversed(messages) if m["role"] == "assistant" and m.get("model")), None)
+
+
+def _in_software_thread(messages: list[dict[str, Any]]) -> bool:
+    """True when the chat is already about software: the request before this one was a
+    software request, or the reply to it has code in it."""
+    earlier = messages[:-1]
+    reply = next((m for m in reversed(earlier) if m["role"] == "assistant"), None)
+    request = next((m for m in reversed(earlier) if m["role"] == "user"), None)
+    return bool(reply and "```" in (reply.get("content") or "")) or bool(
+        request and _SOFTWARE.search(request.get("content") or "")
+    )
 
 
 def _state(message: dict[str, Any]) -> str:
@@ -98,11 +188,16 @@ class Router:
     def models(self) -> list[str]:
         """Every model id routing can pick, in fallback order: local heavy, local light, the rest, cloud last."""
         config = self.config
-        local = [r for r in config.routes if r.name != config.expert_route]
+        cloud = self._cloud()
+        local = [r for r in config.routes if r.name not in cloud]
         ordered = [config.route(config.heavy_route), config.route(config.default_route), *local]
-        ids = [r.model for r in ordered if r] + ([config.image_model] if config.image_model else [])
-        expert = config.route(config.expert_route)
-        return list(dict.fromkeys(ids + ([expert.model] if expert else [])))
+        ids = [m for r in ordered if r for m in r.models] + ([config.image_model] if config.image_model else [])
+        ids += [m for r in config.routes if r.name in cloud for m in r.models]
+        return list(dict.fromkeys(ids))
+
+    def _cloud(self) -> set[str]:
+        """Names of the routes whose models are not on this machine."""
+        return {self.config.code_route, self.config.expert_route} - {""}
 
     # ── Von ──
 
@@ -131,12 +226,26 @@ class Router:
             threading.Thread(target=self._load_von, name="router-warmup", daemon=True).start()
 
     def _ask_von(self, state: str) -> tuple[str, float]:
+        # Von only chooses between the local routes. Every route added to the choice makes it
+        # less sure of all of them, and it cannot tell the cloud routes from "complex";
+        # `_von_says_software` asks about those separately.
+        local = [r for r in self.config.routes if r.name not in self._cloud()]
         result = self._von.decide(
             state=state,
-            choices={r.name: r.description for r in self.config.routes},
+            choices={r.name: r.description for r in local},
             instructions=self.config.instructions,
         )
         return result.choice, float(result.confidence)
+
+    def _von_says_software(self, state: str) -> float | None:
+        """How sure Von is that the request is about software, or None when it is not."""
+        first = self._von.decide(
+            state=state, choices={"software": _SOFTWARE_YES, "other": _SOFTWARE_NO}, instructions=_SOFTWARE_QUESTION
+        )
+        sure = float(first.probabilities["software"])
+        if sure < _SOFTWARE_MIN or self._von.judge(state=state, instructions=_SOFTWARE_CONFIRM) < 0.5:
+            return None
+        return sure
 
     # ── Rules ──
 
@@ -147,47 +256,122 @@ class Router:
     def _is_follow_up(self, message: dict[str, Any]) -> bool:
         return not self._is_hard(message) and len((message.get("content") or "").split()) <= _FOLLOW_UP_WORDS
 
-    def _by_rules(self, message: dict[str, Any]) -> str:
+    def _software_route(self, message: dict[str, Any]) -> str:
+        """The cloud route for a request about software, or "" when there is none for it.
+
+        The expert route takes system design and hard-to-find bugs, the code route the rest.
+        """
         config = self.config
         if config.expert_route and _EXPERT.search(message.get("content") or ""):
             return config.expert_route
+        return config.code_route
+
+    def _by_rules(self, message: dict[str, Any]) -> str:
+        config = self.config
+        if _SOFTWARE.search(message.get("content") or "") and self._software_route(message):
+            return self._software_route(message)
         return config.heavy_route if self._is_hard(message) else config.default_route
 
     def _keep_local(self, route_name: str, messages: list[dict[str, Any]]) -> str:
-        """A conversation that has had any attachment never goes to the cloud route.
+        """A conversation that has had any attachment never goes to a cloud route.
 
         That covers the documents themselves and what local models said about them.
         """
         private = any(m.get("files") or m.get("images") for m in messages)
-        if route_name == self.config.expert_route and private:
+        if route_name in self._cloud() and private:
             return self.config.heavy_route
         return route_name
 
     # ── Decision ──
 
+    def _cloud_route(self, messages: list[dict[str, Any]], current: Any) -> tuple[str, str]:
+        """The cloud route this message belongs on and why, before the privacy rule; ("", "") if none."""
+        message = _last_user(messages)
+        text = message.get("content") or ""
+        route = self._software_route(message)
+        if not route:
+            return "", ""
+        if _SOFTWARE.search(text):
+            return route, "rules"
+        # No software word of its own ("add error handling to it"), but the chat is about
+        # software: it follows the thread, on the cloud route already in use if there is one.
+        on_cloud = bool(current and current.name in self._cloud())
+        if (on_cloud or _in_software_thread(messages)) and not _EVERYDAY.search(text):
+            return (current.name if on_cloud and route != self.config.expert_route else route), "context"
+        return "", ""
+
     async def decide(self, messages: list[dict[str, Any]]) -> Decision:
+        decision = await self._decide(messages)
+        # The reason a message went where it did, without the message itself.
+        log.info(
+            "Router: %s -> %s (%s%s)",
+            decision.route or "image",
+            decision.model,
+            decision.source,
+            "" if decision.confidence is None else f", {decision.confidence}",
+        )
+        return decision
+
+    async def _decide(self, messages: list[dict[str, Any]]) -> Decision:
         config = self.config
         message = _last_user(messages)
 
         if message.get("images") and config.image_model:
             return Decision(config.image_model, None, "image")
 
+        # The model that answered last, and its route - unless that is a cloud route and the
+        # chat now has attachments in it.
         previous = _previous_model(messages)
-        current = next((r for r in config.routes if r.model == previous), None)
+        current = next((r for r in config.routes if r.model == previous), None) or next(
+            (r for r in config.routes if previous in r.models), None
+        )
+        if current and self._keep_local(current.name, messages) != current.name:
+            current = None
 
-        # A short follow-up like "make it shorter" stays with the model already in use. This is
-        # checked before Von: it only reads the latest message, and on its own such a message
-        # looks like an easy request no matter how hard the task it refers to is.
-        if current and self._is_follow_up(message) and self._keep_local(current.name, messages) == current.name:
-            return Decision(current.model, current.name, "sticky")
+        # Software first, before anything that keeps the chat where it is: a local reply
+        # earlier in the chat must not hold a later code question back.
+        note = None
+        wanted, why = self._cloud_route(messages, current)
+        if wanted:
+            if self._keep_local(wanted, messages) == wanted:
+                same = bool(current and current.name == wanted)
+                return Decision(previous if same else config.route(wanted).model, wanted, why)
+            note = _KEPT_LOCAL  # the privacy rule won; say so instead of staying silently local
+
+        decision = await self._decide_local(messages, message, previous, current)
+        return Decision(decision.model, decision.route, decision.source, decision.confidence, note)
+
+    async def _decide_local(
+        self, messages: list[dict[str, Any]], message: dict[str, Any], previous: str | None, current: Any
+    ) -> Decision:
+        """Everything after the software check: follow-ups, Von, then keyword rules."""
+        config = self.config
+
+        # A short follow-up like "make it shorter" stays with the local model already in use.
+        # This is checked before Von: it only reads the latest message, and on its own such a
+        # message looks like an easy request no matter how hard the task it refers to is.
+        if current and current.name not in self._cloud() and self._is_follow_up(message):
+            return Decision(previous, current.name, "sticky")
+
+        by_rules = self._keep_local(self._by_rules(message), messages)
 
         confidence = None
         if self._von is not None:
             try:
+                state = _state(message)
+                # Software the keywords did not catch ("make a landing page for my shop"): the
+                # cloud, unless the chat has attachments or there is no cloud route for it.
+                cloud = self._software_route(message)
+                if cloud and self._keep_local(cloud, messages) == cloud:
+                    sure = await asyncio.wait_for(
+                        asyncio.to_thread(self._von_says_software, state), DECIDE_TIMEOUT_SECONDS
+                    )
+                    if sure is not None:
+                        return Decision(config.route(cloud).model, cloud, "von", round(sure, 3))
                 name, confidence = await asyncio.wait_for(
-                    asyncio.to_thread(self._ask_von, _state(message)), DECIDE_TIMEOUT_SECONDS
+                    asyncio.to_thread(self._ask_von, state), DECIDE_TIMEOUT_SECONDS
                 )
-                route = config.route(self._keep_local(name, messages))
+                route = config.route(name)
                 if route and confidence >= config.min_confidence:
                     return Decision(route.model, route.name, "von", round(confidence, 3))
             except Exception:
@@ -195,9 +379,10 @@ class Router:
 
         confidence = round(confidence, 3) if confidence is not None else None
 
-        # Von looked and was unsure: stay with the model already in use.
-        if current and confidence is not None and self._keep_local(current.name, messages) == current.name:
-            return Decision(current.model, current.name, "sticky", confidence)
+        # Von looked and was unsure: stay with the model already in use, if it is a local one.
+        # A chat does not stay in the cloud on a message that is not about software.
+        if current and confidence is not None and current.name not in self._cloud():
+            return Decision(previous, current.name, "sticky", confidence)
 
-        route = config.route(self._keep_local(self._by_rules(message), messages))
+        route = config.route(by_rules)
         return Decision(route.model, route.name, "rules", confidence)
