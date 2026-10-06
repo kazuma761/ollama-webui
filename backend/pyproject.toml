@@ -9,6 +9,7 @@ dependencies = [
     "python-dotenv>=1.0",
     "python-multipart>=0.0.9",
     "ollama-pipeline",
+    "document-engine",
 ]
 
 [project.optional-dependencies]
@@ -19,3 +20,4 @@ package = false
 
 [tool.uv.sources]
 ollama-pipeline = { path = "../ollama", editable = true }
+document-engine = { path = "../documents", editable = true }

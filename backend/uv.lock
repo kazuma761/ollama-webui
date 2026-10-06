@@ -160,6 +160,21 @@ nvtx = [
 ]
 
 [[package]]
+name = "document-engine"
+version = "0.1.0"
+source = { editable = "../documents" }
+dependencies = [
+    { name = "ollama-pipeline" },
+    { name = "python-docx" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "ollama-pipeline", editable = "../ollama" },
+    { name = "python-docx", specifier = ">=1.1" },
+]
+
+[[package]]
 name = "fastapi"
 version = "0.142.2"
 source = { registry = "https://pypi.org/simple" }
@@ -181,6 +196,7 @@ name = "fastshot-backend"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
+    { name = "document-engine" },
     { name = "fastapi" },
     { name = "ollama-pipeline" },
     { name = "python-dotenv" },
@@ -195,6 +211,7 @@ router = [
 
 [package.metadata]
 requires-dist = [
+    { name = "document-engine", editable = "../documents" },
     { name = "fastapi", specifier = ">=0.115" },
     { name = "ollama-pipeline", editable = "../ollama" },
     { name = "ollama-pipeline", extras = ["router"], marker = "extra == 'router'", editable = "../ollama" },
@@ -898,7 +915,6 @@ source = { editable = "../ollama" }
 dependencies = [
     { name = "httpx" },
     { name = "pypdf" },
-    { name = "python-docx" },
     { name = "pyyaml" },
 ]
 
@@ -911,7 +927,6 @@ router = [
 requires-dist = [
     { name = "httpx", specifier = ">=0.27" },
     { name = "pypdf", specifier = ">=5.0" },
-    { name = "python-docx", specifier = ">=1.1" },
     { name = "pyyaml", specifier = ">=6.0" },
     { name = "von-sdk", marker = "python_full_version >= '3.12' and extra == 'router'", specifier = ">=1.3" },
 ]

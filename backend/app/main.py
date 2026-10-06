@@ -6,7 +6,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from .settings import settings  # isort: skip - loads .env before the pipeline reads the environment
-from ollama_pipeline import DocumentService, Registry, Router, load_config
+from document_engine import DocumentService
+from ollama_pipeline import Registry, Router, load_config
 
 from .documents import Library, Store, router as documents_router
 from .routes import router

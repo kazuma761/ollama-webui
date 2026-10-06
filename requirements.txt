@@ -16,9 +16,10 @@
 # Do not edit by hand. After changing a pyproject.toml, regenerate everything
 # below this header with:
 #   cd backend && uv export --format requirements-txt --no-hashes --no-annotate --no-header --extra router
-# and change `-e ../ollama` to `-e ./ollama`.
+# and change `-e ../ollama` to `-e ./ollama` and `-e ../documents` to `-e ./documents`.
 
 -e ./ollama
+-e ./documents
 accelerate==1.15.0 ; python_full_version >= '3.12'
 annotated-doc==0.0.5
 annotated-types==0.8.0

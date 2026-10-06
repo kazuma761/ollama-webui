@@ -33,7 +33,7 @@ from docx.document import Document as DocumentType
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 
-from .documents import UnsupportedDocument
+from ollama_pipeline import UnsupportedDocument
 
 MAX_FIELDS = 200
 

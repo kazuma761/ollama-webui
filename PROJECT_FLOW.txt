@@ -5,7 +5,7 @@ WHAT IT IS
 A chat web app for local Ollama models. The user picks a model, types a
 prompt (optionally attaching files or screenshots), and the reply streams back.
 
-FOLDERS (each has one job; calls only go frontend -> backend -> ollama)
+FOLDERS (each has one job; calls only go frontend -> backend -> documents -> ollama)
   frontend/   index.html - the whole UI (HTML + CSS + JS in one file).
               documents.html - the Word documents page (the Docs link).
               Talks to the backend only through /api/* over HTTP.
@@ -26,11 +26,14 @@ FOLDERS (each has one job; calls only go frontend -> backend -> ollama)
                 ollama_pipeline/opencode.py   cloud answers via `opencode serve`
                 ollama_pipeline/pipeline.py   builds messages, streams reply
                 ollama_pipeline/documents.py  PDF/DOCX/text -> plain text
-                ollama_pipeline/wordfile.py   finds the blanks of a Word file, fills them
-                ollama_pipeline/wordedit.py   edit operations on a Word file; Markdown -> Word
-                ollama_pipeline/docgen.py     what the model is asked for the documents page
-                ollama_pipeline/slotmap.py    what each line of a designed template is for
-                ollama_pipeline/render.py     fills a designed template, copying/removing blocks
+  documents/  The Word documents page (package document_engine), separate
+              from the chat code. It uses ollama/ for models and settings.
+                document_engine/engine/   works on Word files, no model:
+                    wordfile.py   find blanks, fill   wordedit.py  edit, Markdown -> Word
+                    slotmap.py    template labels     render.py    fill a designed template
+                document_engine/model/    the model's part:
+                    prompts.py    what the model is told   service.py  the calls
+              Its HTTP side is backend/app/documents/ (routes, storage, schemas).
   run.sh      starts the backend on http://127.0.0.1:8000
   run.ps1     the same for Windows PowerShell
 

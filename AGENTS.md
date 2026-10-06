@@ -17,7 +17,8 @@ This branch adds the Word documents page. On a machine that already runs the
 app, these are the only steps:
 
 1. **Get the branch.** `git fetch && git checkout 6-documents`
-2. **Install the one new package** (`python-docx`, which brings `lxml`):
+2. **Install the new packages** (the project's own `documents/` package and
+   `python-docx`, which brings `lxml`):
    `cd backend && uv sync --extra router --inexact`
    Without uv: `pip install -r requirements.txt` from the repo root.
 3. **Pull the documents model:** `ollama pull qwen3:14b` (about 9 GB).
@@ -271,10 +272,8 @@ downloadable `.docx`.
 - **The model never writes the Word file.** It answers in JSON (which blank
   gets which value, or which edit operations to run) and the app's own code
   applies that to a copy of the uploaded file, so the rest of the file is
-  untouched. Code: `ollama_pipeline/wordfile.py` (find blanks, fill),
-  `wordedit.py` (fixed list of edit operations, Markdown -> Word),
-  `docgen.py` (prompts and JSON-schema calls), `backend/app/documents.py`
-  (uploads, versions, downloads).
+  untouched. The feature has folders of its own, see "Where the documents
+  code is" just below.
 - **Local models only.** `documents.allow_cloud` in `models.yaml` is false and
   must stay false on the server; it exists only to try the page on a machine
   without Ollama.
@@ -285,6 +284,35 @@ downloadable `.docx`.
   after `documents.keep_hours`.
 - Needs `python-docx` (in `requirements.txt` and the uv lock). Accepts `.docx`
   and `.dotx`; refuses old `.doc`, macro files and password-protected files.
+
+### Where the documents code is
+
+Separate from the chat code. Nothing for this page lives in `ollama/` or in
+`backend/app/routes.py`.
+
+```
+documents/                         the feature itself (package `document_engine`)
+  document_engine/
+    engine/                        works on Word files. No model.
+      wordfile.py                    open, number paragraphs and text boxes, find blanks, fill
+      wordedit.py                    the fixed list of edit operations; Markdown -> Word
+      slotmap.py                     labels of a designed template -> its slot map
+      render.py                      fill a designed template, copy/remove repeated blocks
+    model/                         the model's part. It decides, it never writes a file.
+      prompts.py                     every instruction the model gets + the JSON it must answer in
+      service.py                     sends them to the local model, checks the answers
+backend/app/documents/             the HTTP side
+  routes.py                          /api/documents/... endpoints
+  storage.py                         uploads, versions, the template library on disk
+  schemas.py                         request bodies
+frontend/documents.html            the page
+```
+
+What is shared with the chat side, on purpose: the model registry and Ollama
+client (`ollama_pipeline`), the `documents:` block and model list in
+`ollama/config/models.yaml`, and `UnsupportedDocument`. To change what the
+model is told, edit `model/prompts.py` only. To change what happens to a
+file, edit `engine/`.
 
 ### Designed templates (a resume, a report with a fixed look)
 
@@ -303,8 +331,13 @@ the body (tables, text boxes). It goes through the **Template library** tab:
    copied for more items and removed for fewer, text boxes are written in both
    their copies, skill-chip boxes can be dropped but not added.
 
-Code: `slotmap.py` (labels -> slot map, JSON schema for the model),
-`render.py` (fill + clone/remove), `docgen.prepare` / `docgen.extract`.
+Code: `engine/slotmap.py` (labels -> slot map, JSON schema for the model),
+`engine/render.py` (fill + clone/remove), `prepare` and `extract` in
+`model/service.py` with their instructions in `model/prompts.py`.
+
+The label view shows the whole template and scrolls with the page; its
+controls are docked at the bottom of the screen (`.dock`). Do not put the
+template back into a fixed-height box: on a 12-page file that reads as stuck.
 
 Rules to keep:
 - "Write a new one" never replaces the body of a designed template
@@ -331,7 +364,7 @@ write over a designed template. Looked at with macOS Quick Look only.
 - No file was opened in Word or LibreOffice. Open one result in Word and
   confirm there is no repair prompt (copied text boxes get new drawing ids).
 - LibreOffice is not installed here, so the PDF preview path
-  (`_pdf` in `backend/app/documents.py`) is untested; it is skipped when
+  (`_pdf` in `backend/app/documents/routes.py`) is untested; it is skipped when
   `soffice` is missing.
 - Only the resume template was tried; a second kind (report, letter with a
   table) still needs to go through prepare -> fill.
@@ -467,16 +500,20 @@ ollama/ollama_pipeline/
   pipeline.py                    builds the prompt, streams the reply, falls back
   registry.py                    which models exist / are pulled
   opencode.py                    runs OpenCode's server and streams from it
-  documents.py                   PDF/DOCX/text → text
+  documents.py                   PDF/DOCX/text → text (chat attachments)
   client.py                      raw calls to Ollama
+documents/document_engine/       the Word documents page: engine/ (files) and model/ (prompts, calls)
+backend/app/documents/           its HTTP routes and storage
+frontend/documents.html          its page
 requirements.txt                 pinned Python packages for pip, made from backend/uv.lock
 run.sh, run.ps1                  start the app (macOS/Linux, Windows)
 ```
 
 ## Rules
 
-- Calls go one way: `frontend → backend → ollama`. No Ollama-specific code in
-  `backend/`; it only calls the `ollama_pipeline` package.
+- Calls go one way: `frontend → backend → documents → ollama`. No Ollama-specific
+  code in `backend/`; it only calls the `ollama_pipeline` and `document_engine`
+  packages. `ollama/` never imports from `documents/`.
 - Routing must never block a chat. Any router failure falls back to keyword
   rules; a missing routed model falls back to another one. Keep it that way.
 - `frontend/index.html` follows a pixel-exact design. On desktop the composer

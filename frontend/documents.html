@@ -136,7 +136,7 @@ select option{background:#1c1c1f}
 .live{white-space:pre-wrap;font-size:13.5px;line-height:1.55;max-height:340px;overflow-y:auto;scrollbar-width:thin;padding:12px 14px;border-radius:12px;background:rgba(0,0,0,.28)}
 
 /* Rough preview of the document's text */
-.paper{margin-top:14px;padding:22px clamp(16px,4vw,34px);border-radius:10px;background:#F7F7F5;color:#1b1b1d;max-height:460px;overflow-y:auto;font-size:13.5px;line-height:1.55}
+.paper{margin-top:14px;padding:22px clamp(16px,4vw,34px);border-radius:10px;background:#F7F7F5;color:#1b1b1d;max-height:min(72vh,820px);overflow-y:auto;overscroll-behavior:contain;font-size:13.5px;line-height:1.55}
 .paper p{margin:0 0 8px;white-space:pre-wrap;overflow-wrap:anywhere;min-height:.6em}
 .paper .l0{font-size:22px;font-weight:600;margin:0 0 12px}
 .paper .l1{font-size:17px;font-weight:650;margin:14px 0 6px;color:#1F3F66}
@@ -159,6 +159,12 @@ select option{background:#1c1c1f}
 .legend{display:flex;flex-wrap:wrap;gap:6px 14px;margin:10px 0 0;font-size:12.5px;color:var(--muted)}
 .legend i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:5px;vertical-align:-1px}
 .r-fixed{background:#cfcfcb} .r-field{background:#9fdcb5} .r-group{background:#a9c7f5} .r-none{background:#f3d9a4}
+/* The label view shows the whole template and scrolls with the page: no window inside a window.
+   Its controls stay docked at the bottom of the screen, so any line on any page can be edited. */
+.paper.labelled{max-height:none;overflow:visible}
+.dock{position:sticky;bottom:10px;z-index:5;margin-top:14px;padding:12px;border-radius:16px;background:rgba(24,24,27,.97);box-shadow:inset 0 0 0 1px var(--line),0 -10px 30px rgba(0,0,0,.35)}
+.dock .editor{margin-top:0;padding:0 0 10px;background:none}
+.dock .hint{margin:0 0 10px}
 .labelled p[data-id]{cursor:pointer;border-radius:4px;padding:1px 5px;margin-left:-5px;border-left:3px solid transparent}
 .labelled p[data-id]:hover{outline:1px solid #8a8a86}
 .labelled p[data-role="fixed"]{background:#e6e6e2;border-left-color:#a9a9a4}
@@ -236,6 +242,7 @@ select option{background:#1c1c1f}
     </div>
     <div class="status idle gap" id="prep-status" hidden><i></i><span></span></div>
     <div class="paper labelled" id="prep-paper"></div>
+    <div class="dock">
     <div class="editor" id="label-editor" hidden>
       <div><label for="le-role">This line</label><select id="le-role">
         <option value="fixed">stays as it is</option><option value="field">single value</option>
@@ -245,10 +252,11 @@ select option{background:#1c1c1f}
       <div><label for="le-inst">Item no.</label><input class="in" id="le-inst" type="number" min="1" style="width:70px"></div>
       <span class="hint grow" id="le-text"></span>
     </div>
-    <p class="hint gap" id="prep-summary"></p>
-    <div class="row gap">
+    <p class="hint" id="prep-summary"></p>
+    <div class="row">
       <input class="in grow" id="tpl-name" placeholder="Name in the library" aria-label="Name in the library" style="min-width:180px">
       <button type="button" class="btn" id="tpl-save">Save to library</button>
+    </div>
     </div>
   </section>
 
