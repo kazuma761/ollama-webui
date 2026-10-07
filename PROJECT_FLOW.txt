@@ -5,8 +5,9 @@ WHAT IT IS
 A chat web app for local Ollama models. The user picks a model, types a
 prompt (optionally attaching files or screenshots), and the reply streams back.
 
-FOLDERS (each has one job; calls only go frontend -> backend -> ollama)
+FOLDERS (each has one job; calls only go frontend -> backend -> documents -> ollama)
   frontend/   index.html - the whole UI (HTML + CSS + JS in one file).
+              documents.html - the Word documents page (the Docs link).
               Talks to the backend only through /api/* over HTTP.
   backend/    FastAPI app (Python). Receives HTTP requests, calls the
               ollama_pipeline package, and serves frontend/ at "/".
@@ -25,6 +26,14 @@ FOLDERS (each has one job; calls only go frontend -> backend -> ollama)
                 ollama_pipeline/opencode.py   cloud answers via `opencode serve`
                 ollama_pipeline/pipeline.py   builds messages, streams reply
                 ollama_pipeline/documents.py  PDF/DOCX/text -> plain text
+  documents/  The Word documents page (package document_engine), separate
+              from the chat code. It uses ollama/ for models and settings.
+                document_engine/engine/   works on Word files, no model:
+                    wordfile.py   find blanks, fill   wordedit.py  edit, Markdown -> Word
+                    slotmap.py    template labels     render.py    fill a designed template
+                document_engine/model/    the model's part:
+                    prompts.py    what the model is told   service.py  the calls
+              Its HTTP side is backend/app/documents/ (routes, storage, schemas).
   run.sh      starts the backend on http://127.0.0.1:8000
   run.ps1     the same for Windows PowerShell
 
