@@ -11,13 +11,13 @@ back. With "Auto", a router sends each message to a light model, a reasoning
 model or a vision model on this machine, or, for questions about software, to
 OpenCode's free cloud models.
 
-## Running the `10-invoices` branch on the server
+## Running the `10-invoice` branch on the server
 
 This branch adds the **Invoices** tab to the documents page: invoices in (PDF,
 Word, scans, photos), an Excel or CSV sheet out. It contains `6-documents` and
 `8-testing`. On a machine that already runs the app:
 
-1. **Get the branch.** `git fetch && git checkout 10-invoices`
+1. **Get the branch.** `git fetch && git checkout 10-invoice`
 2. **Install three new packages** (`pypdfium2`, `pillow`, `openpyxl`):
    `pip install -r requirements.txt` from the repo root, or with uv
    `cd backend && uv sync --extra router --inexact`. Without them the app still
