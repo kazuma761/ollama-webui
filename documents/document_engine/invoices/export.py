@@ -1,8 +1,8 @@
 """Writes the reviewed rows as an Excel file or a CSV. No model here.
 
 Both have exactly the columns of `checks.COLUMNS`, in that order. In Excel the
-dates are real dates and the total and confidence real numbers, so the sheet
-sorts and sums. Values still marked "check" are shaded, and an optional second
+dates are real dates and the amounts and the confidence real numbers, so the
+sheet sorts and sums. Values still marked "check" are shaded, and an optional second
 sheet lists why.
 """
 
@@ -13,12 +13,14 @@ import io
 from datetime import datetime
 from typing import Any
 
-from .checks import COLUMNS, FIELDS
+from .checks import AMOUNTS, COLUMNS, FIELDS, KIND_NAMES
 
 WIDTHS = {
     "file": 34, "InvoiceId": 20, "InvoiceDate": 13, "DueDate": 13, "InvoiceTotal": 14, "VendorName": 30,
     "VendorAddress": 44, "CustomerName": 30, "CustomerId": 14, "BillingAddress": 44, "BillingAddressRecipient": 30,
     "VendorAddressRecipient": 30, "VendorGST": 19, "CustomerGST": 19, "confidence": 11,
+    "Description": 44, "Qty": 16, "Discount": 12, "TaxableValue": 14, "CGSTAmount": 13, "SGSTAmount": 13,
+    "IGSTAmount": 13, "TotalTaxAmount": 15, "HSNSAC": 12, "Currency": 9, "kind": 13,
 }
 
 
@@ -27,6 +29,8 @@ def _cell(row: dict[str, Any], key: str) -> Any:
         return row.get("file") or ""
     if key == "confidence":
         return row.get("confidence")
+    if key == "kind":
+        return KIND_NAMES.get(row.get("kind") or "", "")
     return (row.get("values") or {}).get(key) or ""
 
 
@@ -52,7 +56,7 @@ def to_csv(rows: list[dict[str, Any]]) -> bytes:
         line = []
         for _, key in COLUMNS:
             value = _cell(row, key)
-            line.append(f"{value:.2f}" if isinstance(value, float) else _safe(str(value if value is not None else "")))
+            line.append(f"{value:.2f}" if isinstance(value, (int, float)) else _safe(str(value if value is not None else "")))
         writer.writerow(line)
     return out.getvalue().encode("utf-8-sig")  # the BOM makes Excel read ₹ and accents correctly
 
@@ -80,14 +84,14 @@ def to_xlsx(rows: list[dict[str, Any]], date_format: str, with_checks: bool = Fa
                     cell.value, cell.number_format = datetime.strptime(value, date_format), "DD-MMM-YYYY"
                 except ValueError:
                     cell.value, cell.data_type = value, "s"
-            elif key == "InvoiceTotal" and _number(value) is not None:
+            elif key in AMOUNTS and _number(value) is not None:
                 cell.value, cell.number_format = _number(value), "#,##0.00"
             elif key == "confidence":
                 cell.value, cell.number_format = _number(value), "0.00"
             elif value != "":
                 cell.value = str(value)
                 cell.data_type = "s"  # always text: never a formula, and an id like 00123 keeps its zeros
-            if key in ("VendorAddress", "BillingAddress"):
+            if key in ("VendorAddress", "BillingAddress", "Description"):
                 cell.alignment = Alignment(wrap_text=True, vertical="top")
             else:
                 cell.alignment = Alignment(vertical="top")

@@ -146,7 +146,9 @@ td.why .fine{color:var(--muted)}
 td.acts{padding:6px 9px;white-space:nowrap}
 tr.checked td.check .cell{background:none;border-left-color:var(--ok)}
 tr.checked td.why{color:var(--muted)}
-.w-s{min-width:112px} .w-m{min-width:150px} .w-l{min-width:210px} .w-xl{min-width:300px}
+.w-xs{min-width:84px} .w-s{min-width:112px} .w-m{min-width:150px} .w-l{min-width:210px} .w-xl{min-width:300px}
+td select.cell{padding:6px 22px 6px 7px;border-radius:7px;background-color:transparent;box-shadow:none;font-size:13px;line-height:1.35;background-position:right 8px center}
+td select.cell:focus{background-color:rgba(0,0,0,.35);box-shadow:inset 0 0 0 1px rgba(244,157,112,.7)}
 .opt{display:inline-flex;align-items:center;gap:8px;color:var(--muted);font-size:13px;cursor:pointer}
 .opt input{appearance:auto;width:15px;height:15px;accent-color:#F49D70}
 
@@ -177,7 +179,7 @@ tr.checked td.why{color:var(--muted)}
   </header>
 
   <h1>Invoices into a sheet</h1>
-  <p class="lede">Add invoices as PDFs, Word files, scans or photos. A model on this machine reads the fields; you check them and download the sheet as Excel or CSV. The files are read and then forgotten: nothing is kept on the server.</p>
+  <p class="lede">Add invoices as PDFs, Word files, scans or photos. A model on this machine reads the fields, what was bought and the tax breakdown; you check them and download the sheet as Excel or CSV. The files are read and then forgotten: nothing is kept on the server.</p>
 
   <nav class="modes" aria-label="Documents">
     <a class="mode" href="documents.html#fill">Fill a template</a>
@@ -238,9 +240,13 @@ tr.checked td.why{color:var(--muted)}
   const state = { config: null, files: [], rows: [], busy: false, stop: null, next: 1, saved: true };
 
   const WIDTH = { InvoiceId: 'w-m', InvoiceDate: 'w-s', DueDate: 'w-s', InvoiceTotal: 'w-s', VendorName: 'w-l', VendorAddress: 'w-xl',
-    CustomerName: 'w-l', CustomerId: 'w-s', BillingAddress: 'w-xl', BillingAddressRecipient: 'w-l', VendorAddressRecipient: 'w-l', VendorGST: 'w-m', CustomerGST: 'w-m' };
-  const LONG = new Set(['VendorAddress', 'BillingAddress']);
+    CustomerName: 'w-l', CustomerId: 'w-s', BillingAddress: 'w-xl', BillingAddressRecipient: 'w-l', VendorAddressRecipient: 'w-l', VendorGST: 'w-m', CustomerGST: 'w-m',
+    Description: 'w-xl', Qty: 'w-s', Discount: 'w-s', TaxableValue: 'w-s', CGSTAmount: 'w-s', SGSTAmount: 'w-s', IGSTAmount: 'w-s', TotalTaxAmount: 'w-s', HSNSAC: 'w-s', Currency: 'w-xs' };
+  const LONG = new Set(['VendorAddress', 'BillingAddress', 'Description']);
   const KIND = { invoice: 'invoice', receipt: 'receipt', payment: 'payment confirmation' };
+  const TAXES = ['CGSTAmount', 'SGSTAmount', 'IGSTAmount'];
+  const SUM = ['InvoiceTotal', 'Discount', 'TaxableValue', 'TotalTaxAmount', ...TAXES];   // the figures that must add up
+  const amount = (text) => { const n = parseFloat(String(text).replace(/[^0-9.\-]/g, '')); return Number.isFinite(n) ? n : null; };
 
   function status(el, text, kind) {
     el.hidden = !text;
@@ -389,6 +395,14 @@ tr.checked td.why{color:var(--muted)}
     }
     return weight ? Math.round(total / weight * 100) / 100 : 0;
   }
+  // After a figure is corrected: if taxable value + tax now makes the total, the sum is no longer in doubt.
+  function addsUp(row) {
+    const v = row.values, base = amount(v.TaxableValue), total = amount(v.InvoiceTotal), slack = state.config.scoring.round_off;
+    if (base === null || total === null) return;
+    const tax = amount(v.TotalTaxAmount) || 0, discount = amount(v.Discount) || 0;
+    if (Math.abs(base + tax - total) > slack && !(discount && Math.abs(base - discount + tax - total) <= slack)) return;
+    for (const f of ['TaxableValue', 'TotalTaxAmount', ...TAXES]) if (v[f]) { row.levels[f] = 'ok'; delete row.notes[f]; }
+  }
   function paintRow(row, tr) {
     tr.className = row.checked ? 'checked' : '';
     for (const td of tr.querySelectorAll('td[data-field]')) td.className = (WIDTH[td.dataset.field] || '') + ' ' + (row.levels[td.dataset.field] || 'empty');
@@ -425,6 +439,13 @@ tr.checked td.why{color:var(--muted)}
       for (const [title, key] of state.config.columns) {
         if (key === 'file') continue;
         if (key === 'confidence') { tr.append(node('td', 'conf')); continue; }
+        if (key === 'kind') {   // what kind of document it is decides which fields it is expected to have
+          const td = node('td', 'w-s'), pick = node('select', 'cell');
+          for (const [value, label] of [['invoice', 'Invoice'], ['receipt', 'Receipt'], ['payment', 'Payment']]) { const o = node('option', '', label); o.value = value; o.selected = value === row.kind; pick.append(o); }
+          pick.setAttribute('aria-label', title + ', row ' + (index + 1));
+          pick.addEventListener('change', () => { row.kind = pick.value; state.saved = false; showSheet(); });
+          td.append(pick); tr.append(td); continue;
+        }
         const td = node('td'), cell = node(LONG.has(key) ? 'textarea' : 'input', 'cell');
         td.dataset.field = key;
         if (LONG.has(key)) cell.rows = 2;
@@ -433,7 +454,16 @@ tr.checked td.why{color:var(--muted)}
         cell.title = row.notes[key] || '';
         cell.addEventListener('input', () => {   // a value typed by a person counts as checked
           row.values[key] = cell.value.trim(); row.levels[key] = row.values[key] ? 'ok' : 'empty';
-          delete row.notes[key]; cell.title = ''; state.saved = false; paintRow(row, tr); summary();
+          delete row.notes[key]; cell.title = '';
+          if (TAXES.includes(key)) {   // the total tax follows the three it is the sum of
+            const parts = TAXES.map((f) => row.values[f]).filter(Boolean).map(amount);
+            if (parts.length && parts.every((n) => n !== null)) {
+              row.values.TotalTaxAmount = parts.reduce((a, b) => a + b, 0).toFixed(2); row.levels.TotalTaxAmount = 'ok'; delete row.notes.TotalTaxAmount;
+              tr.querySelector('td[data-field=TotalTaxAmount] .cell').value = row.values.TotalTaxAmount;
+            }
+          }
+          if (SUM.includes(key)) addsUp(row);
+          state.saved = false; paintRow(row, tr); summary();
         });
         td.append(cell); tr.append(td);
       }

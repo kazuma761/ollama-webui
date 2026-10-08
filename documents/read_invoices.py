@@ -71,6 +71,9 @@ async def run(args: argparse.Namespace) -> int:
                             v = row["values"]
                             print(f"   {row['confidence']:.2f}  {row['kind']:<8} no. {v['InvoiceId'] or '-':<20} {v['InvoiceDate'] or '-':<12} "
                                   f"{v['InvoiceTotal'] or '-':>12}  {v['VendorName'] or '-'}  ->  {v['CustomerName'] or '-'}")
+                            if v["Description"] or v["TotalTaxAmount"] or v["TaxableValue"]:
+                                print(f"         {v['Description'][:60] or '-'} | qty {v['Qty'] or '-'} | taxable {v['TaxableValue'] or '-'} "
+                                      f"+ tax {v['TotalTaxAmount'] or '-'} (C {v['CGSTAmount'] or '-'}, S {v['SGSTAmount'] or '-'}, I {v['IGSTAmount'] or '-'})")
                             for field, note in row["notes"].items():
                                 if row["levels"][field] != "ok":
                                     print(f"         {field}: {note}")

@@ -414,7 +414,10 @@ write over a designed template. Looked at with macOS Quick Look only.
 columns, in this order: Invoice File Name, InvoiceId, Invoice Date, DueDate,
 InvoiceTotal, VendorName, VendorAddress, CustomerName, CustomerId,
 BillingAddress, BillingAddressRecipient, VendorAddressRecipient, VendorGST,
-CustomerGST, Confidence.
+CustomerGST, Confidence, then (added 8 October 2026, after Confidence so an
+older sheet still lines up): Description, Qty, Discount, TaxableValue,
+CGSTAmount, SGSTAmount, IGSTAmount, TotalTaxAmount, HSNSAC, Currency,
+DocumentType.
 
 How a file is read (`documents/document_engine/invoices/`):
 
@@ -449,6 +452,21 @@ Rules to keep:
 - Dates are read day first (Indian invoices) and written as `31-Mar-2026`
   (`invoices.date_format`). A due date is never worked out from payment terms.
 - A PAN is not put in a GST column.
+- **The tax breakdown must add up.** Taxable value (less a discount) + tax =
+  total, within a rupee of round-off. When it does, those figures count as
+  confirmed, on a scan too. When it does not, the figures the file's own text
+  does not confirm are marked, with the sum in the note. An invoice with a
+  charge that is neither (freight billed outside the taxable value) is marked
+  as well: that is a prompt to look, not an error.
+- `TotalTaxAmount` is not asked of the model: it is CGST + SGST + IGST, added
+  here. A page with one tax figure and no split keeps that figure. CGST and
+  SGST that differ, or IGST beside them, are marked. A rate ("9%") is never
+  taken for an amount; a tax printed as 0.00 or a dash is left empty.
+- `Currency` is read off the sign or code the model copied (₹, Rs, INR,
+  "Rupees ... Only"), `DocumentType` is what the model called the page
+  (Invoice, Receipt, Payment). Neither counts towards Confidence.
+- `Description` and `Qty` are one cell each: several items are joined with
+  "; " in the same order.
 - Text in the sheet is written as text, never as a formula: invoices come from
   outside the company.
 
@@ -475,6 +493,10 @@ Excel and CSV files, the error messages for wrong and broken files, and
   the orange marks are what should catch them.
 - If small print is misread, raise `invoices.image_side` to 2000.
 - No downloaded file was opened in Excel itself, only read back with openpyxl.
+- The columns added on 8 October (what was bought, the tax breakdown) were
+  only run with the stand-in model. Whether the real model gives tax amounts
+  and not rates, and a sensible Description on receipts with no item lines, is
+  to be seen. Each page's answer is longer now, so pages take longer.
 
 ## Your task on this machine
 

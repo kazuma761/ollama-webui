@@ -13,7 +13,7 @@ import time
 from typing import Literal
 
 from document_engine.invoices import ACCEPTED, COLUMNS, to_csv, to_xlsx
-from document_engine.invoices.checks import EXPECTED, MISSING, SCORE, WEIGHT
+from document_engine.invoices.checks import EXPECTED, MISSING, ROUND_OFF, SCORE, WEIGHT
 from fastapi import APIRouter, Form, HTTPException, Request, UploadFile
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
@@ -50,7 +50,7 @@ async def config(request: Request):
         "default": default, "models": models, "accepted": list(ACCEPTED), "columns": [list(c) for c in COLUMNS],
         "max_upload_mb": MAX_UPLOAD_BYTES // (1024 * 1024), "max_pages": service.config.max_pages,
         # How the Confidence column is worked out, so the page can redo it when a value is edited.
-        "scoring": {"weight": WEIGHT, "score": SCORE, "missing": MISSING, "expected": EXPECTED},
+        "scoring": {"weight": WEIGHT, "score": SCORE, "missing": MISSING, "expected": EXPECTED, "round_off": ROUND_OFF},
     }
 
 
