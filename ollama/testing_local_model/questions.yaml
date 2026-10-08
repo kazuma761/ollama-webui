@@ -1,0 +1,47 @@
+# The test set. Each entry: the question, and the route it SHOULD go to (a route name from
+# test_models.yaml). Add, change or delete freely; the script reports accuracy over whatever is here.
+# `category` is only a label that shows up in the report.
+questions:
+  # ---- simple: everyday writing, quick questions ----
+  - {q: "Hi, how are you today?", expect: simple, category: small talk}
+  - {q: "Write an email to my manager asking for leave on Friday.", expect: simple, category: email}
+  - {q: "Translate 'Good morning, see you at the meeting' into French.", expect: simple, category: translation}
+  - {q: "What is the capital of Australia?", expect: simple, category: fact}
+  - {q: "Reword this to sound more polite: send me the report now.", expect: simple, category: rewrite}
+  - {q: "Give me a short thank-you message for a colleague who helped me today.", expect: simple, category: message}
+  - {q: "Summarise in two lines: our team meets every Monday at ten to review open tasks and plan the week.", expect: simple, category: summary}
+  - {q: "Suggest a friendly subject line for a newsletter about our office move.", expect: simple, category: email}
+  - {q: "How many days are there in a leap year?", expect: simple, category: fact}
+  - {q: "Write a short birthday wish for my teammate Sara.", expect: simple, category: message}
+  - {q: "Reply to this: Can we move the call to 3pm? Say yes.", expect: simple, category: message}
+  - {q: "What does 'ASAP' stand for?", expect: simple, category: fact}
+
+  # ---- complex: careful thinking, documents, maths, logic ----
+  - {q: "Review this contract clause and tell me the risks for the tenant: the tenant pays all repairs, including structural damage, and the landlord may raise rent with 7 days notice.", expect: complex, category: contract}
+  - {q: "Compare renting a server against buying one for a team of 20 over three years and tell me which is cheaper, showing the calculation.", expect: complex, category: analysis}
+  - {q: "If all bloops are razzies and some razzies are lazzies, can we conclude that some bloops are lazzies? Explain step by step.", expect: complex, category: logic}
+  - {q: "A train leaves at 9:00 at 80 km/h and another leaves the same station at 10:00 at 100 km/h. When does the second catch up?", expect: complex, category: maths}
+  - {q: "Analyse the pros and cons of moving our whole company from email to a chat tool, and give a recommendation with reasons.", expect: complex, category: analysis}
+  - {q: "Here is a quarterly report summary: revenue fell 8% while costs rose 3%. What are the three most likely causes and what should we check first?", expect: complex, category: report}
+  - {q: "Prove that the sum of two even numbers is always even.", expect: complex, category: maths}
+  - {q: "I have three suppliers with different prices, delivery times and failure rates. Walk me through how to decide between them, step by step.", expect: complex, category: reasoning}
+  - {q: "Read this policy and point out any clauses that conflict with each other: employees may work remotely at any time; employees must be in the office on all weekdays.", expect: complex, category: document}
+  - {q: "What is the probability of getting at least one six when rolling a die four times?", expect: complex, category: maths}
+  - {q: "Evaluate this plan critically: we launch the product in all ten countries at once with no pilot.", expect: complex, category: analysis}
+  - {q: "Think through why our monthly costs doubled after we added the second office and list what to verify.", expect: complex, category: reasoning}
+
+  # ---- coding: software questions ----
+  - {q: "Write a python function for binary search and explain its complexity.", expect: coding, category: write code}
+  - {q: "Fix this bug: for i in range(10) print(i)", expect: coding, category: debug}
+  - {q: "What does this error mean: TypeError: 'NoneType' object is not subscriptable?", expect: coding, category: error}
+  - {q: "Write a SQL query to get the top 5 customers by total order value from the tables customers and orders.", expect: coding, category: sql}
+  - {q: "How do I undo my last git commit but keep the changes?", expect: coding, category: git}
+  - {q: "Write a bash script that renames all .txt files in a folder to .md.", expect: coding, category: script}
+  - {q: "Explain what this code does: const sum = arr.reduce((a, b) => a + b, 0);", expect: coding, category: explain code}
+  - {q: "Create a Dockerfile for a FastAPI app that runs with uvicorn on port 8000.", expect: coding, category: devops}
+  - {q: "Make a landing page for my coffee shop.", expect: coding, category: web}
+  - {q: "Write a regex that matches an email address.", expect: coding, category: regex}
+  - {q: "My React component re-renders on every keystroke, how do I stop that?", expect: coding, category: frontend}
+  - {q: "Convert this JSON to YAML: {\"name\": \"app\", \"port\": 8080}", expect: coding, category: config}
+  - {q: "Can you build me a snake game in javascript?", expect: coding, category: write code}
+  - {q: "How do I fix a merge conflict in package.json?", expect: coding, category: git}

@@ -7,9 +7,11 @@ from fastapi.staticfiles import StaticFiles
 
 from .settings import settings  # isort: skip - loads .env before the pipeline reads the environment
 from document_engine import DocumentService
+from document_engine.invoices import InvoiceService
 from ollama_pipeline import Registry, Router, load_config
 
 from .documents import Library, Store, router as documents_router
+from .documents.invoices import router as invoices_router
 from .routes import router
 
 # uvicorn only sets up its own loggers; without this the pipeline's INFO lines
@@ -27,6 +29,7 @@ async def lifespan(app: FastAPI):
     app.state.router = Router(config.router)
     app.state.router.warm_up()
     app.state.documents = DocumentService(app.state.registry)
+    app.state.invoices = InvoiceService(app.state.registry)
     app.state.store = Store(settings.documents_dir, config.documents.keep_hours)
     app.state.library = Library(settings.documents_dir.parent / "templates")
     yield
@@ -45,6 +48,7 @@ def create_app() -> FastAPI:
         )
 
     app.include_router(router, prefix="/api")
+    app.include_router(invoices_router, prefix="/api/documents/invoices")  # before the /{job} routes below
     app.include_router(documents_router, prefix="/api/documents")
 
     # Mounted last so /api and /docs win over the static catch-all.

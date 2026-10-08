@@ -8,6 +8,7 @@ prompt (optionally attaching files or screenshots), and the reply streams back.
 FOLDERS (each has one job; calls only go frontend -> backend -> documents -> ollama)
   frontend/   index.html - the whole UI (HTML + CSS + JS in one file).
               documents.html - the Word documents page (the Docs link).
+              invoices.html - its Invoices tab: invoices into a sheet.
               Talks to the backend only through /api/* over HTTP.
   backend/    FastAPI app (Python). Receives HTTP requests, calls the
               ollama_pipeline package, and serves frontend/ at "/".
@@ -33,7 +34,12 @@ FOLDERS (each has one job; calls only go frontend -> backend -> documents -> oll
                     slotmap.py    template labels     render.py    fill a designed template
                 document_engine/model/    the model's part:
                     prompts.py    what the model is told   service.py  the calls
-              Its HTTP side is backend/app/documents/ (routes, storage, schemas).
+                document_engine/invoices/ the Invoices tab (invoices -> Excel/CSV):
+                    reader.py  file -> pages     checks.py  clean, check, confidence
+                    export.py  the sheet         prompts.py, service.py  the model's part
+                read_invoices.py          the same from a terminal, for a folder
+              Its HTTP side is backend/app/documents/ (routes, storage, schemas,
+              invoices).
   run.sh      starts the backend on http://127.0.0.1:8000
   run.ps1     the same for Windows PowerShell
 
@@ -115,6 +121,18 @@ DOCUMENTS
   from the end of the document or chat only.
   Scanned PDFs contain no text: send screenshots to a vision model instead.
 
+INVOICES (the Invoices tab of the documents page)
+  PDF, Word, scans and photos in; an Excel or CSV sheet out, one row per
+  invoice, receipt or payment confirmation, with fixed columns.
+  1. Each page becomes text and/or a picture (reader.py, no model).
+  2. A local model that reads pictures gets one page at a time and answers in
+     JSON (prompts.py, service.py). Never a cloud model. Nothing is stored.
+  3. Every value is cleaned and checked - found in the file's text, GSTIN
+     check digit, total against the amount in words - and the row gets a
+     Confidence from those checks (checks.py, no model).
+  4. A person reviews the rows on the page and downloads the sheet (export.py).
+  Model and settings: the `invoices:` block in ollama/config/models.yaml.
+
 REQUIREMENTS
   - macOS, Linux or Windows
   - Python 3.11+ and uv (https://docs.astral.sh/uv/), or pip with
@@ -144,6 +162,8 @@ HOW TO MODIFY
   Add an API endpoint                                 -> backend/app/routes.py
   Change port/host                                    -> backend/.env (copy .env.example)
   Change the UI                                       -> frontend/index.html
+  Change what the model is told about invoices        -> documents/document_engine/invoices/prompts.py
+  Change the invoice checks or the confidence         -> documents/document_engine/invoices/checks.py
   New Python dependency: add to the right pyproject.toml, then `cd backend && uv sync`.
 
 NOT BUILT YET
