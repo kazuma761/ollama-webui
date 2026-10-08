@@ -57,6 +57,7 @@ h1{font-size:clamp(26px,4.2vw,36px);font-weight:410;letter-spacing:.0018em;line-
   background:linear-gradient(180deg,rgba(255,255,255,.088),rgba(255,255,255,.038));border:1px solid rgba(255,255,255,.06);
 }
 .mode:hover{color:#fff}
+a.mode{display:inline-flex;align-items:center}
 .mode[aria-selected="true"]{color:#1d1d20;background:linear-gradient(163deg,#FBBC94,#F49D70 46%,#E88654);border-color:transparent}
 
 /* Cards */
@@ -216,6 +217,7 @@ select option{background:#1c1c1f}
     <button class="mode" role="tab" data-mode="edit" aria-selected="false">Change a document</button>
     <button class="mode" role="tab" data-mode="create" aria-selected="false">Write a new one</button>
     <button class="mode" role="tab" data-mode="library" aria-selected="false">Template library</button>
+    <a class="mode" href="invoices.html">Invoices</a>
   </div>
 
   <!-- Template library -->
@@ -428,7 +430,7 @@ select option{background:#1c1c1f}
   function setMode(mode) {
     state.mode = mode;
     const t = TEXT[mode];
-    document.querySelectorAll('.mode').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.mode === mode)));
+    document.querySelectorAll('.mode[data-mode]').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.mode === mode)));
     $('main-cap').textContent = t.cap; $('inst-cap').textContent = t.inst; $('instructions').placeholder = t.ph; $('go').textContent = t.go;
     $('source-block').hidden = !t.source;
     $('source-cap').firstChild.textContent = 'Information to use ';
@@ -442,7 +444,7 @@ select option{background:#1c1c1f}
     status($('status'), ''); setBusy(false);
     if (mode === 'library') loadLibrary();
   }
-  document.querySelectorAll('.mode').forEach((b) => b.addEventListener('click', () => { if (!state.busy) setMode(b.dataset.mode); }));
+  document.querySelectorAll('.mode[data-mode]').forEach((b) => b.addEventListener('click', () => { if (!state.busy) setMode(b.dataset.mode); }));
 
   /* ── Files ── */
   function wire(drop, input, handle) {
@@ -828,7 +830,7 @@ select option{background:#1c1c1f}
   $('make').addEventListener('click', () => { if (!state.busy) make(); });
   $('apply').addEventListener('click', () => { if (!state.busy) change($('refine').value, $('refine-status')); });
 
-  setMode('fill');
+  setMode(location.hash.slice(1) in TEXT ? location.hash.slice(1) : 'fill');  // the invoices page links to #edit, #create ...
   loadModels();
 })();
 </script>

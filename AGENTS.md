@@ -11,6 +11,34 @@ back. With "Auto", a router sends each message to a light model, a reasoning
 model or a vision model on this machine, or, for questions about software, to
 OpenCode's free cloud models.
 
+## Running the `10-invoices` branch on the server
+
+This branch adds the **Invoices** tab to the documents page: invoices in (PDF,
+Word, scans, photos), an Excel or CSV sheet out. It contains `6-documents` and
+`8-testing`. On a machine that already runs the app:
+
+1. **Get the branch.** `git fetch && git checkout 10-invoices`
+2. **Install three new packages** (`pypdfium2`, `pillow`, `openpyxl`):
+   `pip install -r requirements.txt` from the repo root, or with uv
+   `cd backend && uv sync --extra router --inexact`. Without them the app still
+   starts; the Invoices tab then says which package is missing.
+3. **The model must read pictures.** `ollama/config/models.yaml` names
+   `qwen3.5:9b` (entry `id: invoices`). `ollama show qwen3.5:9b` must list
+   `vision` under Capabilities. `gemma4:12b` reads pictures too and can be
+   picked on the page to compare.
+4. **If this machine has `ollama/config.local/models.yaml`,** copy the
+   `invoices:` block and the `- id: invoices` model entry into it. Without them
+   the tab still works: it starts with the first local model that reads
+   pictures (by name, so `gemma4:12b` before `qwen3.5:9b`).
+5. **Restart** (`cd backend && python -m app`, or `./run.sh`) and open
+   <http://127.0.0.1:8000/invoices.html>, or Docs -> Invoices. Refresh the
+   browser with Ctrl+Shift+R: it keeps the old page otherwise.
+6. **Or from a terminal,** a whole folder at once:
+   `cd backend && python ../documents/read_invoices.py /path/to/invoices --out out.xlsx`
+   Add `--model gemma4:12b` to compare models on the same files.
+
+What to check is under "Invoices tab" below, in "Not done".
+
 ## Running the `6-documents` branch on the server
 
 This branch adds the Word documents page. On a machine that already runs the
@@ -266,8 +294,9 @@ backend (a proxy that buffers) before changing the code.
 ## Word documents page (work in progress)
 
 `frontend/documents.html`, reached from the **Docs** link on the main page.
-Three tabs: fill a template, change a document, write a new one. Result is a
-downloadable `.docx`.
+Tabs: fill a template, change a document, write a new one, the template
+library (result: a downloadable `.docx`), and Invoices (result: a sheet, see
+"Invoices tab" below).
 
 - **The model never writes the Word file.** It answers in JSON (which blank
   gets which value, or which edit operations to run) and the app's own code
@@ -301,11 +330,20 @@ documents/                         the feature itself (package `document_engine`
     model/                         the model's part. It decides, it never writes a file.
       prompts.py                     every instruction the model gets + the JSON it must answer in
       service.py                     sends them to the local model, checks the answers
+    invoices/                      the Invoices tab, apart from the Word code
+      reader.py                      a file -> pages (text and/or a picture). No model.
+      checks.py                      clean, check, score the confidence. No model.
+      export.py                      rows -> .xlsx / .csv. No model.
+      prompts.py                     the model's part: what it is told, the JSON it answers in
+      service.py                     the model's part: one page at a time to the local model
+  read_invoices.py                 the same reading from a terminal, for a folder of files
 backend/app/documents/             the HTTP side
   routes.py                          /api/documents/... endpoints
   storage.py                         uploads, versions, the template library on disk
   schemas.py                         request bodies
+  invoices.py                        /api/documents/invoices/... endpoints (stores nothing)
 frontend/documents.html            the page
+frontend/invoices.html             its Invoices tab
 ```
 
 What is shared with the chat side, on purpose: the model registry and Ollama
@@ -368,6 +406,74 @@ write over a designed template. Looked at with macOS Quick Look only.
   `soffice` is missing.
 - Only the resume template was tried; a second kind (report, letter with a
   table) still needs to go through prepare -> fill.
+
+### Invoices tab (invoices into a sheet)
+
+`frontend/invoices.html`, the fifth tab of the documents page. Files in: PDF,
+`.docx`, JPG/PNG/WEBP/BMP/TIFF. Out: `.xlsx` or `.csv` with exactly these
+columns, in this order: Invoice File Name, InvoiceId, Invoice Date, DueDate,
+InvoiceTotal, VendorName, VendorAddress, CustomerName, CustomerId,
+BillingAddress, BillingAddressRecipient, VendorAddressRecipient, VendorGST,
+CustomerGST, Confidence.
+
+How a file is read (`documents/document_engine/invoices/`):
+
+1. `reader.py` (no model) turns the file into pages. A PDF page with real text
+   gives its text, laid out as on the page, **and** a picture of the page. A
+   scan or photo gives a picture only. A Word file gives its text, and each
+   large picture inside it as a page.
+2. `service.py` + `prompts.py` (the model's part) send one page at a time to
+   the local model, which answers in JSON: the invoices, receipts and payment
+   confirmations on that page. One file can give several rows (a claim with
+   three bills, 24 taxi receipts).
+3. `checks.py` (no model) cleans each value, checks it, and works out the
+   Confidence. Pages of one invoice are merged into one row.
+4. A person reviews the rows on the page, then `export.py` writes the sheet.
+
+Rules to keep:
+- **Local models only, always.** There is no cloud path in this code and
+  `documents.allow_cloud` does not apply to it.
+- **Nothing is stored.** A file is read in memory and forgotten; the rows live
+  in the browser until downloaded.
+- **The model never sees the file name.** The names here start with an upload
+  time that reads like a date, and the old attempt took the invoice date from it.
+- **A PDF page with under 200 characters of text is treated as a scan**
+  (`MIN_TEXT`): what text it has is a print header or footer.
+- **Nothing the model returns is trusted as is.** `Confidence` is a score from
+  checks, not a probability: a value found in the file's own text, a GSTIN
+  whose check digit is right, or a total that matches the amount in words
+  counts 1.0; a value read from a picture with nothing to confirm it 0.8; a
+  failed check or a value the model marked unclear 0.35. The weights are at
+  the top of `checks.py` and reach the page through `/config`.
+- Dates are read day first (Indian invoices) and written as `31-Mar-2026`
+  (`invoices.date_format`). A due date is never worked out from payment terms.
+- A PAN is not put in a GST column.
+- Text in the sheet is written as text, never as a formula: invoices come from
+  outside the company.
+
+Settings: the `invoices:` block in `models.yaml`. To change what the model is
+told, edit `invoices/prompts.py` only.
+
+Status. Run on this laptop **without a real model**: a stand-in for Ollama
+returned hand-typed answers for the 16 sample files (text PDFs, scans, a
+handwritten invoice, a photo, a Word file holding a photo, a 24-page file of
+taxi receipts). With that: reading every file type, the checks (on the real
+GSTINs, dates, totals and amounts in words of the samples), merging, the
+page in a browser (add, read, stop, edit, tick, remove, both downloads), the
+Excel and CSV files, the error messages for wrong and broken files, and
+`python -m app` in an environment without the project's packages installed.
+
+**Not done, check these on the server:**
+- **No real model has read an invoice.** How well `qwen3.5:9b` reads these
+  pages is unknown: start with the 16 samples and compare each row with its
+  invoice. Then the same files with `gemma4:12b`.
+- Whether Ollama accepts the JSON schema together with a picture for these
+  models, and whether `think: false` is honoured.
+- Speed per page and memory on the 16 GB card (`ollama ps`).
+- Handwriting (two of the samples). Expect mistakes there; the Confidence and
+  the orange marks are what should catch them.
+- If small print is misread, raise `invoices.image_side` to 2000.
+- No downloaded file was opened in Excel itself, only read back with openpyxl.
 
 ## Your task on this machine
 
@@ -503,8 +609,11 @@ ollama/ollama_pipeline/
   documents.py                   PDF/DOCX/text → text (chat attachments)
   client.py                      raw calls to Ollama
 documents/document_engine/       the Word documents page: engine/ (files) and model/ (prompts, calls)
+documents/document_engine/invoices/   the Invoices tab: reader, checks, export, and the model's part
+documents/read_invoices.py       invoices from a terminal
 backend/app/documents/           its HTTP routes and storage
 frontend/documents.html          its page
+frontend/invoices.html           the Invoices tab
 requirements.txt                 pinned Python packages for pip, made from backend/uv.lock
 run.sh, run.ps1                  start the app (macOS/Linux, Windows)
 ```

@@ -1,0 +1,480 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Fastshot — Invoices</title>
+<meta name="description" content="Read invoices into a sheet: PDF, Word and photos in, Excel or CSV out.">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,100..900&display=block" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+button,input,textarea,select{font:inherit;color:inherit;background:none;border:0}
+svg{display:block}
+[hidden]{display:none!important}
+
+:root{
+  --glass:rgba(41,41,43,.955);
+  --line:rgba(214,228,255,.14);
+  --soft:rgba(255,255,255,.07);
+  --text:#ECECEF; --muted:#98999C; --dim:#77787B;
+  --accent:#F49D70; --warn:#FBBC94; --ok:#8FD3A8;
+}
+html,body{height:100%}
+body{
+  background:#0a0d12;color:var(--text);
+  font-family:Inter,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-size:14px;line-height:1.5;
+  font-synthesis:none;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;
+}
+:focus-visible{outline:2px solid #F8B285;outline-offset:3px;border-radius:6px}
+a{color:inherit;text-decoration:none}
+button{cursor:pointer}
+
+.bg{position:fixed;inset:0;width:100%;height:100%;object-fit:cover;z-index:0}
+.shade{position:fixed;inset:0;z-index:0;background:linear-gradient(180deg,rgba(8,10,14,.55),rgba(8,10,14,.78))}
+.page{position:relative;z-index:1;height:100%;overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.25) transparent}
+/* Wider than the Word pages: the sheet has fifteen columns. */
+.wrap{max-width:1320px;margin:0 auto;padding:clamp(18px,3.2vh,34px) clamp(16px,4vw,32px) 64px}
+.narrow{max-width:836px}
+
+/* Nav */
+.nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:clamp(26px,5vh,54px)}
+.brand{display:inline-flex;align-items:center;gap:12px;font-size:18.5px;font-weight:500;letter-spacing:-.0154em;text-shadow:0 1px 10px rgba(0,0,0,.3)}
+.brand svg{width:34px;height:34px}
+.links{display:flex;gap:6px}
+.links a{padding:7px 14px;border-radius:10px;font-size:15px;color:#D5D5D8;transition:background .18s ease}
+.links a:hover{background:var(--soft)}
+.links a[aria-current]{background:rgba(255,255,255,.11);color:#fff}
+
+h1{font-size:clamp(26px,4.2vw,36px);font-weight:410;letter-spacing:.0018em;line-height:1.12;text-shadow:0 2px 22px rgba(0,0,0,.3)}
+.lede{margin-top:10px;max-width:66ch;color:#D5D5D8;font-size:15px;text-shadow:0 1px 12px rgba(0,0,0,.35)}
+
+/* The tabs of the documents section; the first four open the Word page */
+.modes{display:flex;flex-wrap:wrap;gap:6px;margin:26px 0 14px}
+.mode{
+  display:inline-flex;align-items:center;height:36px;padding:0 15px;border-radius:11px;font-size:13.5px;font-weight:500;color:#B9BABD;
+  background:linear-gradient(180deg,rgba(255,255,255,.088),rgba(255,255,255,.038));border:1px solid rgba(255,255,255,.06);
+}
+.mode:hover{color:#fff}
+.mode[aria-current]{color:#1d1d20;background:linear-gradient(163deg,#FBBC94,#F49D70 46%,#E88654);border-color:transparent}
+
+.card{
+  border-radius:22px;padding:clamp(16px,2.4vw,24px);margin-bottom:14px;
+  background:var(--glass);-webkit-backdrop-filter:blur(26px) saturate(112%);backdrop-filter:blur(26px) saturate(112%);
+  box-shadow:inset 0 0 0 1px var(--line),0 22px 60px rgba(0,0,0,.30);
+}
+.card h2{font-size:15px;font-weight:600;letter-spacing:-.005em}
+.card h2 small{font-weight:400;color:var(--muted);font-size:13px;margin-left:6px}
+.hint{color:var(--muted);font-size:13px}
+.row{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.gap{margin-top:16px}
+.grow{flex:1}
+
+.drop{
+  display:flex;align-items:center;gap:12px;width:100%;padding:13px 14px;border-radius:14px;text-align:left;
+  background:rgba(255,255,255,.035);border:1px dashed rgba(255,255,255,.2);transition:background .18s ease,border-color .18s ease;
+}
+.drop:hover,.drop.over{background:rgba(255,255,255,.07);border-color:var(--accent)}
+.drop svg{width:22px;height:22px;flex:none;color:var(--muted)}
+.drop b{display:block;font-weight:500;font-size:14px}
+.drop span{display:block;color:var(--muted);font-size:12.5px}
+
+select{
+  max-width:100%;padding:10px 30px 10px 12px;border-radius:12px;background:rgba(0,0,0,.26);appearance:none;cursor:pointer;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.09);color:var(--text);font-size:14px;line-height:1.45;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 5'%3E%3Cpath fill='%2398999C' d='M1 0l3 3 3-3 1 1-4 4-4-4Z'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 11px center;background-size:8px;
+}
+select:focus{outline:none;box-shadow:inset 0 0 0 1px rgba(244,157,112,.7)}
+select option{background:#1c1c1f}
+
+.btn{
+  height:40px;padding:0 20px;border-radius:12px;font-size:14px;font-weight:520;color:#1d1d20;
+  background:linear-gradient(163deg,#FBBC94,#F49D70 46%,#E88654);box-shadow:0 3px 12px rgba(210,110,60,.34);
+}
+.btn:hover{filter:brightness(1.07)} .btn:active{transform:scale(.98)}
+.btn[disabled]{opacity:.45;cursor:default;filter:none;transform:none}
+.btn.ghost{color:var(--text);background:linear-gradient(180deg,#3d3d3f,#1d1d20);box-shadow:inset 0 1px 0 rgba(255,255,255,.10)}
+.mini{height:28px;padding:0 10px;border-radius:9px;font-size:12.5px;font-weight:500;color:#D5D5D8;background:rgba(255,255,255,.08)}
+.mini:hover{background:rgba(255,255,255,.15);color:#fff}
+.mini[aria-pressed="true"]{color:#12301f;background:var(--ok)}
+.link{color:var(--muted);font-size:13px;text-decoration:underline;text-underline-offset:3px}
+.link:hover{color:#fff}
+
+.status{display:flex;align-items:center;gap:9px;color:var(--muted);font-size:13px;min-height:22px}
+.status i{width:7px;height:7px;border-radius:50%;background:var(--accent);animation:pulse 1s ease-in-out infinite}
+.status.err{color:var(--warn)} .status.err i,.status.idle i{animation:none;background:currentColor;opacity:.6}
+@keyframes pulse{0%,100%{opacity:.25}50%{opacity:1}}
+
+/* The files waiting to be read */
+.file{display:flex;align-items:center;gap:10px 12px;padding:9px 12px;border-radius:12px;background:rgba(255,255,255,.04);margin-top:6px}
+.file .name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13.5px}
+.file .what{color:var(--muted);font-size:12.5px;text-align:right;max-width:58%}
+.file.reading .what{color:var(--accent)} .file.done .what{color:var(--ok)} .file.error .what,.file.partial .what{color:var(--warn)}
+.file .x{width:20px;height:20px;border-radius:50%;line-height:1;color:var(--muted);flex:none}
+.file .x:hover{color:#fff;background:rgba(255,255,255,.14)}
+.file .x[disabled]{visibility:hidden}
+.notes{margin:2px 0 0 12px;color:var(--warn);font-size:12.5px}
+
+/* The sheet */
+.legend{display:flex;flex-wrap:wrap;gap:6px 18px;margin-top:10px;font-size:12.5px;color:var(--muted)}
+.legend i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+.k-ok{background:var(--ok)} .k-read{background:rgba(255,255,255,.22)} .k-check{background:var(--accent)} .k-empty{border:1px dashed rgba(255,255,255,.35)}
+.sheet{margin-top:14px;overflow:auto;max-height:min(70vh,760px);border-radius:12px;background:rgba(0,0,0,.26);scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.25) transparent;overscroll-behavior:contain}
+table{border-collapse:separate;border-spacing:0;font-size:13px}
+th{position:sticky;top:0;z-index:2;background:#232326;text-align:left;font-weight:600;font-size:12px;color:#D5D5D8;padding:9px 9px;white-space:nowrap;border-bottom:1px solid rgba(255,255,255,.1)}
+td{padding:3px;border-bottom:1px solid rgba(255,255,255,.06);vertical-align:top}
+th:first-child,td:first-child{position:sticky;left:0;z-index:1;background:#232326}
+th:first-child{z-index:3}
+td.file-cell{padding:7px 9px;min-width:190px;max-width:230px}
+td.file-cell button{display:block;max-width:100%;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-decoration:underline;text-underline-offset:3px;text-decoration-color:rgba(255,255,255,.3)}
+td.file-cell button:hover{text-decoration-color:var(--accent)}
+td.file-cell small{display:block;color:var(--muted);font-size:11.5px;margin-top:1px}
+.cell{display:block;width:100%;padding:6px 7px;border-radius:7px;border-left:3px solid transparent;font-size:13px;line-height:1.35;resize:none;min-height:30px}
+.cell:hover{background:rgba(255,255,255,.05)}
+.cell:focus{outline:none;background:rgba(0,0,0,.35);box-shadow:inset 0 0 0 1px rgba(244,157,112,.7)}
+.cell::placeholder{color:#5f6063}
+td.ok .cell{border-left-color:var(--ok)}
+td.check .cell{border-left-color:var(--accent);background:rgba(244,157,112,.16)}
+td.conf{padding:9px 9px;font-variant-numeric:tabular-nums;font-weight:600;white-space:nowrap}
+td.conf.high{color:var(--ok)} td.conf.low{color:var(--warn)}
+td.why{padding:8px 9px;min-width:300px;max-width:360px;color:var(--warn);font-size:12px;line-height:1.4}
+td.why b{font-weight:600;color:#F3D2BC}
+td.why span{display:block}
+td.why .fine{color:var(--muted)}
+td.acts{padding:6px 9px;white-space:nowrap}
+tr.checked td.check .cell{background:none;border-left-color:var(--ok)}
+tr.checked td.why{color:var(--muted)}
+.w-s{min-width:112px} .w-m{min-width:150px} .w-l{min-width:210px} .w-xl{min-width:300px}
+.opt{display:inline-flex;align-items:center;gap:8px;color:var(--muted);font-size:13px;cursor:pointer}
+.opt input{appearance:auto;width:15px;height:15px;accent-color:#F49D70}
+
+@media (max-width:620px){
+  .links a{padding:7px 10px;font-size:14px}
+  .brand span{display:none}
+  .file{flex-wrap:wrap} .file .what{max-width:100%;text-align:left}
+}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+</style>
+</head>
+
+<body>
+<video class="bg" autoplay muted loop playsinline preload="auto"
+  src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260826_124724_bc041163-d651-425f-aea3-2acc1efc2c96.mp4"></video>
+<div class="shade"></div>
+
+<div class="page"><div class="wrap">
+  <header class="nav">
+    <a class="brand" href="index.html" aria-label="Fastshot home">
+      <svg viewBox="0 0 34 34" aria-hidden="true"><circle cx="17" cy="17" r="17" fill="#9C86CE"/><circle cx="17" cy="17" r="8.6" fill="#fff"/><circle cx="17" cy="17" r="3.7" fill="#151519"/></svg>
+      <span>Fastshot</span>
+    </a>
+    <nav class="links" aria-label="Primary">
+      <a href="index.html">Chat</a>
+      <a href="documents.html" aria-current="page">Documents</a>
+    </nav>
+  </header>
+
+  <h1>Invoices into a sheet</h1>
+  <p class="lede">Add invoices as PDFs, Word files, scans or photos. A model on this machine reads the fields; you check them and download the sheet as Excel or CSV. The files are read and then forgotten: nothing is kept on the server.</p>
+
+  <nav class="modes" aria-label="Documents">
+    <a class="mode" href="documents.html#fill">Fill a template</a>
+    <a class="mode" href="documents.html#edit">Change a document</a>
+    <a class="mode" href="documents.html#create">Write a new one</a>
+    <a class="mode" href="documents.html#library">Template library</a>
+    <a class="mode" href="invoices.html" aria-current="page">Invoices</a>
+  </nav>
+
+  <!-- What goes in -->
+  <section class="card narrow" id="inputs">
+    <button type="button" class="drop" id="drop">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+      <span><b>Add invoices</b><span id="drop-sub">PDF, Word (.docx), JPG or PNG. Several at once is fine.</span></span>
+    </button>
+    <div id="files"></div>
+
+    <div class="row gap">
+      <select id="model" aria-label="Model that reads the invoices"></select>
+      <button type="button" class="link" id="clear" hidden>Clear all</button>
+      <span class="grow"></span>
+      <button type="button" class="btn" id="go" disabled>Read invoices</button>
+    </div>
+    <div class="status idle gap" id="status" hidden><i></i><span></span></div>
+  </section>
+
+  <!-- What came out -->
+  <section class="card" id="result" hidden>
+    <div class="row">
+      <h2 class="grow">The sheet <small id="count"></small></h2>
+      <button type="button" class="btn ghost" id="csv">Download CSV</button>
+      <button type="button" class="btn" id="xlsx">Download Excel</button>
+    </div>
+    <p class="hint" style="margin-top:6px">Check the orange values against the invoice before you download: click a file name to open it, click a value to change it. Tick a row when you have checked it.</p>
+    <div class="legend">
+      <span><i class="k-ok"></i>confirmed by a check</span>
+      <span><i class="k-read"></i>read, nothing to confirm it against</span>
+      <span><i class="k-check"></i>check this</span>
+      <span><i class="k-empty"></i>not on the invoice</span>
+    </div>
+    <div class="sheet"><table id="grid"><thead></thead><tbody></tbody></table></div>
+    <div class="row gap">
+      <label class="opt"><input type="checkbox" id="with-checks"> Add a second sheet to the Excel file listing what to check and why</label>
+      <span class="grow"></span>
+      <span class="status idle" id="export-status" hidden><i></i><span></span></span>
+    </div>
+  </section>
+
+  <input type="file" id="picker" multiple hidden>
+</div></div>
+
+<script>
+(() => {
+  const API = (window.FASTSHOT_API || '').replace(/\/$/, '');
+  const $ = (id) => document.getElementById(id);
+  const node = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
+  // files: what was added, each with how its reading went. rows: one per invoice found.
+  const state = { config: null, files: [], rows: [], busy: false, stop: null, next: 1, saved: true };
+
+  const WIDTH = { InvoiceId: 'w-m', InvoiceDate: 'w-s', DueDate: 'w-s', InvoiceTotal: 'w-s', VendorName: 'w-l', VendorAddress: 'w-xl',
+    CustomerName: 'w-l', CustomerId: 'w-s', BillingAddress: 'w-xl', BillingAddressRecipient: 'w-l', VendorAddressRecipient: 'w-l', VendorGST: 'w-m', CustomerGST: 'w-m' };
+  const LONG = new Set(['VendorAddress', 'BillingAddress']);
+  const KIND = { invoice: 'invoice', receipt: 'receipt', payment: 'payment confirmation' };
+
+  function status(el, text, kind) {
+    el.hidden = !text;
+    el.className = 'status ' + (kind || '') + (el.id === 'status' ? ' gap' : '');
+    el.lastElementChild.textContent = text || '';
+  }
+  const size = (bytes) => bytes > 1048576 ? (bytes / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(bytes / 1024)) + ' KB';
+  const plural = (n, word) => n + ' ' + word + (n === 1 ? '' : 's');
+
+  /* ── Setup ── */
+  async function load() {
+    try {
+      const res = await fetch(API + '/api/documents/invoices/config');
+      if (!res.ok) throw 0;
+      state.config = await res.json();
+    } catch { status($('status'), 'The backend is not reachable. Start it with ./run.sh.', 'err'); return; }
+    const c = state.config, select = $('model');
+    $('picker').accept = c.accepted.join(',');
+    $('drop-sub').textContent = 'PDF, Word (.docx), JPG or PNG, up to ' + c.max_upload_mb + ' MB each. Several at once is fine.';
+    select.replaceChildren();
+    for (const m of c.models) {
+      const sees = m.vision === true ? 'reads pictures' : m.vision === false ? 'text only' : 'pictures: unknown';
+      const option = node('option', '', m.label + ' · ' + (m.available ? sees : 'not available'));
+      option.value = m.id; option.disabled = !m.available; option.selected = m.id === c.default;
+      select.append(option);
+    }
+    const head = node('tr');
+    for (const [title] of c.columns) head.append(node('th', '', title));
+    head.append(node('th', '', 'To check'), node('th', '', ''));
+    $('grid').tHead.replaceChildren(head);
+    modelNote(); refresh();
+  }
+  function modelNote() {
+    const c = state.config; if (!c) return;
+    const chosen = c.models.find((m) => m.id === $('model').value);
+    if (!c.models.some((m) => m.available)) status($('status'), 'No local model is available. Start Ollama and pull a model.', 'err');
+    else if (chosen && chosen.vision === false) status($('status'), chosen.label + ' reads text only: scans and photos will be skipped. For those, choose a model that reads pictures.', 'err');
+    else if (!state.busy) status($('status'), '');
+  }
+  $('model').addEventListener('change', modelNote);
+
+  /* ── Files ── */
+  function add(files) {
+    const c = state.config; if (!c) return;
+    const refused = [];
+    for (const file of files) {
+      const dot = file.name.lastIndexOf('.'), type = dot < 0 ? '' : file.name.slice(dot).toLowerCase();
+      if (!c.accepted.includes(type)) refused.push(file.name + ' (not a PDF, Word file or picture)');
+      else if (file.size > c.max_upload_mb * 1048576) refused.push(file.name + ' (over ' + c.max_upload_mb + ' MB)');
+      else state.files.push({ id: state.next++, file, state: 'waiting', what: size(file.size), notes: [] });
+    }
+    if (refused.length) status($('status'), 'Not added: ' + refused.join(', '), 'err'); else modelNote();
+    refresh();
+  }
+  function showFiles() {
+    const box = $('files'); box.replaceChildren();
+    for (const f of state.files) {
+      const line = node('div', 'file ' + f.state);
+      const x = node('button', 'x', '×'); x.type = 'button'; x.title = 'Remove'; x.setAttribute('aria-label', 'Remove ' + f.file.name);
+      x.disabled = f.state === 'reading';
+      x.addEventListener('click', () => { state.files = state.files.filter((o) => o !== f); state.rows = state.rows.filter((r) => r.source !== f.id); refresh(); showSheet(); });
+      line.append(node('span', 'name', f.file.name), node('span', 'what', f.what), x);
+      line.firstChild.title = f.file.name;
+      box.append(line);
+      for (const note of f.notes) box.append(node('div', 'notes', note));
+    }
+  }
+  function refresh() {
+    showFiles();
+    const waiting = state.files.filter((f) => f.state === 'waiting').length;
+    $('go').textContent = state.busy ? 'Stop' : 'Read invoices';
+    $('go').disabled = !state.busy && (!waiting || !state.config || !$('model').value);
+    $('clear').hidden = state.busy || !state.files.length;
+    $('model').disabled = state.busy;
+  }
+  const drop = $('drop'), picker = $('picker');
+  drop.addEventListener('click', () => picker.click());
+  picker.addEventListener('change', () => { add([...picker.files]); picker.value = ''; });
+  drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('over'); });
+  drop.addEventListener('dragleave', () => drop.classList.remove('over'));
+  drop.addEventListener('drop', (e) => { e.preventDefault(); drop.classList.remove('over'); add([...e.dataTransfer.files]); });
+  $('clear').addEventListener('click', () => {
+    if (state.rows.length && !state.saved && !confirm('Remove all files and the rows read from them?')) return;
+    state.files = []; state.rows = []; state.saved = true; refresh(); showSheet(); modelNote();
+  });
+
+  /* ── Reading ── */
+  async function readOne(f, model, signal) {
+    const form = new FormData(); form.append('file', f.file); form.append('model', model);
+    const res = await fetch(API + '/api/documents/invoices/read', { method: 'POST', body: form, signal });
+    if (!res.ok) { const detail = (await res.json().catch(() => ({}))).detail; throw new Error(typeof detail === 'string' ? detail : 'Request failed (' + res.status + ')'); }
+    const reader = res.body.getReader(), decoder = new TextDecoder();
+    let buffer = '', finished = false;
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      let cut;
+      while ((cut = buffer.indexOf('\n')) >= 0) {
+        const line = buffer.slice(0, cut).trim(); buffer = buffer.slice(cut + 1);
+        if (!line) continue;
+        const event = JSON.parse(line);
+        if (event.type === 'error') throw new Error(event.message);
+        if (event.type === 'progress') { f.what = event.message; showFiles(); }
+        else if (event.type === 'rows') { for (const row of event.rows) state.rows.push({ ...row, id: state.next++, source: f.id, checked: false }); state.saved = !state.rows.length; showSheet(); }
+        else if (event.type === 'notice') f.notes.push(event.message);
+        else if (event.type === 'done') { finished = true; f.state = f.notes.length ? 'partial' : 'done'; f.what = (event.rows ? plural(event.rows, 'row') : 'nothing found') + ' · ' + plural(event.pages, 'page') + ' · ' + event.seconds + ' s'; }
+      }
+    }
+    if (!finished) throw new Error('The connection closed before the file was finished.');
+  }
+  async function run() {
+    const model = $('model').value;
+    state.busy = true; state.stop = new AbortController(); refresh();
+    const queue = state.files.filter((f) => f.state === 'waiting');
+    let number = 0;
+    for (const f of queue) {
+      if (state.stop.signal.aborted) break;
+      if (!state.files.includes(f)) continue;
+      f.state = 'reading'; f.what = 'Starting'; f.notes = []; showFiles();
+      status($('status'), 'Reading file ' + (++number) + ' of ' + queue.length + '. The first one takes longer while the model loads.');
+      try { await readOne(f, model, state.stop.signal); }
+      catch (err) {
+        if (state.stop.signal.aborted) { f.state = 'waiting'; f.what = 'Stopped · ' + size(f.file.size); }
+        else { f.state = 'error'; f.what = 'Could not be read'; f.notes = [err.message]; }
+      }
+      showFiles();
+    }
+    state.busy = false; state.stop = null; refresh();
+    const failed = state.files.filter((f) => f.state === 'error').length;
+    status($('status'), failed ? plural(failed, 'file') + ' could not be read; the reason is under each.' : '', failed ? 'err' : '');
+    if (!failed) modelNote();
+  }
+  $('go').addEventListener('click', () => { if (state.busy) state.stop.abort(); else run(); });
+
+  /* ── The sheet ── */
+  // The same sum as checks.py: the numbers come from the server, so there is one definition.
+  function confidence(row) {
+    if (row.checked) return 1;
+    const s = state.config.scoring, expected = s.expected[row.kind] || [];
+    let total = 0, weight = 0;
+    for (const [field, w] of Object.entries(s.weight)) {
+      const level = row.levels[field] || 'empty';
+      if (level === 'empty' && !expected.includes(field)) continue;
+      total += (level === 'empty' ? s.missing : s.score[level]) * w; weight += w;
+    }
+    return weight ? Math.round(total / weight * 100) / 100 : 0;
+  }
+  function paintRow(row, tr) {
+    tr.className = row.checked ? 'checked' : '';
+    for (const td of tr.querySelectorAll('td[data-field]')) td.className = (WIDTH[td.dataset.field] || '') + ' ' + (row.levels[td.dataset.field] || 'empty');
+    const value = confidence(row), conf = tr.querySelector('.conf');
+    conf.textContent = value.toFixed(2);
+    conf.className = 'conf ' + (value >= 0.9 ? 'high' : value < 0.7 ? 'low' : '');
+    const why = tr.querySelector('.why'); why.replaceChildren();
+    // What needs a look. A note on a confirmed value ("matches the amount in words") stays a tooltip.
+    const fields = Object.keys(row.notes).filter((f) => row.notes[f] && row.levels[f] !== 'ok');
+    if (row.checked) why.append(node('span', 'fine', 'Checked by you.'));
+    else if (!fields.length) why.append(node('span', 'fine', 'Nothing flagged.'));
+    for (const field of row.checked ? [] : fields) {
+      const line = node('span'); line.append(node('b', '', field + ': '), row.notes[field]);
+      if (row.levels[field] === 'empty') line.className = 'fine';  // not on the invoice: said, not shouted
+      why.append(line);
+    }
+    tr.querySelector('.tick').setAttribute('aria-pressed', String(row.checked));
+  }
+  function summary() {
+    const files = new Set(state.rows.map((r) => r.source)).size;
+    const open = state.rows.reduce((n, r) => n + (r.checked ? 0 : Object.values(r.levels).filter((l) => l === 'check').length), 0);
+    $('count').textContent = plural(state.rows.length, 'row') + ' from ' + plural(files, 'file') + ' · ' + (open ? plural(open, 'value') + ' to check' : 'nothing left to check');
+  }
+  function showSheet() {
+    $('result').hidden = !state.rows.length;
+    const body = $('grid').tBodies[0]; body.replaceChildren();
+    state.rows.forEach((row, index) => {
+      const tr = node('tr'), source = state.files.find((f) => f.id === row.source);
+      const first = node('td', 'file-cell'), open = node('button', '', row.file); open.type = 'button'; open.title = 'Open ' + row.file;
+      open.addEventListener('click', () => { if (source) window.open(URL.createObjectURL(source.file), '_blank', 'noopener'); });
+      const pages = row.pages.length > 1 ? 'pages ' + row.pages[0] + '–' + row.pages[row.pages.length - 1] : 'page ' + row.pages[0];
+      first.append(open, node('small', '', (KIND[row.kind] || row.kind) + ' · ' + pages));
+      tr.append(first);
+      for (const [title, key] of state.config.columns) {
+        if (key === 'file') continue;
+        if (key === 'confidence') { tr.append(node('td', 'conf')); continue; }
+        const td = node('td'), cell = node(LONG.has(key) ? 'textarea' : 'input', 'cell');
+        td.dataset.field = key;
+        if (LONG.has(key)) cell.rows = 2;
+        cell.value = row.values[key] || ''; cell.placeholder = '—';
+        cell.setAttribute('aria-label', title + ', row ' + (index + 1));
+        cell.title = row.notes[key] || '';
+        cell.addEventListener('input', () => {   // a value typed by a person counts as checked
+          row.values[key] = cell.value.trim(); row.levels[key] = row.values[key] ? 'ok' : 'empty';
+          delete row.notes[key]; cell.title = ''; state.saved = false; paintRow(row, tr); summary();
+        });
+        td.append(cell); tr.append(td);
+      }
+      const acts = node('td', 'acts'), tick = node('button', 'mini tick', '✓ Checked'), remove = node('button', 'mini', 'Remove');
+      tick.type = remove.type = 'button'; tick.title = 'I have compared this row with the invoice';
+      tick.addEventListener('click', () => { row.checked = !row.checked; state.saved = false; paintRow(row, tr); summary(); });
+      remove.style.marginLeft = '6px';
+      remove.addEventListener('click', () => { state.rows = state.rows.filter((r) => r !== row); state.saved = !state.rows.length; showSheet(); });
+      acts.append(tick, remove);
+      tr.append(node('td', 'why'), acts);
+      body.append(tr); paintRow(row, tr);
+    });
+    summary();
+  }
+
+  /* ── Download ── */
+  async function download(format) {
+    if (!state.rows.length) return;
+    status($('export-status'), 'Making the file');
+    // A row a person has checked goes out as confirmed: no shading, confidence 1.
+    const rows = state.rows.map((r) => ({
+      file: r.file, pages: r.pages, kind: r.kind, values: r.values, confidence: confidence(r),
+      levels: r.checked ? Object.fromEntries(Object.entries(r.levels).map(([f, l]) => [f, l === 'check' ? 'ok' : l])) : r.levels,
+      notes: r.checked ? {} : r.notes,
+    }));
+    try {
+      const res = await fetch(API + '/api/documents/invoices/export', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rows, format, checks: $('with-checks').checked }) });
+      if (!res.ok) { const detail = (await res.json().catch(() => ({}))).detail; throw new Error(typeof detail === 'string' ? detail : 'Request failed (' + res.status + ')'); }
+      const name = (/filename="([^"]+)"/.exec(res.headers.get('Content-Disposition') || '') || [])[1] || 'invoices.' + format;
+      const link = node('a'); link.href = URL.createObjectURL(await res.blob()); link.download = name;
+      document.body.append(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(link.href), 4000);
+      state.saved = true; status($('export-status'), 'Downloaded ' + name, 'idle');
+    } catch (err) { status($('export-status'), err.message, 'err'); }
+  }
+  $('xlsx').addEventListener('click', () => download('xlsx'));
+  $('csv').addEventListener('click', () => download('csv'));
+  window.addEventListener('beforeunload', (e) => { if (!state.saved || state.busy) e.preventDefault(); });
+
+  load();
+})();
+</script>
+</body>
+</html>

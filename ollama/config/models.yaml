@@ -115,6 +115,18 @@ documents:
   allow_cloud: false   # true lets OpenCode's cloud models work on documents. For trying the
                        # page on a machine without Ollama only - documents then leave this machine.
 
+# The Invoices tab of the documents page: reads invoices - PDF, Word, scans and
+# photos - into a sheet (Excel or CSV). Local models only, always: invoices are
+# never sent to the cloud. Scans and photos need a model that reads pictures.
+invoices:
+  model: invoices      # id of a local model below (qwen3.5:9b). Must read pictures.
+  max_jobs: 1          # files read at the same time; the rest wait their turn
+  max_pages: 40        # pages read from one file
+  image_side: 1600     # size of the page picture the model gets, in pixels (longer side of an
+                       # A4 page). Raise to 2000 if small print is misread; lower to 1280 if
+                       # pages take too long.
+  date_format: "%d-%b-%Y"   # dates in the sheet: 31-Mar-2026
+
 # Picked when the user has not chosen a model yet (and Auto is off). Falls back to the first
 # available model if this one is not pulled.
 default_model: general
@@ -179,6 +191,15 @@ models:
     model: qwen3:14b
     host: local
     description: Word templates and documents
+
+  # Used by the Invoices tab (see `invoices:` above). It must read pictures:
+  # `ollama show qwen3.5:9b` lists "vision" under Capabilities. gemma4:12b does too
+  # and can be tried here instead.
+  - id: invoices
+    label: Qwen 3.5 9B
+    model: qwen3.5:9b
+    host: local
+    description: Reads invoices, scans and photos
 
   # ---- Cloud models (OpenCode) ----
   # OpenCode's free cloud models; `model` is an id from `opencode models`. The
