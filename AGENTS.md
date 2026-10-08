@@ -436,7 +436,8 @@ Rules to keep:
 - **Nothing is stored.** A file is read in memory and forgotten; the rows live
   in the browser until downloaded.
 - **The model never sees the file name.** The names here start with an upload
-  time that reads like a date, and the old attempt took the invoice date from it.
+  time that reads like a date. The earlier attempt returned a wrong invoice
+  date for a scanned file whose only text was a print header and that name.
 - **A PDF page with under 200 characters of text is treated as a scan**
   (`MIN_TEXT`): what text it has is a print header or footer.
 - **Nothing the model returns is trusted as is.** `Confidence` is a score from
