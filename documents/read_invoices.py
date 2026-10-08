@@ -71,9 +71,14 @@ async def run(args: argparse.Namespace) -> int:
                             v = row["values"]
                             print(f"   {row['confidence']:.2f}  {row['kind']:<8} no. {v['InvoiceId'] or '-':<20} {v['InvoiceDate'] or '-':<12} "
                                   f"{v['InvoiceTotal'] or '-':>12}  {v['VendorName'] or '-'}  ->  {v['CustomerName'] or '-'}")
-                            if v["Description"] or v["TotalTaxAmount"] or v["TaxableValue"]:
-                                print(f"         {v['Description'][:60] or '-'} | qty {v['Qty'] or '-'} | taxable {v['TaxableValue'] or '-'} "
-                                      f"+ tax {v['TotalTaxAmount'] or '-'} (C {v['CGSTAmount'] or '-'}, S {v['SGSTAmount'] or '-'}, I {v['IGSTAmount'] or '-'})")
+                            if v["TotalTaxAmount"] or v["TaxableValue"]:
+                                print(f"         taxable {v['TaxableValue'] or '-'} + tax {v['TotalTaxAmount'] or '-'} "
+                                      f"(C {v['CGSTAmount'] or '-'}, S {v['SGSTAmount'] or '-'}, I {v['IGSTAmount'] or '-'})")
+                            for number, item in enumerate(row["items"], 1):
+                                line = item["values"]
+                                if any(line.values()):
+                                    print(f"         {number:>2}. {line['Description'][:48]:<48} qty {line['Qty'] or '-':<8} "
+                                          f"at {line['UnitPrice'] or '-':>10} = {line['UnitAmount'] or '-':>11}")
                             for field, note in row["notes"].items():
                                 if row["levels"][field] != "ok":
                                     print(f"         {field}: {note}")
@@ -85,7 +90,8 @@ async def run(args: argparse.Namespace) -> int:
                 print(f"   ! {exc}")
         seconds = time.monotonic() - started
         doubtful = sum(level == "check" for row in rows for level in row["levels"].values())
-        print(f"\n{len(rows)} row(s) from {len(files)} file(s) in {seconds:.0f} s; {doubtful} value(s) to check.")
+        lines = sum(len(row["items"]) for row in rows)
+        print(f"\n{len(rows)} document(s), {lines} row(s) in the sheet, from {len(files)} file(s) in {seconds:.0f} s; {doubtful} value(s) to check.")
 
         if args.out:
             out = Path(args.out)

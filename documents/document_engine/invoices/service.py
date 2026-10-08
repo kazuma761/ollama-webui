@@ -21,7 +21,7 @@ from . import prompts
 from .checks import clean, merge
 from .reader import FileRead, Page, read_file
 
-MAX_ANSWER_TOKENS = 3000  # one page's answer is a few hundred; this only stops a runaway one
+MAX_ANSWER_TOKENS = 6000  # a page with many lines needs a few thousand; beyond this it is a runaway answer
 
 
 def _list(numbers: list[int]) -> str:

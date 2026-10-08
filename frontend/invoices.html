@@ -144,6 +144,12 @@ td.why b{font-weight:600;color:#F3D2BC}
 td.why span{display:block}
 td.why .fine{color:var(--muted)}
 td.acts{padding:6px 9px;white-space:nowrap}
+td.acts .mini+.mini{margin-left:6px}
+/* The further lines of one invoice: its own values are not repeated here, and a stronger line closes the invoice. */
+td{border-bottom-color:rgba(255,255,255,.035)}
+tr.last td{border-bottom-color:rgba(255,255,255,.13)}
+td.same{background:rgba(255,255,255,.012)}
+tr.more td.file-cell .again{display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--dim)}
 tr.checked td.check .cell{background:none;border-left-color:var(--ok)}
 tr.checked td.why{color:var(--muted)}
 .w-xs{min-width:84px} .w-s{min-width:112px} .w-m{min-width:150px} .w-l{min-width:210px} .w-xl{min-width:300px}
@@ -213,7 +219,7 @@ td select.cell:focus{background-color:rgba(0,0,0,.35);box-shadow:inset 0 0 0 1px
       <button type="button" class="btn ghost" id="csv">Download CSV</button>
       <button type="button" class="btn" id="xlsx">Download Excel</button>
     </div>
-    <p class="hint" style="margin-top:6px">Check the orange values against the invoice before you download: click a file name to open it, click a value to change it. Tick a row when you have checked it.</p>
+    <p class="hint" style="margin-top:6px">Check the orange values against the invoice before you download: click a file name to open it, click a value to change it. Tick a document when you have checked it. An invoice with several items has a row for each; its total and taxes stand on its first row.</p>
     <div class="legend">
       <span><i class="k-ok"></i>confirmed by a check</span>
       <span><i class="k-read"></i>read, nothing to confirm it against</span>
@@ -223,6 +229,7 @@ td select.cell:focus{background-color:rgba(0,0,0,.35);box-shadow:inset 0 0 0 1px
     <div class="sheet"><table id="grid"><thead></thead><tbody></tbody></table></div>
     <div class="row gap">
       <label class="opt"><input type="checkbox" id="with-checks"> Add a second sheet to the Excel file listing what to check and why</label>
+      <label class="opt"><input type="checkbox" id="repeat-totals"> Repeat the total and taxes on every row of an invoice (a sum of those columns then counts them more than once)</label>
       <span class="grow"></span>
       <span class="status idle" id="export-status" hidden><i></i><span></span></span>
     </div>
@@ -241,8 +248,8 @@ td select.cell:focus{background-color:rgba(0,0,0,.35);box-shadow:inset 0 0 0 1px
 
   const WIDTH = { InvoiceId: 'w-m', InvoiceDate: 'w-s', DueDate: 'w-s', InvoiceTotal: 'w-s', VendorName: 'w-l', VendorAddress: 'w-xl',
     CustomerName: 'w-l', CustomerId: 'w-s', BillingAddress: 'w-xl', BillingAddressRecipient: 'w-l', VendorAddressRecipient: 'w-l', VendorGST: 'w-m', CustomerGST: 'w-m',
-    Description: 'w-xl', Qty: 'w-s', Discount: 'w-s', TaxableValue: 'w-s', CGSTAmount: 'w-s', SGSTAmount: 'w-s', IGSTAmount: 'w-s', TotalTaxAmount: 'w-s', HSNSAC: 'w-s', Currency: 'w-xs' };
-  const LONG = new Set(['VendorAddress', 'BillingAddress', 'Description']);
+    Description: 'w-xl', Qty: 'w-s', UnitPrice: 'w-s', UnitAmount: 'w-s', Discount: 'w-s', TaxableValue: 'w-s', CGSTAmount: 'w-s', SGSTAmount: 'w-s', IGSTAmount: 'w-s', TotalTaxAmount: 'w-s', HSNSAC: 'w-s', Currency: 'w-xs' };
+  const LONG = new Set(['VendorAddress', 'BillingAddress']);
   const KIND = { invoice: 'invoice', receipt: 'receipt', payment: 'payment confirmation' };
   const TAXES = ['CGSTAmount', 'SGSTAmount', 'IGSTAmount'];
   const SUM = ['InvoiceTotal', 'Discount', 'TaxableValue', 'TotalTaxAmount', ...TAXES];   // the figures that must add up
@@ -351,7 +358,7 @@ td select.cell:focus{background-color:rgba(0,0,0,.35);box-shadow:inset 0 0 0 1px
         const event = JSON.parse(line);
         if (event.type === 'error') throw new Error(event.message);
         if (event.type === 'progress') { f.what = event.message; showFiles(); }
-        else if (event.type === 'rows') { for (const row of event.rows) state.rows.push({ ...row, id: state.next++, source: f.id, checked: false }); state.saved = !state.rows.length; showSheet(); }
+        else if (event.type === 'rows') { for (const row of event.rows) state.rows.push({ ...row, items: row.items || [], id: state.next++, source: f.id, checked: false }); state.saved = !state.rows.length; showSheet(); }
         else if (event.type === 'notice') f.notes.push(event.message);
         else if (event.type === 'done') { finished = true; f.state = f.notes.length ? 'partial' : 'done'; f.what = (event.rows ? plural(event.rows, 'row') : 'nothing found') + ' · ' + plural(event.pages, 'page') + ' · ' + event.seconds + ' s'; }
       }
@@ -383,6 +390,17 @@ td select.cell:focus{background-color:rgba(0,0,0,.35);box-shadow:inset 0 0 0 1px
   $('go').addEventListener('click', () => { if (state.busy) state.stop.abort(); else run(); });
 
   /* ── The sheet ── */
+  // A document has values of its own and lines (what was bought). Every line is a row here and in the
+  // sheet; the document's own values stand on its first row.
+  const hasLine = (item) => state.config.item_fields.some((f) => item.values[f]);
+  // A line column is as doubtful as its most doubtful line: the same rule as checks.py.
+  function settle(row) {
+    const rank = { check: 0, read: 1, ok: 2 };
+    for (const f of state.config.item_fields) {
+      const found = row.items.filter((i) => i.values[f]).map((i) => i.levels[f] || 'read');
+      row.levels[f] = found.length ? found.reduce((x, y) => (rank[x] <= rank[y] ? x : y)) : 'empty';
+    }
+  }
   // The same sum as checks.py: the numbers come from the server, so there is one definition.
   function confidence(row) {
     if (row.checked) return 1;
@@ -403,13 +421,28 @@ td select.cell:focus{background-color:rgba(0,0,0,.35);box-shadow:inset 0 0 0 1px
     if (Math.abs(base + tax - total) > slack && !(discount && Math.abs(base - discount + tax - total) <= slack)) return;
     for (const f of ['TaxableValue', 'TotalTaxAmount', ...TAXES]) if (v[f]) { row.levels[f] = 'ok'; delete row.notes[f]; }
   }
-  function paintRow(row, tr) {
-    tr.className = row.checked ? 'checked' : '';
-    for (const td of tr.querySelectorAll('td[data-field]')) td.className = (WIDTH[td.dataset.field] || '') + ' ' + (row.levels[td.dataset.field] || 'empty');
-    const value = confidence(row), conf = tr.querySelector('.conf');
+  // And the lines: if their amounts now add up to the total (or to it before tax), they are no longer in doubt.
+  function linesAddUp(row) {
+    const v = row.values, total = amount(v.InvoiceTotal), slack = state.config.scoring.round_off;
+    const lines = row.items.filter(hasLine), sums = lines.map((i) => amount(i.values.UnitAmount || ''));
+    if (total === null || !lines.length || sums.some((n) => n === null)) return;
+    const sum = sums.reduce((x, y) => x + y, 0), tax = amount(v.TotalTaxAmount) || 0, discount = amount(v.Discount) || 0, base = amount(v.TaxableValue);
+    const targets = [total, total - tax, total - tax + discount].concat(base === null ? [] : [base, base + discount]);
+    if (!targets.some((t) => Math.abs(sum - t) <= slack)) return;
+    for (const i of lines) i.levels.UnitAmount = 'ok';
+    delete row.notes.UnitAmount;
+  }
+  function paintRow(row) {
+    settle(row);
+    row.trs.forEach((tr, n) => {
+      tr.className = (n ? 'more ' : '') + (n === row.trs.length - 1 ? 'last ' : '') + (row.checked ? 'checked' : '');
+      for (const td of tr.querySelectorAll('td[data-field]')) td.className = (WIDTH[td.dataset.field] || '') + ' ' + (row.levels[td.dataset.field] || 'empty');
+      for (const td of tr.querySelectorAll('td[data-item]')) td.className = (WIDTH[td.dataset.item] || '') + ' ' + (row.items[n].levels[td.dataset.item] || 'empty');
+    });
+    const head = row.trs[0], value = confidence(row), conf = head.querySelector('.conf');
     conf.textContent = value.toFixed(2);
     conf.className = 'conf ' + (value >= 0.9 ? 'high' : value < 0.7 ? 'low' : '');
-    const why = tr.querySelector('.why'); why.replaceChildren();
+    const why = head.querySelector('.why'); why.replaceChildren();
     // What needs a look. A note on a confirmed value ("matches the amount in words") stays a tooltip.
     const fields = Object.keys(row.notes).filter((f) => row.notes[f] && row.levels[f] !== 'ok');
     if (row.checked) why.append(node('span', 'fine', 'Checked by you.'));
@@ -419,62 +452,105 @@ td select.cell:focus{background-color:rgba(0,0,0,.35);box-shadow:inset 0 0 0 1px
       if (row.levels[field] === 'empty') line.className = 'fine';  // not on the invoice: said, not shouted
       why.append(line);
     }
-    tr.querySelector('.tick').setAttribute('aria-pressed', String(row.checked));
+    head.querySelector('.tick').setAttribute('aria-pressed', String(row.checked));
   }
   function summary() {
-    const files = new Set(state.rows.map((r) => r.source)).size;
-    const open = state.rows.reduce((n, r) => n + (r.checked ? 0 : Object.values(r.levels).filter((l) => l === 'check').length), 0);
-    $('count').textContent = plural(state.rows.length, 'row') + ' from ' + plural(files, 'file') + ' · ' + (open ? plural(open, 'value') + ' to check' : 'nothing left to check');
+    const files = new Set(state.rows.map((r) => r.source)).size, lines = state.config ? state.config.item_fields : [];
+    const open = state.rows.reduce((n, r) => n + (r.checked ? 0
+      : Object.entries(r.levels).filter(([f, l]) => l === 'check' && !lines.includes(f)).length
+        + r.items.reduce((m, i) => m + Object.values(i.levels).filter((l) => l === 'check').length, 0)), 0);
+    const sheetRows = state.rows.reduce((n, r) => n + r.items.length, 0);
+    $('count').textContent = plural(state.rows.length, 'document') + ' · ' + plural(sheetRows, 'row') + ' from ' + plural(files, 'file') + ' · '
+      + (open ? plural(open, 'value') + ' to check' : 'nothing left to check');
+  }
+  // A cell of the document itself (its number, its total ...), on its first row.
+  function fieldCell(row, title, key, label) {
+    const td = node('td'), cell = node(LONG.has(key) ? 'textarea' : 'input', 'cell');
+    td.dataset.field = key;
+    if (LONG.has(key)) cell.rows = 2;
+    cell.value = row.values[key] || ''; cell.placeholder = '—';
+    cell.setAttribute('aria-label', label); cell.title = row.notes[key] || '';
+    cell.addEventListener('input', () => {   // a value typed by a person counts as checked
+      row.values[key] = cell.value.trim(); row.levels[key] = row.values[key] ? 'ok' : 'empty';
+      delete row.notes[key]; cell.title = '';
+      if (TAXES.includes(key)) {   // the total tax follows the three it is the sum of
+        const parts = TAXES.map((f) => row.values[f]).filter(Boolean).map(amount);
+        if (parts.length && parts.every((n) => n !== null)) {
+          row.values.TotalTaxAmount = parts.reduce((x, y) => x + y, 0).toFixed(2); row.levels.TotalTaxAmount = 'ok'; delete row.notes.TotalTaxAmount;
+          row.trs[0].querySelector('td[data-field=TotalTaxAmount] .cell').value = row.values.TotalTaxAmount;
+        }
+      }
+      if (SUM.includes(key)) { addsUp(row); linesAddUp(row); }
+      state.saved = false; paintRow(row); summary();
+    });
+    td.append(cell);
+    return td;
+  }
+  // A cell of one line (what was bought, how many, at what price).
+  function lineCell(row, item, key, label) {
+    const td = node('td'), cell = node('input', 'cell');
+    td.dataset.item = key;
+    cell.value = item.values[key] || ''; cell.placeholder = '—';
+    cell.setAttribute('aria-label', label);
+    cell.addEventListener('input', () => {
+      item.values[key] = cell.value.trim(); item.levels[key] = item.values[key] ? 'ok' : 'empty';
+      if (key === 'UnitAmount') linesAddUp(row);
+      state.saved = false; paintRow(row); summary();
+    });
+    td.append(cell);
+    return td;
   }
   function showSheet() {
     $('result').hidden = !state.rows.length;
     const body = $('grid').tBodies[0]; body.replaceChildren();
+    if (!state.config) return;
+    const ofLine = state.config.item_fields;
     state.rows.forEach((row, index) => {
-      const tr = node('tr'), source = state.files.find((f) => f.id === row.source);
-      const first = node('td', 'file-cell'), open = node('button', '', row.file); open.type = 'button'; open.title = 'Open ' + row.file;
-      open.addEventListener('click', () => { if (source) window.open(URL.createObjectURL(source.file), '_blank', 'noopener'); });
-      const pages = row.pages.length > 1 ? 'pages ' + row.pages[0] + '–' + row.pages[row.pages.length - 1] : 'page ' + row.pages[0];
-      first.append(open, node('small', '', (KIND[row.kind] || row.kind) + ' · ' + pages));
-      tr.append(first);
-      for (const [title, key] of state.config.columns) {
-        if (key === 'file') continue;
-        if (key === 'confidence') { tr.append(node('td', 'conf')); continue; }
-        if (key === 'kind') {   // what kind of document it is decides which fields it is expected to have
-          const td = node('td', 'w-s'), pick = node('select', 'cell');
-          for (const [value, label] of [['invoice', 'Invoice'], ['receipt', 'Receipt'], ['payment', 'Payment']]) { const o = node('option', '', label); o.value = value; o.selected = value === row.kind; pick.append(o); }
-          pick.setAttribute('aria-label', title + ', row ' + (index + 1));
-          pick.addEventListener('change', () => { row.kind = pick.value; state.saved = false; showSheet(); });
-          td.append(pick); tr.append(td); continue;
-        }
-        const td = node('td'), cell = node(LONG.has(key) ? 'textarea' : 'input', 'cell');
-        td.dataset.field = key;
-        if (LONG.has(key)) cell.rows = 2;
-        cell.value = row.values[key] || ''; cell.placeholder = '—';
-        cell.setAttribute('aria-label', title + ', row ' + (index + 1));
-        cell.title = row.notes[key] || '';
-        cell.addEventListener('input', () => {   // a value typed by a person counts as checked
-          row.values[key] = cell.value.trim(); row.levels[key] = row.values[key] ? 'ok' : 'empty';
-          delete row.notes[key]; cell.title = '';
-          if (TAXES.includes(key)) {   // the total tax follows the three it is the sum of
-            const parts = TAXES.map((f) => row.values[f]).filter(Boolean).map(amount);
-            if (parts.length && parts.every((n) => n !== null)) {
-              row.values.TotalTaxAmount = parts.reduce((a, b) => a + b, 0).toFixed(2); row.levels.TotalTaxAmount = 'ok'; delete row.notes.TotalTaxAmount;
-              tr.querySelector('td[data-field=TotalTaxAmount] .cell').value = row.values.TotalTaxAmount;
-            }
+      if (!row.items || !row.items.length) row.items = [{ values: {}, levels: {} }];
+      const source = state.files.find((f) => f.id === row.source);
+      row.trs = row.items.map((item, n) => {
+        const tr = node('tr'), head = n === 0, first = node('td', 'file-cell');
+        if (head) {
+          const open = node('button', '', row.file); open.type = 'button'; open.title = 'Open ' + row.file;
+          open.addEventListener('click', () => { if (source) window.open(URL.createObjectURL(source.file), '_blank', 'noopener'); });
+          const pages = row.pages.length > 1 ? 'pages ' + row.pages[0] + '–' + row.pages[row.pages.length - 1] : 'page ' + row.pages[0];
+          first.append(open, node('small', '', (KIND[row.kind] || row.kind) + ' · ' + pages + (row.items.length > 1 ? ' · ' + row.items.length + ' lines' : '')));
+        } else first.append(node('span', 'again', row.file), node('small', '', 'line ' + (n + 1) + ' of ' + row.items.length));
+        tr.append(first);
+        for (const [title, key] of state.config.columns) {
+          if (key === 'file') continue;
+          const label = title + ', document ' + (index + 1) + (row.items.length > 1 ? ', line ' + (n + 1) : '');
+          if (ofLine.includes(key)) { tr.append(lineCell(row, item, key, label)); continue; }
+          if (!head) { tr.append(node('td', 'same')); continue; }   // the document's own values stand on its first row
+          if (key === 'confidence') { tr.append(node('td', 'conf')); continue; }
+          if (key === 'kind') {   // what kind of document it is decides which fields it is expected to have
+            const td = node('td', 'w-s'), pick = node('select', 'cell');
+            for (const [value, name] of [['invoice', 'Invoice'], ['receipt', 'Receipt'], ['payment', 'Payment']]) { const o = node('option', '', name); o.value = value; o.selected = value === row.kind; pick.append(o); }
+            pick.setAttribute('aria-label', label);
+            pick.addEventListener('change', () => { row.kind = pick.value; state.saved = false; showSheet(); });
+            td.append(pick); tr.append(td); continue;
           }
-          if (SUM.includes(key)) addsUp(row);
-          state.saved = false; paintRow(row, tr); summary();
-        });
-        td.append(cell); tr.append(td);
-      }
-      const acts = node('td', 'acts'), tick = node('button', 'mini tick', '✓ Checked'), remove = node('button', 'mini', 'Remove');
-      tick.type = remove.type = 'button'; tick.title = 'I have compared this row with the invoice';
-      tick.addEventListener('click', () => { row.checked = !row.checked; state.saved = false; paintRow(row, tr); summary(); });
-      remove.style.marginLeft = '6px';
-      remove.addEventListener('click', () => { state.rows = state.rows.filter((r) => r !== row); state.saved = !state.rows.length; showSheet(); });
-      acts.append(tick, remove);
-      tr.append(node('td', 'why'), acts);
-      body.append(tr); paintRow(row, tr);
+          tr.append(fieldCell(row, title, key, label));
+        }
+        const acts = node('td', 'acts');
+        if (head) {
+          const tick = node('button', 'mini tick', '✓ Checked'), remove = node('button', 'mini', 'Remove'), add = node('button', 'mini', '+ Line');
+          tick.type = remove.type = add.type = 'button'; tick.title = 'I have compared this with the invoice';
+          remove.title = 'Remove this document and all its lines'; add.title = 'Add a line to this document';
+          tick.addEventListener('click', () => { row.checked = !row.checked; state.saved = false; paintRow(row); summary(); });
+          remove.addEventListener('click', () => { state.rows = state.rows.filter((r) => r !== row); state.saved = !state.rows.length; showSheet(); });
+          add.addEventListener('click', () => { row.items.push({ values: {}, levels: {} }); state.saved = false; showSheet(); });
+          acts.append(tick, remove, add);
+        } else {
+          const drop = node('button', 'mini', 'Remove line'); drop.type = 'button';
+          drop.addEventListener('click', () => { row.items.splice(n, 1); linesAddUp(row); state.saved = false; showSheet(); });
+          acts.append(drop);
+        }
+        tr.append(node('td', head ? 'why' : 'same'), acts);
+        body.append(tr);
+        return tr;
+      });
+      paintRow(row);
     });
     summary();
   }
@@ -484,14 +560,15 @@ td select.cell:focus{background-color:rgba(0,0,0,.35);box-shadow:inset 0 0 0 1px
     if (!state.rows.length) return;
     status($('export-status'), 'Making the file');
     // A row a person has checked goes out as confirmed: no shading, confidence 1.
+    const sure = (levels, checked) => checked ? Object.fromEntries(Object.entries(levels).map(([f, l]) => [f, l === 'check' ? 'ok' : l])) : levels;
     const rows = state.rows.map((r) => ({
       file: r.file, pages: r.pages, kind: r.kind, values: r.values, confidence: confidence(r),
-      levels: r.checked ? Object.fromEntries(Object.entries(r.levels).map(([f, l]) => [f, l === 'check' ? 'ok' : l])) : r.levels,
-      notes: r.checked ? {} : r.notes,
+      levels: sure(r.levels, r.checked), notes: r.checked ? {} : r.notes,
+      items: r.items.map((i) => ({ values: i.values, levels: sure(i.levels, r.checked) })),
     }));
     try {
       const res = await fetch(API + '/api/documents/invoices/export', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ rows, format, checks: $('with-checks').checked }) });
+        body: JSON.stringify({ rows, format, checks: $('with-checks').checked, repeat_totals: $('repeat-totals').checked }) });
       if (!res.ok) { const detail = (await res.json().catch(() => ({}))).detail; throw new Error(typeof detail === 'string' ? detail : 'Request failed (' + res.status + ')'); }
       const name = (/filename="([^"]+)"/.exec(res.headers.get('Content-Disposition') || '') || [])[1] || 'invoices.' + format;
       const link = node('a'); link.href = URL.createObjectURL(await res.blob()); link.download = name;

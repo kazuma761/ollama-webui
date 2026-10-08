@@ -10,7 +10,7 @@ To change how invoices are read, edit this file only.
 
 from __future__ import annotations
 
-from .checks import COMPUTED, FIELDS
+from .checks import COMPUTED, FIELDS, MAX_ITEMS
 
 SYSTEM = """\
 You read invoices, bills and receipts and copy facts from them into fixed fields. You are given one page of a file: a picture of it, its text, or both.
@@ -32,15 +32,19 @@ THE FIELDS OF ONE ENTRY
 - VendorGST: the vendor's GSTIN, printed in or beside the vendor's own block. A GSTIN has 15 characters: 2 digits, then the 10-character PAN, then 3 more. A 10-character PAN on its own is not a GSTIN: give "".
 - InvoiceId: the invoice, bill or receipt number as printed ("Invoice No.", "Bill No.", "Inv No", "No."). Not the IRN, the Ack No., an order or reference number, an HSN/SAC code, a phone number or a tax number. On a payment confirmation with no bill number, the transaction id. If the page says NA or leaves it blank, give "".
 - InvoiceDate: the date of the document ("Dated", "Invoice Date", "Bill Date", "Date"), as written. Not the Ack date, a due date, a delivery date, a print date, or a date in the page's header or footer.
-- DueDate: the date payment is due, only if the page prints that date. Do not work it out from terms such as "45 days".
+- DueDate: the date payment is due, only if the page prints that date. Payment terms such as "45 days" are not a date: give "".
 - CustomerName: who is billed ("Buyer", "Bill to", "Billed to", "Customer", "M/s", "Smt./Sri", "To"). On a payment confirmation, who paid.
 - BillingAddress: the customer's address on one line, without the name or tax numbers. If the page has both a bill-to and a ship-to address, use bill-to.
 - BillingAddressRecipient: the name printed with the billing address. Normally the same as CustomerName.
 - CustomerGST: the customer's GSTIN, printed in the buyer's block. Same form as VendorGST.
-- CustomerId: a customer number or code the vendor uses for this customer ("Customer ID", "Client Code"), only if printed. Not a tax number, PAN or phone number.
-- Description: what was bought or paid for, in a few words. Where the page lists items, copy their names without serial numbers, codes or specification lines, several items separated by "; ", the first ten at most. Where it lists none, say what the page shows it to be: a taxi ride and its two places, fuel, a meal, rent for a month.
-- Qty: the quantity or duration of what was bought, with its unit, as written ("Qty", "Nos", "Hrs", "Days", "Nights", "Litres", "Km"). For several items, in the same order as Description, separated by "; ". If the page gives none, "".
-- HSNSAC: the HSN or SAC code of the items ("HSN/SAC", "HSN Code"), its digits as printed. Different codes separated by "; ".
+- CustomerId: a customer number or code the vendor uses for this customer ("Customer ID", "Client Code"), only if printed. Not a tax number, PAN, phone number or purchase order number.
+- Items: what was bought, one entry for each line of the page's table of items, in the page's order. Never put two lines into one entry. Leave out the lines for totals, taxes and round-off. Each entry has:
+  - Description: the name of the item as written, without its serial number, and without the smaller lines of names, notes or specifications under it.
+  - Qty: the quantity or duration of that line, with its unit if one is written ("Qty", "Nos", "Hrs", "Days", "Nights", "Litres", "Km"). If the line has none, "".
+  - UnitPrice: the price of one unit on that line ("Rate", "Price", "Unit Price"), as written. If the line has none, "".
+  - Amount: the amount of that line ("Amount", "Value", "Total" of the line), as written. If the line has none, "".
+  - HSNSAC: the HSN or SAC code of that line ("HSN/SAC"), its digits as printed. If it has none, "".
+  If the page has no table of items (a taxi receipt, a fuel slip, a payment confirmation), give one entry: in Description say in a few words what was paid for, from what the page shows (a taxi ride and its two places, fuel, a meal, rent for a month), and fill Qty, UnitPrice and Amount only if the page prints them.
 - Discount: the discount taken off before tax, as an amount of money. Not a percentage. If there is none, or the page shows a dash or zero, give "".
 - TaxableValue: the amount the tax is worked out on ("Taxable Value", "Sub Total", "Total before tax"), after any discount. Not the final total. If the page charges no tax and prints no sub-total, give "".
 - CGSTAmount: the Central GST in money ("CGST", "Central Tax"). The amount, never the rate: for "CGST 9% 4,725.00" give "4,725.00". If the page shows a dash, zero or nothing, give "".
@@ -49,19 +53,19 @@ THE FIELDS OF ONE ENTRY
 - TotalTax: the total tax in money, only if the page prints that figure ("Total Tax", "Tax Amount", "GST"). Otherwise "".
 - InvoiceTotal: the final amount to pay, taxes included ("Grand Total", "Total", "Total Bill Amount", "Net Payable", "Amount Chargeable", "Amount Charged"), as written, for example with its commas and decimals. Not the taxable value, a sub-total or the tax amount.
 - TotalInWords: that same total written out in words, if the page has it. Not the tax amount in words.
-- unsure: the names of fields above whose value you could not read clearly: handwriting, blur, a cut-off edge, or two values that could both be it. Leave it empty when everything was clear."""
+- unsure: the names of fields above whose value you could not read clearly: handwriting, blur, a cut-off edge, or two values that could both be it. Use "Items" for the lines. Leave it empty when everything was clear."""
 
 # The order is the order the model writes in, which follows an invoice from top to bottom:
 # who, what was bought, the tax, the total. TotalInWords and TotalTax are not columns of the
-# sheet; `checks.py` uses them to check the figures.
-_ORDER = (
+# sheet; `checks.py` uses them to check the figures. The lines come as a list, `Items`.
+_BEFORE = (
     "VendorName", "VendorAddress", "VendorAddressRecipient", "VendorGST", "InvoiceId", "InvoiceDate", "DueDate",
     "CustomerName", "BillingAddress", "BillingAddressRecipient", "CustomerGST", "CustomerId",
-    "Description", "Qty", "HSNSAC", "Discount", "TaxableValue", "CGSTAmount", "SGSTAmount", "IGSTAmount", "TotalTax",
-    "InvoiceTotal", "TotalInWords",
 )
-ASKED = tuple(f for f in FIELDS if f not in COMPUTED)  # the columns the model fills
-assert set(ASKED) | {"TotalInWords", "TotalTax"} == set(_ORDER)
+_AFTER = ("Discount", "TaxableValue", "CGSTAmount", "SGSTAmount", "IGSTAmount", "TotalTax", "InvoiceTotal", "TotalInWords")
+_LINE = ("Description", "Qty", "UnitPrice", "Amount", "HSNSAC")  # "Amount" is the UnitAmount column
+ASKED = tuple(f for f in FIELDS if f not in COMPUTED)  # the invoice's own columns that the model fills
+assert set(ASKED) | {"TotalInWords", "TotalTax"} == set(_BEFORE) | set(_AFTER)
 
 SCHEMA = {
     "type": "object",
@@ -72,10 +76,20 @@ SCHEMA = {
                 "type": "object",
                 "properties": {
                     "kind": {"type": "string", "enum": ["invoice", "receipt", "payment", "other"]},
-                    **{name: {"type": "string"} for name in _ORDER},
-                    "unsure": {"type": "array", "items": {"type": "string", "enum": list(ASKED)}},
+                    **{name: {"type": "string"} for name in _BEFORE},
+                    "Items": {
+                        "type": "array",
+                        "maxItems": MAX_ITEMS,
+                        "items": {
+                            "type": "object",
+                            "properties": {name: {"type": "string"} for name in _LINE},
+                            "required": list(_LINE),
+                        },
+                    },
+                    **{name: {"type": "string"} for name in _AFTER},
+                    "unsure": {"type": "array", "items": {"type": "string", "enum": [*ASKED, "Items"]}},
                 },
-                "required": ["kind", *_ORDER, "unsure"],
+                "required": ["kind", *_BEFORE, "Items", *_AFTER, "unsure"],
             },
         }
     },

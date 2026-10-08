@@ -122,13 +122,15 @@ DOCUMENTS
   Scanned PDFs contain no text: send screenshots to a vision model instead.
 
 INVOICES (the Invoices tab of the documents page)
-  PDF, Word, scans and photos in; an Excel or CSV sheet out, one row per
-  invoice, receipt or payment confirmation, with fixed columns.
+  PDF, Word, scans and photos in; an Excel or CSV sheet out with fixed
+  columns: one row for each line (item) of each invoice, receipt or payment
+  confirmation. The invoice's totals stand on its first row only.
   1. Each page becomes text and/or a picture (reader.py, no model).
   2. A local model that reads pictures gets one page at a time and answers in
      JSON (prompts.py, service.py). Never a cloud model. Nothing is stored.
   3. Every value is cleaned and checked - found in the file's text, GSTIN
-     check digit, total against the amount in words - and the row gets a
+     check digit, total against the amount in words, taxable value + tax and
+     the sum of the lines against the total - and the invoice gets a
      Confidence from those checks (checks.py, no model).
   4. A person reviews the rows on the page and downloads the sheet (export.py).
   Model and settings: the `invoices:` block in ollama/config/models.yaml.

@@ -20,9 +20,11 @@ The Invoices tab has a folder of its own, with the same split:
 document_engine/invoices/
   reader.py     a file (PDF, Word, photo) -> pages: text and/or a picture. No model.
   checks.py     cleans each value, checks it (GSTIN check digit, dates, total against
-                the amount in words, taxable value + tax against the total), adds up
-                the total tax, scores the Confidence. No model.
-  export.py     the reviewed rows -> .xlsx or .csv. No model.
+                the amount in words, taxable value + tax against the total, quantity x
+                unit price and the sum of the lines), adds up the total tax, scores
+                the Confidence. No model.
+  export.py     the reviewed rows -> .xlsx or .csv, one row for each line of an
+                invoice. No model.
   prompts.py    the model's part: what it is told, and the JSON it must answer in
   service.py    the model's part: one page at a time to the local model
 read_invoices.py   the same from a terminal:

@@ -25,27 +25,30 @@ import unicodedata
 from datetime import date
 from typing import Any
 
-# The fields of a row, and the sheet's columns. The first fifteen columns are the sheet as
-# first asked for and stay exactly as they were; what was added later (what was bought, the
-# tax breakdown) follows Confidence, so an older sheet still lines up column for column.
+# An invoice has fields of its own (one value for the whole invoice) and lines: what was
+# bought, one line for each thing. Every line is a row of the sheet. The invoice's fields are
+# repeated on each of its rows; its totals and taxes are written on the first only, so that
+# adding up a column of the sheet still gives the right sum.
 FIELDS = (
     "InvoiceId", "InvoiceDate", "DueDate", "InvoiceTotal", "VendorName", "VendorAddress", "CustomerName",
     "CustomerId", "BillingAddress", "BillingAddressRecipient", "VendorAddressRecipient", "VendorGST", "CustomerGST",
-    "Description", "Qty", "Discount", "TaxableValue", "CGSTAmount", "SGSTAmount", "IGSTAmount", "TotalTaxAmount",
-    "HSNSAC", "Currency",
+    "Discount", "TaxableValue", "CGSTAmount", "SGSTAmount", "IGSTAmount", "TotalTaxAmount", "Currency",
 )
+ITEM_FIELDS = ("Description", "Qty", "UnitPrice", "UnitAmount", "HSNSAC")  # of one line
 COMPUTED = ("TotalTaxAmount", "Currency")  # worked out here from what was read; the model is not asked for them
 AMOUNTS = ("InvoiceTotal", "Discount", "TaxableValue", "CGSTAmount", "SGSTAmount", "IGSTAmount", "TotalTaxAmount")
+NUMBERS = (*AMOUNTS, "UnitPrice", "UnitAmount")  # written as numbers in the sheet
 TAXES = ("CGSTAmount", "SGSTAmount", "IGSTAmount")
 COLUMNS = (
     ("Invoice File Name", "file"), ("InvoiceId", "InvoiceId"), ("Invoice Date", "InvoiceDate"), ("DueDate", "DueDate"),
     ("InvoiceTotal", "InvoiceTotal"), ("VendorName", "VendorName"), ("VendorAddress", "VendorAddress"),
     ("CustomerName", "CustomerName"), ("CustomerId", "CustomerId"), ("BillingAddress", "BillingAddress"),
     ("BillingAddressRecipient", "BillingAddressRecipient"), ("VendorAddressRecipient", "VendorAddressRecipient"),
-    ("VendorGST", "VendorGST"), ("CustomerGST", "CustomerGST"), ("Confidence", "confidence"),
-    ("Description", "Description"), ("Qty", "Qty"), ("Discount", "Discount"), ("TaxableValue", "TaxableValue"),
-    ("CGSTAmount", "CGSTAmount"), ("SGSTAmount", "SGSTAmount"), ("IGSTAmount", "IGSTAmount"),
-    ("TotalTaxAmount", "TotalTaxAmount"), ("HSNSAC", "HSNSAC"), ("Currency", "Currency"), ("DocumentType", "kind"),
+    ("VendorGST", "VendorGST"), ("CustomerGST", "CustomerGST"),
+    ("Description", "Description"), ("Qty", "Qty"), ("UnitPrice", "UnitPrice"), ("UnitAmount", "UnitAmount"),
+    ("Discount", "Discount"), ("TaxableValue", "TaxableValue"), ("CGSTAmount", "CGSTAmount"), ("SGSTAmount", "SGSTAmount"),
+    ("IGSTAmount", "IGSTAmount"), ("TotalTaxAmount", "TotalTaxAmount"), ("HSNSAC", "HSNSAC"), ("Currency", "Currency"),
+    ("DocumentType", "kind"), ("Confidence", "confidence"),
 )
 KIND_NAMES = {"invoice": "Invoice", "receipt": "Receipt", "payment": "Payment"}  # the DocumentType column
 KINDS = ("invoice", "receipt", "payment")  # what becomes a row; anything else on a page is skipped
@@ -55,7 +58,7 @@ WEIGHT = {
     "CustomerGST": 1.5, "VendorAddress": 1, "BillingAddress": 1, "DueDate": 1, "CustomerId": 1,
     "BillingAddressRecipient": 0.5, "VendorAddressRecipient": 0.5,
     "TaxableValue": 1.5, "CGSTAmount": 1, "SGSTAmount": 1, "IGSTAmount": 1, "TotalTaxAmount": 1, "Description": 1,
-    "Discount": 0.5, "Qty": 0.5, "HSNSAC": 0.5,
+    "Discount": 0.5, "Qty": 0.5, "HSNSAC": 0.5, "UnitPrice": 0.5, "UnitAmount": 1,
 }  # Currency has no weight: it is read off the currency sign and says nothing about the reading
 SCORE = {"ok": 1.0, "read": 0.8, "check": 0.35}
 MISSING = 0.3
@@ -67,6 +70,8 @@ EXPECTED = {
 }
 ROUND_OFF = 1.01  # invoices round the total to the rupee, so sums may differ by this much
 MAX_DESCRIPTION = 300
+MAX_ITEMS = 60  # lines kept from one page
+OLD_YEARS = 3  # an invoice dated longer ago than this is more likely a misread year
 NOT_AN_ANSWER = {
     "", "n/a", "na", "n.a.", "nil", "none", "null", "unknown", "not found", "not provided", "not available",
     "not specified", "not mentioned", "not applicable", "-", "--", "---", "tbd", "blank", "empty",
@@ -298,9 +303,120 @@ def _amount_in_text(amount: float, text: str) -> bool:
     return any(re.search(rf"(?<![\d.]){re.escape(form)}(?!\d)", flat) for form in forms)
 
 
+# Lines of the item table that are not things bought: the model sometimes lists them as items.
+_NOT_AN_ITEM = re.compile(
+    r"(sub ?total|grand total|net (amount|total|payable)|total( amount| value)?|taxable (value|amount)|"
+    r"(c|s|i|ut)gst( .*)?|(central|state|integrated) tax( .*)?|round(ed|ing)? ?off|amount in words.*)"
+)
+
+
+def _is_item(item: dict[str, Any]) -> bool:
+    return any(item["values"].values())
+
+
+def read_items(raw: dict[str, Any], text: str) -> list[dict[str, Any]]:
+    """The lines of one document as the model returned them -> cleaned, each value with a level.
+    There is always at least one line, empty if nothing was bought item by item."""
+    listed = raw.get("Items")
+    if not isinstance(listed, list):  # an answer without lines: one description for the lot
+        listed = [{key: raw.get(key) for key in ("Description", "Qty", "HSNSAC")}]
+    items: list[dict[str, Any]] = []
+    for entry in listed[:MAX_ITEMS]:
+        if not isinstance(entry, dict):
+            continue
+        values = {
+            "Description": _text(entry.get("Description"))[:MAX_DESCRIPTION].rstrip(" ;,"),
+            "Qty": _text(entry.get("Qty")),
+            "UnitPrice": _text(entry.get("UnitPrice")),
+            "UnitAmount": _text(entry.get("Amount", entry.get("UnitAmount"))),
+            "HSNSAC": "; ".join(dict.fromkeys(re.findall(r"\d{4,8}", _text(entry.get("HSNSAC"))))),
+        }
+        if not any(values.values()) or _NOT_AN_ITEM.fullmatch(_plain(values["Description"])):
+            continue
+        levels = {f: "read" if values[f] else "empty" for f in ITEM_FIELDS}
+        figures: dict[str, float] = {}
+        for f in ("UnitPrice", "UnitAmount"):
+            if not values[f]:
+                continue
+            amount = parse_money(values[f])
+            if amount is None:
+                levels[f] = "check"  # left as written
+                continue
+            figures[f] = amount
+            values[f] = f"{amount:.2f}"
+            if text and _amount_in_text(amount, text):
+                levels[f] = "ok"
+        if text:  # found in the file's own text; not finding it says little, the sums below say more
+            if values["Description"] and _in_text("Description", values["Description"], text):
+                levels["Description"] = "ok"
+            if values["Qty"] and _in_text("Qty", values["Qty"], text):
+                levels["Qty"] = "ok"
+            if values["HSNSAC"] and all(re.search(rf"(?<!\d){code}(?!\d)", text) for code in values["HSNSAC"].split("; ")):
+                levels["HSNSAC"] = "ok"
+        item: dict[str, Any] = {"values": values, "levels": levels}
+        # Quantity x unit price = amount: a check on a line that needs nothing but the line.
+        count = parse_amount(values["Qty"]) if values["Qty"] else None
+        if count is not None and len(figures) == 2:
+            if abs(count * figures["UnitPrice"] - figures["UnitAmount"]) <= ROUND_OFF:
+                levels["Qty"] = levels["UnitPrice"] = levels["UnitAmount"] = "ok"
+            else:
+                levels["UnitAmount"] = "check"
+                item["note"] = f"{count:g} x {figures['UnitPrice']:,.2f} = {count * figures['UnitPrice']:,.2f}, not {figures['UnitAmount']:,.2f}"
+        items.append(item)
+    return items or [{"values": {f: "" for f in ITEM_FIELDS}, "levels": {f: "empty" for f in ITEM_FIELDS}}]
+
+
+def finish(row: dict[str, Any]) -> dict[str, Any]:
+    """The last step for a row, once the pages of its invoice are together: do the lines add
+    up to the invoice, what level has each line column, and the Confidence."""
+    values, levels, notes, items = row["values"], row["levels"], row["notes"], row["items"]
+    real = [item for item in items if _is_item(item)]
+    amounts = [parse_amount(item["values"]["UnitAmount"]) if item["values"]["UnitAmount"] else None for item in real]
+    figure = {f: parse_amount(values[f]) if values[f] else None for f in ("InvoiceTotal", "TaxableValue", "TotalTaxAmount", "Discount")}
+    total, base, tax, discount = figure["InvoiceTotal"], figure["TaxableValue"], figure["TotalTaxAmount"] or 0.0, figure["Discount"] or 0.0
+    said = []
+    if real and total is not None and all(amount is not None for amount in amounts):
+        # The lines add up to the total (prices with tax in them, or no tax), to the total
+        # before tax, or to the taxable value - with or without the discount taken off.
+        summed = sum(amounts)
+        against_total = (total, total - tax, total - tax + discount)
+        against_base = () if base is None else (base, base + discount)
+        if any(abs(summed - target) <= ROUND_OFF for target in (*against_total, *against_base)):
+            for item in real:
+                if "note" not in item:
+                    item["levels"]["UnitAmount"] = "ok"
+            if levels["InvoiceTotal"] == "read" and any(abs(summed - target) <= ROUND_OFF for target in against_total):
+                levels["InvoiceTotal"], notes["InvoiceTotal"] = "ok", "The amounts of the lines add up to it."
+        else:
+            said.append(
+                f"The amounts of the lines add up to {summed:,.2f}, but the total is {total:,.2f}"
+                + ("" if base is None else f" and the taxable value {base:,.2f}") + ": a line is missing or misread."
+            )
+            for item in real:
+                if item["levels"]["UnitAmount"] == "read":
+                    item["levels"]["UnitAmount"] = "check"
+    wrong = [f"line {number}: {item.pop('note')}" for number, item in enumerate(real, 1) if "note" in item]
+    if wrong:
+        said.append("Quantity x unit price is not the amount on " + "; ".join(wrong[:3]) + (f"; and {len(wrong) - 3} more" if len(wrong) > 3 else "") + ".")
+    if said:
+        notes["UnitAmount"] = " ".join(said)
+    if row.pop("items_unsure", False):
+        notes["Description"] = "The model could not read the lines clearly."
+        for item in real:
+            for f in ITEM_FIELDS:
+                if item["levels"][f] == "read":
+                    item["levels"][f] = "check"
+    for f in ITEM_FIELDS:  # a column is as doubtful as its most doubtful line
+        found = [item["levels"][f] for item in real if item["values"][f]]
+        levels[f] = min(found, key=lambda level: SCORE.get(level, 0)) if found else "empty"
+    row["confidence"] = score(row)
+    return row
+
+
 def clean(raw: dict[str, Any], text: str, date_format: str) -> dict[str, Any] | None:
-    """One document as the model returned it -> a row: values for the sheet, a level and a note
-    for each. None when it is not an invoice, receipt or payment, or nothing was read."""
+    """One document as the model returned it -> a row: the invoice's values, a level and a note
+    for each, and its lines. None when it is not an invoice, receipt or payment, or nothing
+    was read. The row is finished by `merge`, which every row goes through."""
     kind = raw.get("kind")
     if kind not in KINDS:
         return None
@@ -353,12 +469,15 @@ def clean(raw: dict[str, Any], text: str, date_format: str) -> dict[str, Any] | 
         if not values[f]:
             continue
         written, parsed = values[f], parse_date(values[f])
+        if parsed is None and f == "DueDate" and re.search(r"\bdays?\b|\bnet\b|immediate|receipt", written, re.IGNORECASE):
+            values[f], levels[f], notes[f] = "", "empty", f"The page gives payment terms ({written}), not a due date."
+            continue
         if parsed is None:
             flag(f, "Could not be read as a date; left as written.")
             continue
         dates[f] = parsed
         values[f] = parsed.strftime(date_format)
-        if not 2015 <= parsed.year <= date.today().year + 1:
+        if not date.today().year - OLD_YEARS <= parsed.year <= date.today().year + 1:
             flag(f, f"The year {parsed.year} is unlikely for this date (written: {written}).")
         elif has_text and _plain(written) in _plain(text):
             levels[f] = "ok"
@@ -386,19 +505,8 @@ def clean(raw: dict[str, Any], text: str, date_format: str) -> dict[str, Any] | 
         values["InvoiceTotal"] = f"{in_words:.2f}"
         flag("InvoiceTotal", "Taken from the amount in words; no figure was read.")
 
-    # ── What was bought ──
-    values["Description"] = values["Description"][:MAX_DESCRIPTION].rstrip(" ;,")
-    if values["Description"] and has_text and _in_text("Description", values["Description"], text):
-        levels["Description"] = "ok"
-    if values["Qty"] and has_text and all(_in_text("Qty", part, text) for part in values["Qty"].split(";") if part.strip()):
-        levels["Qty"] = "ok"
-    codes = list(dict.fromkeys(re.findall(r"\d{4,8}", values["HSNSAC"])))
-    values["HSNSAC"], levels["HSNSAC"] = "; ".join(codes), "read" if codes else "empty"
-    if codes and has_text:
-        if all(re.search(rf"(?<!\d){code}(?!\d)", text) for code in codes):
-            levels["HSNSAC"] = "ok"
-        else:
-            flag("HSNSAC", "Not found in the file's text.")
+    # ── What was bought: one entry for each line ──
+    items = read_items(raw, text if has_text else "")
 
     # ── The tax breakdown ──
     total = parse_amount(values["InvoiceTotal"]) if values["InvoiceTotal"] else None
@@ -421,6 +529,10 @@ def clean(raw: dict[str, Any], text: str, date_format: str) -> dict[str, Any] | 
                     levels[f] = "ok"
                 else:
                     flag(f, "This amount is not in the file's text.")
+    for f in TAXES:  # seen with a real model: the invoice total entered as a tax
+        if f in money and total and abs(money[f] - total) < 0.01:
+            del money[f]
+            values[f], levels[f], notes[f] = "", "empty", "The model gave the invoice total here. That is not a tax, so it was left out."
     confirmed = {f for f in money if levels[f] == "ok"}  # by the file's own text
 
     # TotalTaxAmount is the sum of the three, so the sheet can be checked at a glance. A page
@@ -441,17 +553,44 @@ def clean(raw: dict[str, Any], text: str, date_format: str) -> dict[str, Any] | 
     # Does it add up? Taxable value + tax = total holds on every invoice, whoever made it, and
     # needs no text to compare with: it is the one check that also works on a scan or a photo.
     if "TaxableValue" in money and total is not None:
-        base, discount, added = money["TaxableValue"], money.get("Discount", 0.0), tax or 0.0
-        plain = abs(base + added - total) <= ROUND_OFF
-        less_discount = bool(discount) and abs(base - discount + added - total) <= ROUND_OFF
-        if plain or less_discount:
-            proven = ["TaxableValue", *charged, *(["TotalTaxAmount"] if tax is not None else []), *(["Discount"] if not plain else [])]
+        base, discount = money["TaxableValue"], money.get("Discount", 0.0)
+
+        def fits(added: float) -> str:
+            if abs(base + added - total) <= ROUND_OFF:
+                return "plain"
+            return "less" if discount and abs(base - discount + added - total) <= ROUND_OFF else ""
+
+        how, moved = fits(tax or 0.0), False
+        states = {values[f][:2] for f in ("VendorGST", "CustomerGST") if levels[f] == "ok"}
+        if (
+            not how and charged == ["CGSTAmount", "SGSTAmount"] and len(states) != 1
+            and abs(money["CGSTAmount"] - money["SGSTAmount"]) < 0.01 and fits(money["CGSTAmount"])
+        ):
+            # Seen with a real model: one tax amount entered as both CGST and SGST. Only one
+            # such amount fits the total, so it is a single tax - IGST - unless seller and buyer
+            # are known to be in the same state, where IGST cannot be.
+            tax, how, moved = money["CGSTAmount"], fits(money["CGSTAmount"]), True
+            for f in ("CGSTAmount", "SGSTAmount"):
+                del money[f]
+                values[f], levels[f] = "", "empty"
+                notes.pop(f, None)
+            money["IGSTAmount"], charged = tax, ["IGSTAmount"]
+            values["IGSTAmount"] = values["TotalTaxAmount"] = f"{tax:.2f}"
+        added = tax or 0.0
+        if how:
+            proven = ["TaxableValue", *charged, *(["TotalTaxAmount"] if tax is not None else []), *(["Discount"] if how == "less" else [])]
             for f in proven:
                 levels[f] = "ok"
                 notes.pop(f, None)
-            notes["TaxableValue"] = "Taxable value" + ("" if plain else " less the discount") + (" + tax" if added else "") + " adds up to the total."
+            notes["TaxableValue"] = "Taxable value" + ("" if how == "plain" else " less the discount") + (" + tax" if added else "") + " adds up to the total."
             if levels["InvoiceTotal"] == "read":
                 levels["InvoiceTotal"], notes["InvoiceTotal"] = "ok", "Taxable value + tax adds up to it."
+            if moved:
+                levels["IGSTAmount"] = "read"
+                notes["IGSTAmount"] = (
+                    "The model gave this amount as both CGST and SGST, but only one such amount fits the total: "
+                    "it is a single tax, entered here as IGST. Compare with the invoice."
+                )
         else:
             # Which figure is wrong? Not one the file's own text confirms. If the text confirms
             # them all, the invoice has a charge that is neither: the taxable value carries the note.
@@ -489,9 +628,10 @@ def clean(raw: dict[str, Any], text: str, date_format: str) -> dict[str, Any] | 
         if not values[f]:
             notes[f] = "Not found on the page."
 
-    row = {"kind": kind, "values": values, "levels": levels, "notes": notes}
-    row["confidence"] = score(row)
-    return row
+    row = {"kind": kind, "values": values, "levels": levels, "notes": notes, "items": items}
+    if "Items" in (raw.get("unsure") or []):
+        row["items_unsure"] = True
+    return row  # `merge` finishes it, once the pages of one invoice are together
 
 
 def score(row: dict[str, Any]) -> float:
@@ -529,8 +669,9 @@ def _continues(first: dict[str, Any], second: dict[str, Any]) -> str:
 
 
 def merge(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Rows in page order -> one row per invoice. An invoice running over several pages
-    repeats its number on each, and its grand total is on the last."""
+    """Rows in page order -> one finished row per invoice. An invoice running over several
+    pages repeats its number on each; its lines go on from page to page and its grand total
+    is on the last."""
     merged: list[dict[str, Any]] = []
     for row in rows:
         how = _continues(merged[-1], row) if merged else ""
@@ -542,11 +683,6 @@ def merge(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
             new, old = row["values"][f], kept["values"][f]
             if not new:
                 continue
-            if f in ("Description", "Qty", "HSNSAC") and old:  # the items go on over the page
-                parts = list(dict.fromkeys(part.strip() for part in f"{old}; {new}".split(";") if part.strip()))
-                kept["values"][f] = "; ".join(parts)[:MAX_DESCRIPTION]
-                kept["levels"][f] = min(kept["levels"][f], row["levels"][f], key=lambda level: SCORE.get(level, 0))
-                continue
             later = f in AMOUNTS  # the totals and the tax are on the last page
             better = SCORE.get(row["levels"][f], 0) > SCORE.get(kept["levels"][f], 0)
             if not old or later or (how == "same" and better):
@@ -554,6 +690,10 @@ def merge(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 kept["notes"].pop(f, None)
                 if f in row["notes"]:
                     kept["notes"][f] = row["notes"][f]
+        more = [item for item in row["items"] if _is_item(item)]
+        if more:  # the lines go on over the page
+            kept["items"] = [item for item in kept["items"] if _is_item(item)] + more
+        if row.get("items_unsure"):
+            kept["items_unsure"] = True
         kept["pages"] += row["pages"]
-        kept["confidence"] = score(kept)
-    return merged
+    return [finish(row) for row in merged]

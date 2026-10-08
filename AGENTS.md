@@ -414,10 +414,17 @@ write over a designed template. Looked at with macOS Quick Look only.
 columns, in this order: Invoice File Name, InvoiceId, Invoice Date, DueDate,
 InvoiceTotal, VendorName, VendorAddress, CustomerName, CustomerId,
 BillingAddress, BillingAddressRecipient, VendorAddressRecipient, VendorGST,
-CustomerGST, Confidence, then (added 8 October 2026, after Confidence so an
-older sheet still lines up): Description, Qty, Discount, TaxableValue,
+CustomerGST, Description, Qty, UnitPrice, UnitAmount, Discount, TaxableValue,
 CGSTAmount, SGSTAmount, IGSTAmount, TotalTaxAmount, HSNSAC, Currency,
-DocumentType.
+DocumentType, Confidence. Confidence is last, as asked.
+
+**One row for each line of an invoice.** A bill with seven items is seven rows:
+Description, Qty, UnitPrice, UnitAmount and HSNSAC are the line's own. The
+invoice's fields (file, number, date, seller, buyer, GST numbers, Confidence)
+are repeated on each of its rows. Its total, discount, taxable value and taxes
+are written on its first row only, so that adding up a column gives the right
+sum; a tick box on the page repeats them on every row for whoever wants that.
+A document with no item table (a taxi receipt, a payment screenshot) is one row.
 
 How a file is read (`documents/document_engine/invoices/`):
 
@@ -465,38 +472,52 @@ Rules to keep:
 - `Currency` is read off the sign or code the model copied (₹, Rs, INR,
   "Rupees ... Only"), `DocumentType` is what the model called the page
   (Invoice, Receipt, Payment). Neither counts towards Confidence.
-- `Description` and `Qty` are one cell each: several items are joined with
-  "; " in the same order.
+- **The lines are checked too.** Quantity x unit price must make the line's
+  amount, and the amounts of the lines must add up to the total (or to the
+  total before tax, or the taxable value). Lines that do count as confirmed,
+  on a photo of a handwritten bill too; if the sum is short, a line is
+  missing or misread and the note says by how much. Lines for totals and
+  taxes that the model lists as items are dropped (`_NOT_AN_ITEM`).
+- A row is finished in `merge` (`finish`), after the pages of one invoice are
+  together: only then are all its lines known. `clean` alone returns a row
+  with no Confidence yet.
+- Seen in the first real run, and handled in `checks.py`: the invoice total
+  entered as a tax (dropped); one tax amount entered as both CGST and SGST
+  (moved to IGST when only one such amount fits the total); payment terms
+  entered as a due date (left empty); a year more than three years back
+  (marked).
 - Text in the sheet is written as text, never as a formula: invoices come from
   outside the company.
 
 Settings: the `invoices:` block in `models.yaml`. To change what the model is
 told, edit `invoices/prompts.py` only.
 
-Status. Run on this laptop **without a real model**: a stand-in for Ollama
-returned hand-typed answers for the 16 sample files (text PDFs, scans, a
-handwritten invoice, a photo, a Word file holding a photo, a 24-page file of
-taxi receipts). With that: reading every file type, the checks (on the real
-GSTINs, dates, totals and amounts in words of the samples), merging, the
-page in a browser (add, read, stop, edit, tick, remove, both downloads), the
-Excel and CSV files, the error messages for wrong and broken files, and
-`python -m app` in an environment without the project's packages installed.
+Status. On this laptop there is no Ollama, so everything here was run against
+a stand-in that returns hand-typed answers: reading every file type, the
+checks (on the real GSTINs, dates, totals, amounts in words and line items of
+the samples), merging, the page in a browser (add, read, stop, edit, add and
+remove a line, tick, remove, both downloads), the Excel and CSV files, the
+error messages, and `python -m app` without the project's packages installed.
+
+On the server the user ran it with a real model on 8 October 2026 and
+reported that it works. Their sheet from that run is what the line-by-line
+rows, UnitPrice and UnitAmount, and the fixes listed above come from.
 
 **Not done, check these on the server:**
-- **No real model has read an invoice.** How well `qwen3.5:9b` reads these
-  pages is unknown: start with the 16 samples and compare each row with its
-  invoice. Then the same files with `gemma4:12b`.
-- Whether Ollama accepts the JSON schema together with a picture for these
-  models, and whether `think: false` is honoured.
+- **The line-by-line reading has not been run by a real model.** The model is
+  now asked for a list of lines (`Items`) where it gave one description
+  before. Check that it gives one entry for each line, with the unit price and
+  the amount in the right places, on the two files this was built from: a
+  printed cash bill with seven items, and a photo of a handwritten bill.
+- A page's answer is longer now (a line is about 50 tokens), so pages with
+  many lines take longer; `MAX_ANSWER_TOKENS` in `service.py` is 6000.
 - Speed per page and memory on the 16 GB card (`ollama ps`).
-- Handwriting (two of the samples). Expect mistakes there; the Confidence and
-  the orange marks are what should catch them.
+- Handwriting. Expect mistakes there; the line sums, the Confidence and the
+  orange marks are what should catch them.
 - If small print is misread, raise `invoices.image_side` to 2000.
 - No downloaded file was opened in Excel itself, only read back with openpyxl.
-- The columns added on 8 October (what was bought, the tax breakdown) were
-  only run with the stand-in model. Whether the real model gives tax amounts
-  and not rates, and a sensible Description on receipts with no item lines, is
-  to be seen. Each page's answer is longer now, so pages take longer.
+  A CSV made from the Excel file with Excel's plain "CSV" turns Kannada and
+  other scripts into question marks; the page's own Download CSV keeps them.
 
 ## Your task on this machine
 
