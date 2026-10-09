@@ -11,6 +11,34 @@ back. With "Auto", a router sends each message to a light model, a reasoning
 model or a vision model on this machine, or, for questions about software, to
 OpenCode's free cloud models.
 
+## Running the `10-invoice` branch on the server
+
+This branch adds the **Invoices** tab to the documents page: invoices in (PDF,
+Word, scans, photos), an Excel or CSV sheet out. It contains `6-documents` and
+`8-testing`. On a machine that already runs the app:
+
+1. **Get the branch.** `git fetch && git checkout 10-invoice`
+2. **Install three new packages** (`pypdfium2`, `pillow`, `openpyxl`):
+   `pip install -r requirements.txt` from the repo root, or with uv
+   `cd backend && uv sync --extra router --inexact`. Without them the app still
+   starts; the Invoices tab then says which package is missing.
+3. **The model must read pictures.** `ollama/config/models.yaml` names
+   `qwen3.5:9b` (entry `id: invoices`). `ollama show qwen3.5:9b` must list
+   `vision` under Capabilities. `gemma4:12b` reads pictures too and can be
+   picked on the page to compare.
+4. **If this machine has `ollama/config.local/models.yaml`,** copy the
+   `invoices:` block and the `- id: invoices` model entry into it. Without them
+   the tab still works: it starts with the first local model that reads
+   pictures (by name, so `gemma4:12b` before `qwen3.5:9b`).
+5. **Restart** (`cd backend && python -m app`, or `./run.sh`) and open
+   <http://127.0.0.1:8000/invoices.html>, or Docs -> Invoices. Refresh the
+   browser with Ctrl+Shift+R: it keeps the old page otherwise.
+6. **Or from a terminal,** a whole folder at once:
+   `cd backend && python ../documents/read_invoices.py /path/to/invoices --out out.xlsx`
+   Add `--model gemma4:12b` to compare models on the same files.
+
+What to check is under "Invoices tab" below, in "Not done".
+
 ## Running the `6-documents` branch on the server
 
 This branch adds the Word documents page. On a machine that already runs the
@@ -266,8 +294,9 @@ backend (a proxy that buffers) before changing the code.
 ## Word documents page (work in progress)
 
 `frontend/documents.html`, reached from the **Docs** link on the main page.
-Three tabs: fill a template, change a document, write a new one. Result is a
-downloadable `.docx`.
+Tabs: fill a template, change a document, write a new one, the template
+library (result: a downloadable `.docx`), and Invoices (result: a sheet, see
+"Invoices tab" below).
 
 - **The model never writes the Word file.** It answers in JSON (which blank
   gets which value, or which edit operations to run) and the app's own code
@@ -301,11 +330,20 @@ documents/                         the feature itself (package `document_engine`
     model/                         the model's part. It decides, it never writes a file.
       prompts.py                     every instruction the model gets + the JSON it must answer in
       service.py                     sends them to the local model, checks the answers
+    invoices/                      the Invoices tab, apart from the Word code
+      reader.py                      a file -> pages (text and/or a picture). No model.
+      checks.py                      clean, check, score the confidence. No model.
+      export.py                      rows -> .xlsx / .csv. No model.
+      prompts.py                     the model's part: what it is told, the JSON it answers in
+      service.py                     the model's part: one page at a time to the local model
+  read_invoices.py                 the same reading from a terminal, for a folder of files
 backend/app/documents/             the HTTP side
   routes.py                          /api/documents/... endpoints
   storage.py                         uploads, versions, the template library on disk
   schemas.py                         request bodies
+  invoices.py                        /api/documents/invoices/... endpoints (stores nothing)
 frontend/documents.html            the page
+frontend/invoices.html             its Invoices tab
 ```
 
 What is shared with the chat side, on purpose: the model registry and Ollama
@@ -368,6 +406,121 @@ write over a designed template. Looked at with macOS Quick Look only.
   `soffice` is missing.
 - Only the resume template was tried; a second kind (report, letter with a
   table) still needs to go through prepare -> fill.
+
+### Invoices tab (invoices into a sheet)
+
+`frontend/invoices.html`, the fifth tab of the documents page. Files in: PDF,
+`.docx`, JPG/PNG/WEBP/BMP/TIFF. Out: `.xlsx` or `.csv` with exactly these
+columns, in this order: Invoice File Name, InvoiceId, Invoice Date, DueDate,
+InvoiceTotal, VendorName, VendorAddress, CustomerName, CustomerId,
+BillingAddress, BillingAddressRecipient, VendorAddressRecipient, VendorGST,
+CustomerGST, Description, Qty, UnitPrice, UnitAmount, Discount, TaxableValue,
+CGSTAmount, SGSTAmount, IGSTAmount, TotalTaxAmount, HSNSAC, Currency,
+DocumentType, Confidence. Confidence is last, as asked.
+
+**One row for each line of an invoice.** A bill with seven items is seven rows:
+Description, Qty, UnitPrice, UnitAmount and HSNSAC are the line's own. The
+invoice's fields (number, date, seller, buyer, GST numbers, total, taxes, Confidence)
+and the file name stand on its first row, as on the page; the rows after it
+carry only the line. Confidence is written as a percentage (80%). Tick boxes under
+the sheet add: a Summary sheet (one row for each invoice), the Checks sheet, a
+totals row, the invoice's details on every row, its totals on every row.
+A document with no item table (a taxi receipt, a payment screenshot) is one row.
+
+How a file is read (`documents/document_engine/invoices/`):
+
+1. `reader.py` (no model) turns the file into pages. A PDF page with real text
+   gives its text, laid out as on the page, **and** a picture of the page. A
+   scan or photo gives a picture only. A Word file gives its text, and each
+   large picture inside it as a page.
+2. `service.py` + `prompts.py` (the model's part) send one page at a time to
+   the local model, which answers in JSON: the invoices, receipts and payment
+   confirmations on that page. One file can give several rows (a claim with
+   three bills, 24 taxi receipts).
+3. `checks.py` (no model) cleans each value, checks it, and works out the
+   Confidence. Pages of one invoice are merged into one row.
+4. A person reviews the rows on the page, then `export.py` writes the sheet.
+
+Rules to keep:
+- **Local models only, always.** There is no cloud path in this code and
+  `documents.allow_cloud` does not apply to it.
+- **Nothing is stored.** A file is read in memory and forgotten; the rows live
+  in the browser until downloaded.
+- **The model never sees the file name.** The names here start with an upload
+  time that reads like a date. The earlier attempt returned a wrong invoice
+  date for a scanned file whose only text was a print header and that name.
+- **A PDF page with under 200 characters of text is treated as a scan**
+  (`MIN_TEXT`): what text it has is a print header or footer.
+- **Nothing the model returns is trusted as is.** `Confidence` is a score from
+  checks, not a probability: a value found in the file's own text, a GSTIN
+  whose check digit is right, or a total that matches the amount in words
+  counts 1.0; a value read from a picture with nothing to confirm it 0.8; a
+  failed check or a value the model marked unclear 0.35. The weights are at
+  the top of `checks.py` and reach the page through `/config`.
+- Dates are read day first (Indian invoices) and written as `31-Mar-2026`
+  (`invoices.date_format`). A due date is never worked out from payment terms.
+- A PAN is not put in a GST column.
+- **The tax breakdown must add up.** Taxable value (less a discount) + tax =
+  total, within a rupee of round-off. When it does, those figures count as
+  confirmed, on a scan too. When it does not, the figures the file's own text
+  does not confirm are marked, with the sum in the note. An invoice with a
+  charge that is neither (freight billed outside the taxable value) is marked
+  as well: that is a prompt to look, not an error.
+- `TotalTaxAmount` is not asked of the model: it is CGST + SGST + IGST, added
+  here. A page with one tax figure and no split keeps that figure. CGST and
+  SGST that differ, or IGST beside them, are marked. A rate ("9%") is never
+  taken for an amount; a tax printed as 0.00 or a dash is left empty.
+- `Currency` is read off the sign or code the model copied (₹, Rs, INR,
+  "Rupees ... Only"), `DocumentType` is what the model called the page
+  (Invoice, Receipt, Payment). Neither counts towards Confidence.
+- **The lines can confirm, they do not mark.** Quantity x unit price making the
+  line's amount, and the lines adding up to the total (or the total before
+  tax, or the taxable value), count as confirmed. When they do not, no cell is
+  marked; a sum that is off is said once in a note. The second server run
+  (1,345 rows, 9 October) had 355 line amounts marked, mostly bills whose
+  lines carry discounts. The Checks sheet lists only values marked for
+  checking and notes on unconfirmed values, not fields that are simply absent. Lines for totals and
+  taxes that the model lists as items are dropped (`_NOT_AN_ITEM`).
+- A row is finished in `merge` (`finish`), after the pages of one invoice are
+  together: only then are all its lines known. `clean` alone returns a row
+  with no Confidence yet.
+- Seen in the first real run, and handled in `checks.py`: the invoice total
+  entered as a tax (dropped); one tax amount entered as both CGST and SGST
+  (moved to IGST when only one such amount fits the total); payment terms
+  entered as a due date (left empty); a year more than three years back
+  (marked).
+- Text in the sheet is written as text, never as a formula: invoices come from
+  outside the company.
+
+Settings: the `invoices:` block in `models.yaml`. To change what the model is
+told, edit `invoices/prompts.py` only.
+
+Status. On this laptop there is no Ollama, so everything here was run against
+a stand-in that returns hand-typed answers: reading every file type, the
+checks (on the real GSTINs, dates, totals, amounts in words and line items of
+the samples), merging, the page in a browser (add, read, stop, edit, add and
+remove a line, tick, remove, both downloads), the Excel and CSV files, the
+error messages, and `python -m app` without the project's packages installed.
+
+On the server the user ran it with a real model on 8 October 2026 and
+reported that it works. Their sheet from that run is what the line-by-line
+rows, UnitPrice and UnitAmount, and the fixes listed above come from.
+
+**Not done, check these on the server:**
+- **The line-by-line reading has not been run by a real model.** The model is
+  now asked for a list of lines (`Items`) where it gave one description
+  before. Check that it gives one entry for each line, with the unit price and
+  the amount in the right places, on the two files this was built from: a
+  printed cash bill with seven items, and a photo of a handwritten bill.
+- A page's answer is longer now (a line is about 50 tokens), so pages with
+  many lines take longer; `MAX_ANSWER_TOKENS` in `service.py` is 6000.
+- Speed per page and memory on the 16 GB card (`ollama ps`).
+- Handwriting. Expect mistakes there; the line sums, the Confidence and the
+  orange marks are what should catch them.
+- If small print is misread, raise `invoices.image_side` to 2000.
+- No downloaded file was opened in Excel itself, only read back with openpyxl.
+  A CSV made from the Excel file with Excel's plain "CSV" turns Kannada and
+  other scripts into question marks; the page's own Download CSV keeps them.
 
 ## Your task on this machine
 
@@ -503,8 +656,11 @@ ollama/ollama_pipeline/
   documents.py                   PDF/DOCX/text → text (chat attachments)
   client.py                      raw calls to Ollama
 documents/document_engine/       the Word documents page: engine/ (files) and model/ (prompts, calls)
+documents/document_engine/invoices/   the Invoices tab: reader, checks, export, and the model's part
+documents/read_invoices.py       invoices from a terminal
 backend/app/documents/           its HTTP routes and storage
 frontend/documents.html          its page
+frontend/invoices.html           the Invoices tab
 requirements.txt                 pinned Python packages for pip, made from backend/uv.lock
 run.sh, run.ps1                  start the app (macOS/Linux, Windows)
 ```

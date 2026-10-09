@@ -10,7 +10,8 @@
 #
 # Not Python, install separately (see AGENTS.md, "Setup"):
 #   - Ollama, with the models named in ollama/config/models.yaml
-#     (the Word documents page uses qwen3:14b:  ollama pull qwen3:14b)
+#     (the Word documents page uses qwen3:14b:  ollama pull qwen3:14b;
+#      its Invoices tab uses qwen3.5:9b, which reads pictures:  ollama pull qwen3.5:9b)
 #   - Node.js, then OpenCode 1.18.34:  npm install -g opencode-ai@1.18.34
 #
 # Do not edit by hand. After changing a pyproject.toml, regenerate everything
@@ -18,8 +19,8 @@
 #   cd backend && uv export --format requirements-txt --no-hashes --no-annotate --no-header --extra router
 # and change `-e ../ollama` to `-e ./ollama` and `-e ../documents` to `-e ./documents`.
 
--e ./ollama
 -e ./documents
+-e ./ollama
 accelerate==1.15.0 ; python_full_version >= '3.12'
 annotated-doc==0.0.5
 annotated-types==0.8.0
@@ -30,6 +31,7 @@ colorama==0.4.6 ; python_full_version >= '3.12' and sys_platform == 'win32'
 cuda-bindings==13.4.3 ; python_full_version >= '3.12' and python_full_version < '3.15' and sys_platform == 'linux'
 cuda-pathfinder==1.8.3 ; python_full_version >= '3.12' and python_full_version < '3.15' and sys_platform == 'linux'
 cuda-toolkit==13.0.3.0 ; python_full_version >= '3.12' and sys_platform == 'linux'
+et-xmlfile==2.0.0
 fastapi==0.142.2
 filelock==4.0.9 ; python_full_version >= '3.12'
 fsspec==2026.9.0 ; python_full_version >= '3.12'
@@ -63,13 +65,16 @@ nvidia-nccl-cu13==2.30.7 ; python_full_version >= '3.12' and sys_platform == 'li
 nvidia-nvjitlink==13.4.92 ; (python_full_version >= '3.12' and platform_machine == 'aarch64' and sys_platform == 'linux') or (python_full_version >= '3.12' and platform_machine == 'x86_64' and sys_platform == 'linux')
 nvidia-nvshmem-cu13==3.4.5 ; python_full_version >= '3.12' and sys_platform == 'linux'
 nvidia-nvtx==13.0.85 ; (python_full_version >= '3.12' and platform_machine == 'aarch64' and sys_platform == 'linux') or (python_full_version >= '3.12' and platform_machine == 'x86_64' and sys_platform == 'linux')
+openpyxl==3.1.5
 opentelemetry-api==1.45.0
 packaging==26.3 ; python_full_version >= '3.12'
+pillow==12.3.0
 psutil==7.2.2 ; python_full_version >= '3.12'
 pydantic==2.13.5
 pydantic-core==2.46.5
 pygments==2.21.0 ; python_full_version >= '3.12'
 pypdf==6.19.0
+pypdfium2==5.14.0
 python-docx==1.2.0
 python-dotenv==1.2.4
 python-multipart==0.0.32

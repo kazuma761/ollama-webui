@@ -9,7 +9,8 @@ A chat interface for local Ollama models: pick a model, type a prompt, get a str
 │   ├── config/models.yaml      models shown in the picker
 │   ├── config/themes.yaml      "Today's Theme" prompts
 │   └── ollama_pipeline/        Python package
-├── documents/   Word documents page — engine/ (works on .docx) and model/ (prompts, calls)
+├── documents/   Word documents page — engine/ (works on .docx) and model/ (prompts, calls);
+│                invoices/ reads invoices (PDF, Word, photos) into an Excel or CSV sheet
 ├── backend/     FastAPI app — the API, also serves the frontend
 │   └── app/
 ├── frontend/    index.html — the whole UI in one file

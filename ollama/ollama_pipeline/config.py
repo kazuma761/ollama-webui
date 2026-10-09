@@ -6,6 +6,7 @@ import logging
 import os
 import re
 from dataclasses import dataclass, field
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -47,6 +48,17 @@ class DocumentsConfig:
     second_check: bool = False  # ask the model a second time whether values it did not copy are supported
     keep_hours: int = 24  # uploaded and generated files are deleted after this long
     allow_cloud: bool = False  # true lets OpenCode's cloud models work on documents - for testing only
+
+
+@dataclass(frozen=True)
+class InvoicesConfig:
+    """Settings of the Invoices tab of the documents page."""
+
+    model: str = ""  # id of the local model that reads invoices; empty = the first local model that reads pictures
+    max_jobs: int = 1  # files read at the same time; the rest wait their turn
+    max_pages: int = 40  # pages read from one file
+    image_side: int = 1600  # size of the page picture sent to the model: the longer side of an A4 page, in pixels
+    date_format: str = "%d-%b-%Y"  # how dates are written in the sheet: 31-Mar-2026
 
 
 @dataclass(frozen=True)
@@ -96,6 +108,7 @@ class PipelineConfig:
     router: RouterConfig = field(default_factory=RouterConfig)
     opencode: OpenCodeConfig = field(default_factory=OpenCodeConfig)
     documents: DocumentsConfig = field(default_factory=DocumentsConfig)
+    invoices: InvoicesConfig = field(default_factory=InvoicesConfig)
 
 
 def config_dir() -> Path:
@@ -176,6 +189,26 @@ def _documents(raw: dict[str, Any], models: dict[str, ModelAlias]) -> DocumentsC
     )
 
 
+def _invoices(raw: dict[str, Any], models: dict[str, ModelAlias]) -> InvoicesConfig:
+    model = raw.get("model") or ""
+    if model and model not in models:
+        raise ValueError(f"models.yaml: invoices.model '{model}' is not a defined model")
+    if model and models[model].provider != "ollama":
+        raise ValueError(f"models.yaml: invoices.model '{model}' must be a local (Ollama) model")
+    date_format = str(raw.get("date_format") or InvoicesConfig.date_format)
+    try:
+        datetime.strptime(datetime(2026, 3, 31).strftime(date_format), date_format)
+    except ValueError as exc:
+        raise ValueError(f"models.yaml: invoices.date_format '{date_format}' is not a usable date format") from exc
+    return InvoicesConfig(
+        model=model,
+        max_jobs=max(1, int(raw.get("max_jobs", 1))),
+        max_pages=max(1, int(raw.get("max_pages", 40))),
+        image_side=min(3000, max(800, int(raw.get("image_side", 1600)))),
+        date_format=date_format,
+    )
+
+
 def load_config(directory: Path | None = None) -> PipelineConfig:
     directory = directory or config_dir()
     log.info("Config: %s", directory)
@@ -231,4 +264,5 @@ def load_config(directory: Path | None = None) -> PipelineConfig:
             if key in ("command", "agent", "timeout", "home")
         }),
         documents=_documents(raw.get("documents") or {}, {m.id: m for m in models}),
+        invoices=_invoices(raw.get("invoices") or {}, {m.id: m for m in models}),
     )

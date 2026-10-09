@@ -14,6 +14,24 @@ document_engine/
     service.py    sends them to the local model and checks what comes back
 ```
 
-- HTTP routes and file storage: `backend/app/documents/`
+The Invoices tab has a folder of its own, with the same split:
+
+```
+document_engine/invoices/
+  reader.py     a file (PDF, Word, photo) -> pages: text and/or a picture. No model.
+  checks.py     cleans each value, checks it (GSTIN check digit, dates, total against
+                the amount in words, taxable value + tax against the total, quantity x
+                unit price and the sum of the lines), adds up the total tax, scores
+                the Confidence. No model.
+  export.py     the reviewed rows -> .xlsx or .csv, one row for each line of an
+                invoice. No model.
+  prompts.py    the model's part: what it is told, and the JSON it must answer in
+  service.py    the model's part: one page at a time to the local model
+read_invoices.py   the same from a terminal:
+                   cd backend && python ../documents/read_invoices.py <folder> --out out.xlsx
+```
+
+- HTTP routes and file storage: `backend/app/documents/` (`invoices.py` for the Invoices tab)
+- The Invoices page: `frontend/invoices.html`; its settings: the `invoices:` block in `models.yaml`
 - The page: `frontend/documents.html`
 - Settings and the model to use: the `documents:` block in `ollama/config/models.yaml`
