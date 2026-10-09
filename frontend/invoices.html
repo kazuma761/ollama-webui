@@ -233,7 +233,7 @@ td select.cell:focus{background-color:rgba(0,0,0,.35);box-shadow:inset 0 0 0 1px
         <label class="opt"><input type="checkbox" id="with-summary"> Add a sheet with one row for each invoice (no lines)</label>
         <label class="opt"><input type="checkbox" id="with-checks"> Add a sheet listing what to check and why</label>
         <label class="opt"><input type="checkbox" id="with-totals"> Add a last row that adds up the amounts</label>
-        <label class="opt"><input type="checkbox" id="repeat-details"> Repeat the invoice number, date, seller and buyer on every row</label>
+        <label class="opt"><input type="checkbox" id="repeat-details"> Repeat the file name, invoice number, date, seller and buyer on every row</label>
         <label class="opt"><input type="checkbox" id="repeat-totals"> Repeat the total and taxes on every row</label>
         <span class="hint">The three sheet options apply to the Excel file only.</span>
       </div>
@@ -522,7 +522,7 @@ td select.cell:focus{background-color:rgba(0,0,0,.35);box-shadow:inset 0 0 0 1px
           open.addEventListener('click', () => { if (source) window.open(URL.createObjectURL(source.file), '_blank', 'noopener'); });
           const pages = row.pages.length > 1 ? 'pages ' + row.pages[0] + '–' + row.pages[row.pages.length - 1] : 'page ' + row.pages[0];
           first.append(open, node('small', '', (KIND[row.kind] || row.kind) + ' · ' + pages + (row.items.length > 1 ? ' · ' + row.items.length + ' lines' : '')));
-        } else first.append(node('span', 'again', row.file), node('small', '', 'line ' + (n + 1) + ' of ' + row.items.length));
+        } else first.append(node('small', '', 'line ' + (n + 1) + ' of ' + row.items.length));
         tr.append(first);
         for (const [title, key] of state.config.columns) {
           if (key === 'file') continue;

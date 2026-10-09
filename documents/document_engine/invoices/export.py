@@ -3,11 +3,11 @@
 Both have exactly the columns of `checks.COLUMNS`, in that order, and a row for
 each line of each invoice: an invoice of seven items is seven rows. As on the
 page, the invoice's own values (number, date, seller, total, taxes,
-confidence) stand on its first row; the rows after it carry the file name and
-the line. Confidence is written as a percentage.
+confidence) and the file name stand on its first row; the rows after it carry
+only the line. Confidence is written as a percentage.
 
 What can be asked for besides (`Options`):
-  repeat_details  the invoice's number, date, seller, buyer ... on every row, for filtering
+  repeat_details  the file name and the invoice's number, date, seller, buyer ... on every row, for filtering
   repeat_totals   its total and taxes on every row too (a sum of the column then counts them again)
   checks          xlsx: a sheet listing what to check and why
   summary         xlsx: a sheet with one row for each invoice, no lines
@@ -59,8 +59,8 @@ def _lines(rows: list[dict[str, Any]]):
 
 
 def _cell(row: dict[str, Any], item: dict[str, Any], first: bool, key: str, options: Options) -> Any:
-    if key == "file":
-        return row.get("file") or ""
+    if key == "file":  # once for an invoice, like its other values; its lines follow without it
+        return row.get("file") or "" if first or options.repeat_details else ""
     if key in ITEM_FIELDS:
         return (item.get("values") or {}).get(key) or ""
     if key == "lines":

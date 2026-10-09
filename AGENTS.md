@@ -421,8 +421,8 @@ DocumentType, Confidence. Confidence is last, as asked.
 **One row for each line of an invoice.** A bill with seven items is seven rows:
 Description, Qty, UnitPrice, UnitAmount and HSNSAC are the line's own. The
 invoice's fields (number, date, seller, buyer, GST numbers, total, taxes, Confidence)
-stand on its first row, as on the page; the rows after it carry the file name
-and the line. Confidence is written as a percentage (80%). Tick boxes under
+and the file name stand on its first row, as on the page; the rows after it
+carry only the line. Confidence is written as a percentage (80%). Tick boxes under
 the sheet add: a Summary sheet (one row for each invoice), the Checks sheet, a
 totals row, the invoice's details on every row, its totals on every row.
 A document with no item table (a taxi receipt, a payment screenshot) is one row.
