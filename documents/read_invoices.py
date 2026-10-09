@@ -30,6 +30,7 @@ for folder in (HERE, HERE.parent / "ollama"):  # lets it run from a checkout, wi
         sys.path.append(str(folder))
 
 from document_engine.invoices import ACCEPTED, InvoiceService, to_csv, to_xlsx  # noqa: E402
+from document_engine.invoices.export import Options  # noqa: E402
 from ollama_pipeline import PipelineError, Registry, UnsupportedDocument, load_config  # noqa: E402
 
 
@@ -101,7 +102,7 @@ async def run(args: argparse.Namespace) -> int:
             elif kind == ".json":
                 out.write_text(json.dumps({"model": chosen["model"], "seconds": round(seconds, 1), "rows": rows}, indent=2, ensure_ascii=False), encoding="utf-8")
             else:
-                out.write_bytes(to_xlsx(rows, service.config.date_format, with_checks=True))
+                out.write_bytes(to_xlsx(rows, service.config.date_format, Options(checks=True, summary=True)))
             print(f"Written to {out}")
         return 0
     finally:

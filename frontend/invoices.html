@@ -156,6 +156,7 @@ tr.checked td.why{color:var(--muted)}
 td select.cell{padding:6px 22px 6px 7px;border-radius:7px;background-color:transparent;box-shadow:none;font-size:13px;line-height:1.35;background-position:right 8px center}
 td select.cell:focus{background-color:rgba(0,0,0,.35);box-shadow:inset 0 0 0 1px rgba(244,157,112,.7)}
 .opt{display:inline-flex;align-items:center;gap:8px;color:var(--muted);font-size:13px;cursor:pointer}
+.opts{display:grid;gap:7px}
 .opt input{appearance:auto;width:15px;height:15px;accent-color:#F49D70}
 
 @media (max-width:620px){
@@ -228,8 +229,14 @@ td select.cell:focus{background-color:rgba(0,0,0,.35);box-shadow:inset 0 0 0 1px
     </div>
     <div class="sheet"><table id="grid"><thead></thead><tbody></tbody></table></div>
     <div class="row gap">
-      <label class="opt"><input type="checkbox" id="with-checks"> Add a second sheet to the Excel file listing what to check and why</label>
-      <label class="opt"><input type="checkbox" id="repeat-totals"> Repeat the total and taxes on every row of an invoice (a sum of those columns then counts them more than once)</label>
+      <div class="opts">
+        <label class="opt"><input type="checkbox" id="with-summary"> Add a sheet with one row for each invoice (no lines)</label>
+        <label class="opt"><input type="checkbox" id="with-checks"> Add a sheet listing what to check and why</label>
+        <label class="opt"><input type="checkbox" id="with-totals"> Add a last row that adds up the amounts</label>
+        <label class="opt"><input type="checkbox" id="repeat-details"> Repeat the invoice number, date, seller and buyer on every row</label>
+        <label class="opt"><input type="checkbox" id="repeat-totals"> Repeat the total and taxes on every row</label>
+        <span class="hint">The three sheet options apply to the Excel file only.</span>
+      </div>
       <span class="grow"></span>
       <span class="status idle" id="export-status" hidden><i></i><span></span></span>
     </div>
@@ -440,7 +447,7 @@ td select.cell:focus{background-color:rgba(0,0,0,.35);box-shadow:inset 0 0 0 1px
       for (const td of tr.querySelectorAll('td[data-item]')) td.className = (WIDTH[td.dataset.item] || '') + ' ' + (row.items[n].levels[td.dataset.item] || 'empty');
     });
     const head = row.trs[0], value = confidence(row), conf = head.querySelector('.conf');
-    conf.textContent = value.toFixed(2);
+    conf.textContent = Math.round(value * 100) + '%';
     conf.className = 'conf ' + (value >= 0.9 ? 'high' : value < 0.7 ? 'low' : '');
     const why = head.querySelector('.why'); why.replaceChildren();
     // What needs a look. A note on a confirmed value ("matches the amount in words") stays a tooltip.
@@ -568,7 +575,8 @@ td select.cell:focus{background-color:rgba(0,0,0,.35);box-shadow:inset 0 0 0 1px
     }));
     try {
       const res = await fetch(API + '/api/documents/invoices/export', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ rows, format, checks: $('with-checks').checked, repeat_totals: $('repeat-totals').checked }) });
+        body: JSON.stringify({ rows, format, checks: $('with-checks').checked, summary: $('with-summary').checked, totals: $('with-totals').checked,
+          repeat_details: $('repeat-details').checked, repeat_totals: $('repeat-totals').checked }) });
       if (!res.ok) { const detail = (await res.json().catch(() => ({}))).detail; throw new Error(typeof detail === 'string' ? detail : 'Request failed (' + res.status + ')'); }
       const name = (/filename="([^"]+)"/.exec(res.headers.get('Content-Disposition') || '') || [])[1] || 'invoices.' + format;
       const link = node('a'); link.href = URL.createObjectURL(await res.blob()); link.download = name;

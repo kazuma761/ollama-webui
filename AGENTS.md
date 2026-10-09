@@ -420,10 +420,11 @@ DocumentType, Confidence. Confidence is last, as asked.
 
 **One row for each line of an invoice.** A bill with seven items is seven rows:
 Description, Qty, UnitPrice, UnitAmount and HSNSAC are the line's own. The
-invoice's fields (file, number, date, seller, buyer, GST numbers, Confidence)
-are repeated on each of its rows. Its total, discount, taxable value and taxes
-are written on its first row only, so that adding up a column gives the right
-sum; a tick box on the page repeats them on every row for whoever wants that.
+invoice's fields (number, date, seller, buyer, GST numbers, total, taxes, Confidence)
+stand on its first row, as on the page; the rows after it carry the file name
+and the line. Confidence is written as a percentage (80%). Tick boxes under
+the sheet add: a Summary sheet (one row for each invoice), the Checks sheet, a
+totals row, the invoice's details on every row, its totals on every row.
 A document with no item table (a taxi receipt, a payment screenshot) is one row.
 
 How a file is read (`documents/document_engine/invoices/`):
@@ -472,11 +473,13 @@ Rules to keep:
 - `Currency` is read off the sign or code the model copied (₹, Rs, INR,
   "Rupees ... Only"), `DocumentType` is what the model called the page
   (Invoice, Receipt, Payment). Neither counts towards Confidence.
-- **The lines are checked too.** Quantity x unit price must make the line's
-  amount, and the amounts of the lines must add up to the total (or to the
-  total before tax, or the taxable value). Lines that do count as confirmed,
-  on a photo of a handwritten bill too; if the sum is short, a line is
-  missing or misread and the note says by how much. Lines for totals and
+- **The lines can confirm, they do not mark.** Quantity x unit price making the
+  line's amount, and the lines adding up to the total (or the total before
+  tax, or the taxable value), count as confirmed. When they do not, no cell is
+  marked; a sum that is off is said once in a note. The second server run
+  (1,345 rows, 9 October) had 355 line amounts marked, mostly bills whose
+  lines carry discounts. The Checks sheet lists only values marked for
+  checking and notes on unconfirmed values, not fields that are simply absent. Lines for totals and
   taxes that the model lists as items are dropped (`_NOT_AN_ITEM`).
 - A row is finished in `merge` (`finish`), after the pages of one invoice are
   together: only then are all its lines known. `clean` alone returns a row

@@ -354,14 +354,12 @@ def read_items(raw: dict[str, Any], text: str) -> list[dict[str, Any]]:
             if values["HSNSAC"] and all(re.search(rf"(?<!\d){code}(?!\d)", text) for code in values["HSNSAC"].split("; ")):
                 levels["HSNSAC"] = "ok"
         item: dict[str, Any] = {"values": values, "levels": levels}
-        # Quantity x unit price = amount: a check on a line that needs nothing but the line.
+        # Quantity x unit price = amount confirms a line. When it does not hold nothing is
+        # marked: on real bills a line often carries a discount, or a price before tax beside
+        # an amount with it, and marking those drowned the sheet in orange (first server run).
         count = parse_amount(values["Qty"]) if values["Qty"] else None
-        if count is not None and len(figures) == 2:
-            if abs(count * figures["UnitPrice"] - figures["UnitAmount"]) <= ROUND_OFF:
-                levels["Qty"] = levels["UnitPrice"] = levels["UnitAmount"] = "ok"
-            else:
-                levels["UnitAmount"] = "check"
-                item["note"] = f"{count:g} x {figures['UnitPrice']:,.2f} = {count * figures['UnitPrice']:,.2f}, not {figures['UnitAmount']:,.2f}"
+        if count is not None and len(figures) == 2 and abs(count * figures["UnitPrice"] - figures["UnitAmount"]) <= ROUND_OFF:
+            levels["Qty"] = levels["UnitPrice"] = levels["UnitAmount"] = "ok"
         items.append(item)
     return items or [{"values": {f: "" for f in ITEM_FIELDS}, "levels": {f: "empty" for f in ITEM_FIELDS}}]
 
@@ -374,7 +372,6 @@ def finish(row: dict[str, Any]) -> dict[str, Any]:
     amounts = [parse_amount(item["values"]["UnitAmount"]) if item["values"]["UnitAmount"] else None for item in real]
     figure = {f: parse_amount(values[f]) if values[f] else None for f in ("InvoiceTotal", "TaxableValue", "TotalTaxAmount", "Discount")}
     total, base, tax, discount = figure["InvoiceTotal"], figure["TaxableValue"], figure["TotalTaxAmount"] or 0.0, figure["Discount"] or 0.0
-    said = []
     if real and total is not None and all(amount is not None for amount in amounts):
         # The lines add up to the total (prices with tax in them, or no tax), to the total
         # before tax, or to the taxable value - with or without the discount taken off.
@@ -383,23 +380,16 @@ def finish(row: dict[str, Any]) -> dict[str, Any]:
         against_base = () if base is None else (base, base + discount)
         if any(abs(summed - target) <= ROUND_OFF for target in (*against_total, *against_base)):
             for item in real:
-                if "note" not in item:
-                    item["levels"]["UnitAmount"] = "ok"
+                item["levels"]["UnitAmount"] = "ok"
             if levels["InvoiceTotal"] == "read" and any(abs(summed - target) <= ROUND_OFF for target in against_total):
                 levels["InvoiceTotal"], notes["InvoiceTotal"] = "ok", "The amounts of the lines add up to it."
-        else:
-            said.append(
-                f"The amounts of the lines add up to {summed:,.2f}, but the total is {total:,.2f}"
-                + ("" if base is None else f" and the taxable value {base:,.2f}") + ": a line is missing or misread."
+        elif len(real) > 1:
+            # Said once, for the invoice, and no line is marked: the lines may leave out a
+            # charge, or show prices before a discount. The total has checks of its own.
+            notes["UnitAmount"] = (
+                f"The amounts of the lines add up to {summed:,.2f}; the total is {total:,.2f}"
+                + ("" if base is None else f", the taxable value {base:,.2f}") + ". A line may be missing, or the lines carry discounts."
             )
-            for item in real:
-                if item["levels"]["UnitAmount"] == "read":
-                    item["levels"]["UnitAmount"] = "check"
-    wrong = [f"line {number}: {item.pop('note')}" for number, item in enumerate(real, 1) if "note" in item]
-    if wrong:
-        said.append("Quantity x unit price is not the amount on " + "; ".join(wrong[:3]) + (f"; and {len(wrong) - 3} more" if len(wrong) > 3 else "") + ".")
-    if said:
-        notes["UnitAmount"] = " ".join(said)
     if row.pop("items_unsure", False):
         notes["Description"] = "The model could not read the lines clearly."
         for item in real:
@@ -664,6 +654,10 @@ def _continues(first: dict[str, Any], second: dict[str, Any]) -> str:
     if _key(a["InvoiceId"]) and _key(a["InvoiceId"]) == _key(b["InvoiceId"]):
         return "same"
     if not any(b[f] for f in ("InvoiceId", "VendorName", "CustomerName", "InvoiceDate")):
+        return "rest"
+    # The last page of an invoice often repeats the seller and carries the total, without
+    # the number: the same seller, no number, and the pages before it have no total yet.
+    if not b["InvoiceId"] and a["InvoiceId"] and not a["InvoiceTotal"] and _plain(a["VendorName"]) and _plain(a["VendorName"]) == _plain(b["VendorName"]):
         return "rest"
     return ""
 
