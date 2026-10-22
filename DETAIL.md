@@ -149,7 +149,9 @@ error: "Can't reach Ollama at …", "… is not pulled. Run `ollama pull …`",
    returns its text (20 MB limit, 200,000 characters kept). An image stays in
    the browser as base64. A Figma link is added as text only.
 4. Send calls `POST /api/chat` with `{model, messages}`. The whole
-   conversation is sent each time: the server keeps no chat history.
+   conversation is sent each time: the server keeps no chat history. The
+   browser keeps it: each chat is saved in `localStorage` (`fastshot.chats`)
+   after every reply and listed in the sidebar, without attached pictures.
 5. Pressing the send button during a reply aborts the request, and generation
    stops.
 
@@ -557,6 +559,6 @@ its numbered steps.
 
 ## 14. Not built
 
-No login (the Admin panel has one shared password), no saved chat history, no text from scanned PDFs in chat, Figma
+No login (the Admin panel has one shared password), chat history only in the browser (not on the server), no text from scanned PDFs in chat, Figma
 links are text only, no paid cloud models. What has not been tested on real
 hardware is listed in `AGENTS.md` under "Not done".

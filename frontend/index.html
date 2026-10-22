@@ -81,45 +81,15 @@ button{cursor:pointer}
   padding:calc(var(--inset-top)*var(--vu)) calc(225*var(--u)) calc(var(--inset-bottom)*var(--vu));
 }
 
-/* ───────── Nav ───────── */
-.nav{
-  position:relative;flex:none;height:calc(43*var(--u));
-  display:flex;align-items:center;justify-content:space-between;
+/* ───────── Top bar: opens the sidebar while it is closed ───────── */
+.nav{position:relative;flex:none;height:calc(43*var(--u));display:flex;align-items:center;gap:8px}
+.top-btn{
+  width:38px;height:38px;border-radius:11px;display:inline-flex;align-items:center;justify-content:center;color:#D5D5D8;
+  background:rgba(32,32,35,.82);-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);
+  box-shadow:inset 0 0 0 1px rgba(214,228,255,.14),0 6px 18px rgba(0,0,0,.22);
 }
-.brand{display:inline-flex;align-items:center;gap:calc(var(--brand-gap)*var(--u))}
-.mark{width:calc(var(--mark)*var(--u));height:calc(var(--mark)*var(--u));flex:none}
-.word{
-  font-family:var(--font-display);font-variation-settings:"opsz" 32;
-  font-size:calc(var(--brand-fs)*var(--u));font-weight:var(--w-brand);
-  letter-spacing:var(--brand-ls);line-height:1;
-  transform:translateY(calc(1*var(--u)));
-  text-shadow:0 calc(1*var(--u)) calc(10*var(--u)) rgba(0,0,0,.30);
-}
-.links{
-  position:absolute;left:50%;transform:translateX(-50%);
-  top:calc((50.5 - 41)*var(--u));
-  display:flex;gap:calc(var(--links-gap)*var(--u));
-}
-.links a{
-  font-size:calc(var(--links-fs)*var(--u));font-weight:var(--w-nav);
-  letter-spacing:var(--nav-ls);line-height:1.2;color:#fff;white-space:nowrap;
-  text-shadow:0 calc(1*var(--u)) calc(12*var(--u)) rgba(0,0,0,.32);
-  transition:opacity .18s ease;
-}
-.links a:hover{opacity:.72}
-.cta{
-  align-self:flex-start;margin-top:calc((42 - 41)*var(--u));flex:none;
-  width:calc(var(--cta-w)*var(--u));height:calc(var(--cta-h)*var(--u));
-  border-radius:calc(var(--cta-r)*var(--u));
-  display:inline-flex;align-items:center;justify-content:center;
-  font-size:calc(var(--cta-fs)*var(--u));font-weight:var(--w-cta);letter-spacing:var(--cta-ls);
-  background:linear-gradient(180deg,#3d3d3f 0%,#1d1d20 100%);
-  box-shadow:inset 0 calc(1*var(--u)) 0 rgba(255,255,255,.10),0 calc(2*var(--u)) calc(14*var(--u)) rgba(0,0,0,.28);
-}
-.cta span{transform:translateY(calc(var(--cta-dy)*var(--u)))}
-.cta:hover{filter:brightness(1.16)}
-.cta:active{transform:translateY(1px)}
-.burger,.sheet{display:none}
+.top-btn:hover{color:#fff;background:rgba(48,48,52,.9)}
+.top-btn svg{width:18px;height:18px}
 
 /* ───────── Hero ───────── */
 .hero{
@@ -345,55 +315,155 @@ button{cursor:pointer}
 .logos text{font-family:var(--font-display);font-weight:700;font-size:23px}
 
 /* ═════════ TABLET: fluid desktop, one-row toolbar ═════════ */
-/* ───────── Workspaces panel (left) ───────── */
-.spaces{
-  position:fixed;z-index:40;left:max(14px,env(safe-area-inset-left));top:max(88px,calc(96*var(--u)));bottom:20px;width:252px;
-  display:flex;flex-direction:column;gap:8px;padding:12px;border-radius:18px;
-  background:rgba(22,22,25,.94);-webkit-backdrop-filter:blur(22px);backdrop-filter:blur(22px);
-  box-shadow:inset 0 0 0 1px rgba(255,255,255,.08),0 18px 50px rgba(0,0,0,.45);
-  color:#ECECEF;font-size:13.5px;line-height:1.4;
-  transform:translateX(calc(-100% - 40px));visibility:hidden;transition:transform .24s cubic-bezier(.4,0,.2,1),visibility 0s .24s;
+/* ───────── Sidebar (left): new chat, saved chats, workspace, pages, account ───────── */
+:root{--sb:264px}
+.sb{
+  position:fixed;z-index:40;top:0;bottom:0;left:0;width:var(--sb);
+  display:flex;flex-direction:column;
+  padding:max(10px,env(safe-area-inset-top)) 10px max(10px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left));
+  background:rgba(13,13,15,.9);-webkit-backdrop-filter:blur(24px) saturate(120%);backdrop-filter:blur(24px) saturate(120%);
+  box-shadow:inset -1px 0 0 rgba(255,255,255,.07);
+  color:#ECECEF;font-size:14px;line-height:1.4;
+  transform:translateX(-100%);visibility:hidden;
+  transition:transform .26s var(--e-primary),visibility 0s .26s;
 }
-.spaces-open .spaces{transform:none;visibility:visible;transition:transform .24s cubic-bezier(.4,0,.2,1)}
-.spaces-head{display:flex;align-items:center;gap:8px;padding:2px 2px 0 6px}
-.spaces-head b{flex:1;font-size:14.5px;font-weight:600}
-.spaces-close{width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;color:#98999C}
-.spaces-close svg{width:12px;height:12px}
-.spaces-close:hover{background:rgba(255,255,255,.08);color:#fff}
-.spaces-note{padding:0 6px;font-size:12.5px;color:#8B8C8E}
-.spaces-list{flex:1 1 auto;min-height:0;overflow-y:auto;scrollbar-width:thin;display:flex;flex-direction:column;gap:2px;margin:0 -4px;padding:0 4px}
-.space{width:100%;display:flex;align-items:center;gap:10px;text-align:left;padding:9px 10px;border-radius:11px}
+.sb-open .sb{transform:none;visibility:visible;transition:transform .26s var(--e-primary)}
+.sb ::selection,.settings ::selection{background:rgba(244,157,112,.35)}
+.sb-top{flex:none;display:flex;align-items:center;justify-content:space-between;height:44px;padding:0 0 0 6px;margin-bottom:6px}
+.sb-brand{display:inline-flex;align-items:center;gap:10px;font-size:16px;font-weight:550;letter-spacing:-.015em}
+.sb-brand svg{width:26px;height:26px}
+.sb-icon{flex:none;width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;color:#98999C}
+.sb-icon:hover{background:rgba(255,255,255,.07);color:#fff}
+.sb-icon svg{width:18px;height:18px}
+.sb-item{
+  width:100%;display:flex;align-items:center;gap:11px;height:36px;padding:0 10px;border-radius:10px;
+  text-align:left;color:#D5D5D8;font-size:14px;white-space:nowrap;
+}
+.sb-item:hover,.sb-item:focus-visible{background:rgba(255,255,255,.07);color:#fff;outline:none}
+.sb-item svg{width:18px;height:18px;flex:none;color:#A9AAAD}
+.sb-item span{overflow:hidden;text-overflow:ellipsis}
+.sb-search{display:flex;align-items:center;gap:11px;height:36px;padding:0 10px;border-radius:10px;color:#A9AAAD}
+.sb-search:focus-within{background:rgba(255,255,255,.07);box-shadow:inset 0 0 0 1px rgba(244,157,112,.55)}
+.sb-search svg{width:18px;height:18px;flex:none}
+.sb-search input{flex:1;min-width:0;height:100%;outline:none;font-size:14px;color:#ECECEF}
+.sb-search input::placeholder{color:#8B8C8E}
+.sb-search input::-webkit-search-cancel-button{filter:invert(.6)}
+.sb-scroll{
+  flex:1 1 auto;min-height:0;overflow-y:auto;margin:6px -10px 0;padding:0 10px 8px;
+  scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.18) transparent;
+}
+.sb-label{display:flex;align-items:center;gap:6px;padding:16px 10px 6px;font-size:12px;font-weight:500;color:#8B8C8E}
+/* The workspace every answer is based on: folds to one line. */
+.sb-ws>summary{list-style:none;cursor:pointer;user-select:none;border-radius:8px}
+.sb-ws>summary::-webkit-details-marker{display:none}
+.sb-ws>summary:hover{color:#C9C9CC}
+.sb-ws>summary::after{content:"";width:5px;height:5px;margin-left:2px;border:solid currentColor;border-width:0 1.5px 1.5px 0;transform:rotate(-45deg);transition:transform .15s ease}
+.sb-ws[open]>summary::after{transform:rotate(45deg) translate(-1px,-1px)}
+.sb-ws-now{margin-left:auto;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#CDBFF0;font-weight:500}
+.spaces-list{display:flex;flex-direction:column;gap:1px}
+.space{width:100%;display:flex;align-items:center;gap:10px;text-align:left;padding:6px 10px;border-radius:10px}
 .space:hover,.space:focus-visible{background:rgba(255,255,255,.07);outline:none}
-.space[aria-selected="true"]{background:rgba(244,157,112,.15)}
+.space[aria-selected="true"]{background:rgba(156,134,206,.16)}
 .space .s-text{flex:1;min-width:0}
-.space .s-name{display:block;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.space .s-name{display:block;font-size:13.5px;color:#D5D5D8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.space[aria-selected="true"] .s-name{color:#fff}
 .space .s-sub{display:block;font-size:12px;color:#8B8C8E}
 .space .s-tick{flex:none;width:10px;height:5px;margin-bottom:3px}
-.space[aria-selected="true"] .s-tick{border:solid #F49D70;border-width:0 0 2px 2px;transform:rotate(-45deg)}
-.spaces-empty{padding:8px 10px;font-size:12.5px;color:#8B8C8E}
-.spaces-new{display:flex;gap:6px}
-.spaces-new input{flex:1;min-width:0;height:36px;padding:0 11px;border-radius:10px;background:rgba(0,0,0,.3);box-shadow:inset 0 0 0 1px rgba(255,255,255,.09);color:#ECECEF;font-size:13.5px;outline:none}
+.space[aria-selected="true"] .s-tick{border:solid #CDBFF0;border-width:0 0 2px 2px;transform:rotate(-45deg)}
+.spaces-empty{padding:4px 10px;font-size:12.5px;color:#8B8C8E}
+.spaces-new{display:flex;gap:6px;margin:6px 0 2px}
+.spaces-new input{flex:1;min-width:0;height:32px;padding:0 10px;border-radius:9px;background:rgba(0,0,0,.3);box-shadow:inset 0 0 0 1px rgba(255,255,255,.09);color:#ECECEF;font-size:13px;outline:none}
 .spaces-new input:focus{box-shadow:inset 0 0 0 1px rgba(244,157,112,.7)}
 .spaces-new input::placeholder{color:#77787B}
-.spaces-new button{flex:none;width:36px;height:36px;border-radius:10px;font-size:18px;line-height:1;color:#1d1d20;background:#F49D70}
-.spaces-manage{display:block;padding:8px 6px 2px;font-size:13px;color:#F49D70}
-.spaces-manage:hover{text-decoration:underline}
-.spaces-toggle{
-  position:fixed;z-index:39;left:max(14px,env(safe-area-inset-left));top:max(88px,calc(96*var(--u)));
-  height:38px;max-width:220px;padding:0 13px 0 11px;border-radius:12px;display:inline-flex;align-items:center;gap:8px;
-  background:rgba(32,32,35,.9);-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);
-  box-shadow:inset 0 0 0 1px rgba(214,228,255,.14);color:#D5D5D8;font-size:13.5px;font-weight:500;
+.spaces-new button{flex:none;width:32px;height:32px;border-radius:9px;display:grid;place-items:center;color:#1d1d20;background:#F49D70}
+.spaces-new button svg{width:14px;height:14px}
+.spaces-manage{display:inline-block;padding:6px 10px 2px;font-size:12.5px;color:#F49D70}
+.spaces-manage:hover{text-decoration:underline;text-underline-offset:3px}
+/* Saved chats, newest first, grouped by day. */
+.sb-chat{display:flex;align-items:center;border-radius:10px}
+.sb-chat:hover{background:rgba(255,255,255,.06)}
+.sb-chat.on{background:rgba(255,255,255,.1)}
+.sb-open-chat{
+  flex:1;min-width:0;height:34px;padding:0 4px 0 10px;border-radius:10px;text-align:left;
+  font-size:13.5px;color:#C9C9CC;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
 }
-.spaces-toggle span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.spaces-toggle.on{color:#FBBC94;box-shadow:inset 0 0 0 1px rgba(244,157,112,.45)}
-.spaces-toggle svg{width:17px;height:17px;flex:none}
-.spaces-toggle:hover{color:#fff}
-.spaces-open .spaces-toggle{visibility:hidden}
-@media (max-width:599px){
-  .spaces,.spaces-toggle{top:calc(env(safe-area-inset-top) + 70px)}
-  .spaces{width:min(300px,calc(100vw - 28px))}
-  .spaces-toggle{height:34px;padding:0 9px}
-  .spaces-toggle span{display:none}
+.sb-chat.on .sb-open-chat,.sb-open-chat:hover{color:#fff}
+.sb-open-chat:focus-visible{outline-offset:-2px}
+.sb-del{flex:none;width:28px;height:28px;margin-right:3px;border-radius:8px;display:grid;place-items:center;color:#8B8C8E;opacity:0}
+.sb-del svg{width:15px;height:15px}
+.sb-chat:hover .sb-del,.sb-chat.on .sb-del,.sb-del:focus-visible{opacity:1}
+.sb-del:hover{color:#FBBC94;background:rgba(255,255,255,.08)}
+@media (hover:none){.sb-del{opacity:1}}
+.sb-empty{padding:4px 10px;font-size:13px;color:#8B8C8E;line-height:1.5}
+/* Account: settings, and the Admin panel once signed in as admin. */
+.sb-foot{flex:none;position:relative;padding-top:8px;box-shadow:0 -1px 0 rgba(255,255,255,.06)}
+.sb-user{width:100%;display:flex;align-items:center;gap:10px;height:48px;padding:0 8px;border-radius:12px;text-align:left}
+.sb-user:hover,.sb-user[aria-expanded="true"]{background:rgba(255,255,255,.07)}
+.avatar{flex:none;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-size:13px;font-weight:600;color:#1d1d20;background:#9C86CE}
+.is-admin .avatar{background:#F49D70}
+.sb-user .u-text{flex:1;min-width:0}
+.sb-user b{display:block;font-weight:500;font-size:14px}
+.sb-user small{display:block;font-size:12px;color:#8B8C8E}
+.sb-user>svg{width:14px;height:14px;flex:none;color:#8B8C8E}
+.user-menu{
+  position:absolute;left:0;right:0;bottom:calc(100% + 6px);padding:6px;border-radius:14px;
+  background:rgba(26,26,29,.98);box-shadow:inset 0 0 0 1px rgba(255,255,255,.09),0 18px 50px rgba(0,0,0,.45);
+}
+.user-menu hr{border:0;height:1px;margin:5px 4px;background:rgba(255,255,255,.08)}
+.sb-scrim{display:none}
+@media (min-width:1181px){
+  .sb-open .nav>*{visibility:hidden}
+  .frame{transition:left .26s var(--e-primary),padding .26s var(--e-primary)}
+  .sb-open .frame{
+    left:var(--sb);
+    padding-left:max(32px,calc(225*var(--u) - var(--sb)/2));padding-right:max(32px,calc(225*var(--u) - var(--sb)/2));
+  }
+}
+@media (max-width:1180px){
+  .sb{width:min(300px,86vw);box-shadow:inset -1px 0 0 rgba(255,255,255,.07),24px 0 60px rgba(0,0,0,.45)}
+  .sb-open .sb-scrim{display:block;position:fixed;inset:0;z-index:39;background:rgba(0,0,0,.45)}
+}
+
+/* ───────── Settings ───────── */
+.settings{
+  margin:auto;width:min(880px,calc(100vw - 32px));height:min(660px,calc(100vh - 48px));padding:0;border:0;border-radius:20px;
+  color:#ECECEF;background:#18181b;font-size:14px;line-height:1.5;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.09),0 30px 80px rgba(0,0,0,.55);
+}
+.settings::backdrop{background:rgba(5,6,9,.6);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
+.settings[open]{display:flex;flex-direction:column}
+.set-head{flex:none;display:flex;align-items:center;justify-content:space-between;padding:14px 14px 10px 24px}
+.set-head h2{font-size:17px;font-weight:600;letter-spacing:-.01em}
+.set-body{flex:1;min-height:0;display:flex;gap:20px;padding:4px 24px 24px 14px}
+.set-tabs{flex:none;width:176px;display:flex;flex-direction:column;gap:2px}
+.set-tabs .sb-item[aria-selected="true"]{background:rgba(255,255,255,.1);color:#fff}
+.set-panel{flex:1;min-width:0;overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.18) transparent;padding-right:4px}
+.set-group+.set-group{margin-top:22px;padding-top:20px;border-top:1px solid rgba(255,255,255,.07)}
+.set-group h3{font-size:14.5px;font-weight:600;margin-bottom:3px}
+.set-hint{color:#98999C;font-size:13.5px;max-width:62ch}
+.set-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:12px}
+.set-in{
+  flex:1;min-width:180px;max-width:340px;height:38px;padding:0 12px;border-radius:10px;font-size:14px;
+  background:rgba(0,0,0,.3);box-shadow:inset 0 0 0 1px rgba(255,255,255,.1);outline:none;
+}
+.set-in:focus{box-shadow:inset 0 0 0 1px rgba(244,157,112,.7)}
+.set-btn{height:38px;padding:0 16px;border-radius:10px;font-weight:500;color:#1d1d20;background:#F49D70}
+.set-btn:hover{filter:brightness(1.07)}
+.set-btn:disabled{opacity:.5;cursor:default;filter:none}
+.set-btn.ghost{color:#ECECEF;background:rgba(255,255,255,.08)}
+.set-btn.ghost:hover{background:rgba(255,255,255,.13)}
+.set-btn.danger{color:#FBBC94;background:rgba(244,120,90,.13)}
+.set-btn.danger:hover{background:rgba(244,120,90,.2)}
+.set-status{margin-top:8px;font-size:13px;color:#98999C}
+.set-status.err{color:#FBBC94}
+.set-status.ok{color:#8FD3A8}
+.set-panel.embed{overflow:hidden;padding:0}
+.set-iframe{display:block;width:100%;height:100%;border:0;background:transparent}
+@media (max-width:640px){
+  .settings{width:calc(100vw - 16px);height:calc(100vh - 16px)}
+  .set-body{flex-direction:column;gap:10px;padding:0 14px 14px}
+  .set-tabs{width:auto;flex-direction:row}
+  .set-tabs .sb-item{width:auto}
 }
 
 /* Sources under an answer from a workspace. */
@@ -436,8 +506,6 @@ button{cursor:pointer}
 @media (min-width:600px) and (max-width:1180px) and (min-height:600px){
   :root{--u:1px}
   .frame{padding:clamp(24px,3.4vh,44px) clamp(28px,4.2vw,60px) clamp(26px,4.4vh,56px)}
-  .links{gap:clamp(18px,3.4vw,50px)}
-  .links a{font-size:clamp(15px,2vw,21.69px)}
   .h1{font-size:clamp(27px,4.3vw,44px);line-height:1.12}
   .card,.chat .thread{width:min(100%,clamp(516px,74vw,760px));margin-right:0}
   .card{
@@ -469,29 +537,6 @@ button{cursor:pointer}
     --pad-l:max(clamp(18px,5.2vw,40px),env(safe-area-inset-left));
   }
   .frame,.chat .frame{padding:var(--pad-t) var(--pad-r) var(--pad-b) var(--pad-l)}
-  .links,header .cta{display:none}
-  .mark{width:30px;height:30px}
-  .burger{
-    display:flex;align-items:center;justify-content:center;width:38px;height:38px;border-radius:11px;cursor:pointer;
-    background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.14);
-  }
-  .burger svg{width:17px;height:12px;fill:#fff}
-  .sheet{
-    display:grid;grid-template-rows:0fr;transition:grid-template-rows .32s cubic-bezier(.4,0,.2,1);
-    position:absolute;z-index:30;left:var(--pad-l);right:var(--pad-r);top:calc(var(--pad-t) + 43px + 8px);
-  }
-  #menu:checked~.sheet{grid-template-rows:1fr}
-  .sheet-inner{overflow:hidden;min-height:0}
-  .panel{
-    display:flex;flex-direction:column;gap:2px;padding:10px;border-radius:16px;
-    background:rgba(24,24,27,.86);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);
-    border:1px solid rgba(255,255,255,.09);
-  }
-  .panel a{font-size:15px;padding:10px 10px;border-radius:10px}
-  .panel .cta{
-    display:inline-flex;align-self:stretch;width:auto;height:40px;margin-top:6px;border-radius:11px;font-size:15px;padding:0;
-  }
-  .panel .cta span{transform:none}
   .h1{width:100%;max-width:15ch;white-space:normal;font-size:clamp(29px,7.6vw,50px);line-height:1.14;letter-spacing:-.012em}
   .card,.chat .thread{width:100%;max-width:600px;margin-right:0}
   .card{height:auto;display:flex;flex-direction:column;gap:clamp(16px,4.6vh,34px);padding:clamp(13px,3.4vw,18px);border-radius:20px}
@@ -518,25 +563,13 @@ button{cursor:pointer}
 }
 
 /* ═════════ Entrance (once, on first paint) ═════════ */
-@keyframes e-settle-down{from{opacity:0;transform:translateY(calc(-5*var(--u)))}to{opacity:1;transform:none}}
 @keyframes e-settle-up{from{opacity:0;transform:translateY(calc(6*var(--u)))}to{opacity:1;transform:none}}
-@keyframes e-mark{from{transform:scale(.9)}to{transform:none}}
 @keyframes e-focus{from{opacity:0;transform:translateY(calc(14*var(--u)));filter:blur(calc(6*var(--u)))}to{opacity:1;transform:none;filter:blur(0)}}
 @keyframes e-panel{from{opacity:0;transform:translateY(calc(18*var(--u))) scale(.985)}to{opacity:1;transform:none}}
 @keyframes e-populate{from{opacity:0;transform:translateY(calc(4*var(--u)))}to{opacity:1;transform:none}}
 @keyframes e-send{from{transform:scale(.82)}to{transform:none}}
 @keyframes e-msg{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:no-preference){
-  .anim .brand{animation:e-settle-down .58s var(--e-soft) .06s both}
-  .anim .mark{animation:e-mark .62s var(--e-primary) .06s both}
-  .anim .links a{animation:e-settle-down .50s var(--e-soft) both}
-  .anim .links a:nth-child(1){animation-delay:.16s}
-  .anim .links a:nth-child(2){animation-delay:.21s}
-  .anim .links a:nth-child(3){animation-delay:.26s}
-  .anim .links a:nth-child(4){animation-delay:.31s}
-  .anim .links a:nth-child(5){animation-delay:.36s}
-  .anim .links a:nth-child(6){animation-delay:.41s}
-  .anim .nav>.cta{animation:e-settle-down .55s var(--e-soft) .34s both}
   .anim .h1{animation:e-focus 1s var(--e-primary) .30s both;will-change:transform,opacity}
   .anim .card{animation:e-panel .90s var(--e-primary) .62s both;will-change:transform,opacity}
   .anim .ph{animation:e-populate .50s var(--e-soft) .88s both}
@@ -560,62 +593,136 @@ button{cursor:pointer}
   <video class="stage-video" autoplay muted loop playsinline preload="auto"
     src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260826_124724_bc041163-d651-425f-aea3-2acc1efc2c96.mp4"></video>
 
-  <!-- Workspaces: a team's documents, picked here so every answer is based on them. -->
-  <button type="button" class="spaces-toggle" id="spaces-toggle" aria-controls="spaces" aria-expanded="false">
-    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5.5A1.5 1.5 0 0 1 4.5 4h3.2l1.6 1.8h6.2A1.5 1.5 0 0 1 17 7.3v7.2a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 3 14.5Z"/></svg>
-    <span id="spaces-toggle-label">Workspaces</span>
-  </button>
-  <aside class="spaces" id="spaces" aria-label="Workspaces">
-    <div class="spaces-head">
-      <b>Workspaces</b>
-      <button type="button" class="spaces-close" id="spaces-close" aria-label="Hide workspaces">
-        <svg viewBox="0 0 12 12" aria-hidden="true"><path d="M8 1.5 3.5 6 8 10.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  <aside class="sb" id="sb" aria-label="Sidebar">
+    <div class="sb-top">
+      <a class="sb-brand" href="#" id="brand" aria-label="Fastshot, new chat">
+        <svg viewBox="0 0 34 34" aria-hidden="true"><circle cx="17" cy="17" r="17" fill="#9C86CE"/><circle cx="17" cy="17" r="8.6" fill="#FFFFFF"/><circle cx="17" cy="17" r="3.7" fill="#151519"/></svg>
+        <span>Fastshot</span>
+      </a>
+      <button type="button" class="sb-icon" id="sb-close" aria-label="Close sidebar" aria-controls="sb">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="14" height="12" rx="2.5"/><path d="M8 4v12"/></svg>
       </button>
     </div>
-    <p class="spaces-note">Pick one and every answer is based on its documents, with sources.</p>
-    <div class="spaces-list" id="spaces-list" role="listbox" aria-label="Workspace"></div>
-    <form class="spaces-new" id="spaces-new" onsubmit="return false">
-      <input id="spaces-new-name" placeholder="New workspace" aria-label="New workspace name" maxlength="80">
-      <button type="submit" aria-label="Add workspace">+</button>
-    </form>
-    <a class="spaces-manage" id="spaces-manage" href="workspaces.html">Add documents and manage →</a>
+
+    <button type="button" class="sb-item" id="new-chat">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 4H5.5A1.5 1.5 0 0 0 4 5.5v9A1.5 1.5 0 0 0 5.5 16h9a1.5 1.5 0 0 0 1.5-1.5V10"/><path d="M14.3 3.7a1.4 1.4 0 0 1 2 2L10.5 11.5 8 12l.5-2.5Z"/></svg>
+      <span>New chat</span>
+    </button>
+    <label class="sb-search">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="9" cy="9" r="5"/><path d="M13 13l3.5 3.5"/></svg>
+      <input type="search" id="chat-search" placeholder="Search chats" aria-label="Search chats" autocomplete="off">
+    </label>
+    <nav aria-label="Pages">
+      <a class="sb-item" href="workspaces.html">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5.5A1.5 1.5 0 0 1 4.5 4h3.2l1.6 1.8h6.2A1.5 1.5 0 0 1 17 7.3v7.2a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 3 14.5Z"/></svg>
+        <span>Workspaces</span>
+      </a>
+      <a class="sb-item" href="documents.html">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h5.5L15 6.5V16a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/><path d="M11 3v4h4M7.5 11h5M7.5 14h3"/></svg>
+        <span>Documents</span>
+      </a>
+      <a class="sb-item" href="databases.html">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="10" cy="5.5" rx="5.5" ry="2.2"/><path d="M4.5 5.5v9c0 1.2 2.5 2.2 5.5 2.2s5.5-1 5.5-2.2v-9M4.5 10c0 1.2 2.5 2.2 5.5 2.2s5.5-1 5.5-2.2"/></svg>
+        <span>Databases</span>
+      </a>
+    </nav>
+
+    <div class="sb-scroll">
+      <!-- Workspace: a team's documents, picked here so every answer is based on them. -->
+      <details class="sb-ws" id="spaces">
+        <summary class="sb-label">Workspace <span class="sb-ws-now" id="spaces-now"></span></summary>
+        <div class="spaces-list" id="spaces-list" role="listbox" aria-label="Workspace"></div>
+        <form class="spaces-new" id="spaces-new" onsubmit="return false">
+          <input id="spaces-new-name" placeholder="New workspace" aria-label="New workspace name" maxlength="80">
+          <button type="submit" aria-label="Add workspace"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M7 2v10M2 7h10"/></svg></button>
+        </form>
+        <a class="spaces-manage" id="spaces-manage" href="workspaces.html">Add documents and manage</a>
+      </details>
+      <div id="chat-list" aria-label="Chats"></div>
+    </div>
+
+    <div class="sb-foot">
+      <div class="user-menu" id="user-menu" role="menu" hidden>
+        <button type="button" class="sb-item" role="menuitem" id="open-settings">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M3.5 6h7.5M15 6h1.5M3.5 14h1.5M9 14h7.5"/><circle cx="13" cy="6" r="2"/><circle cx="7" cy="14" r="2"/></svg>
+          <span>Settings</span>
+        </button>
+        <button type="button" class="sb-item" role="menuitem" id="open-admin" hidden>
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><path d="M10 3l5.5 2v4.5c0 3.4-2.3 6-5.5 7.5-3.2-1.5-5.5-4.1-5.5-7.5V5Z"/></svg>
+          <span>Admin panel</span>
+        </button>
+        <hr id="admin-rule" hidden>
+        <button type="button" class="sb-item" role="menuitem" id="admin-out" hidden>
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 4H5.5A1.5 1.5 0 0 0 4 5.5v9A1.5 1.5 0 0 0 5.5 16H8M12 7l3 3-3 3M15 10H8"/></svg>
+          <span>Sign out of admin</span>
+        </button>
+      </div>
+      <button type="button" class="sb-user" id="user-btn" aria-haspopup="menu" aria-expanded="false" aria-controls="user-menu">
+        <span class="avatar" id="avatar" aria-hidden="true">U</span>
+        <span class="u-text"><b id="user-name">User</b><small id="user-sub">Settings</small></span>
+        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8.5 7 5.5l3 3"/></svg>
+      </button>
+    </div>
   </aside>
+  <div class="sb-scrim" id="sb-scrim" aria-hidden="true"></div>
+
+  <dialog class="settings" id="settings" aria-labelledby="settings-title">
+    <div class="set-head">
+      <h2 id="settings-title">Settings</h2>
+      <button type="button" class="sb-icon" id="settings-close" aria-label="Close settings">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M5.5 5.5l9 9M14.5 5.5l-9 9"/></svg>
+      </button>
+    </div>
+    <div class="set-body">
+      <div class="set-tabs" role="tablist" aria-label="Settings">
+        <button type="button" class="sb-item" role="tab" id="tab-general" aria-controls="panel-general" aria-selected="true">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M3.5 6h7.5M15 6h1.5M3.5 14h1.5M9 14h7.5"/><circle cx="13" cy="6" r="2"/><circle cx="7" cy="14" r="2"/></svg>
+          <span>General</span>
+        </button>
+        <button type="button" class="sb-item" role="tab" id="tab-admin" aria-controls="panel-admin" aria-selected="false" hidden>
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><path d="M10 3l5.5 2v4.5c0 3.4-2.3 6-5.5 7.5-3.2-1.5-5.5-4.1-5.5-7.5V5Z"/></svg>
+          <span>Admin panel</span>
+        </button>
+      </div>
+
+      <section class="set-panel" id="panel-general" role="tabpanel" aria-labelledby="tab-general">
+        <div class="set-group">
+          <h3>Chats</h3>
+          <p class="set-hint" id="chats-hint">Chats are saved in this browser only. Pictures attached to a message are not kept.</p>
+          <div class="set-row"><button type="button" class="set-btn danger" id="clear-chats">Delete all chats</button></div>
+        </div>
+        <div class="set-group">
+          <h3>Admin</h3>
+          <div id="admin-in">
+            <p class="set-hint">Sign in with the admin password (ADMIN_PASSWORD on the server) to turn agent skills on and off and manage memories. It lasts until this tab is closed.</p>
+            <form class="set-row" id="admin-form" onsubmit="return false">
+              <input class="set-in" id="admin-password" type="password" autocomplete="current-password" aria-label="Admin password" placeholder="Admin password">
+              <button type="submit" class="set-btn" id="admin-go">Sign in</button>
+            </form>
+          </div>
+          <div id="admin-on" hidden>
+            <p class="set-hint">Signed in as admin in this tab.</p>
+            <div class="set-row">
+              <button type="button" class="set-btn" id="admin-show">Open the Admin panel</button>
+              <button type="button" class="set-btn ghost" id="admin-out-2">Sign out</button>
+            </div>
+          </div>
+          <p class="set-status" id="admin-status" role="status" hidden></p>
+        </div>
+      </section>
+      <section class="set-panel embed" id="panel-admin" role="tabpanel" aria-labelledby="tab-admin" hidden></section>
+    </div>
+  </dialog>
 
   <div class="frame">
-    <input type="checkbox" id="menu" hidden>
-
     <header class="nav">
-      <a class="brand" href="#" id="brand" aria-label="Fastshot home">
-        <svg class="mark" viewBox="0 0 34 34" aria-hidden="true">
-          <circle cx="17" cy="17" r="17" fill="#9C86CE"/>
-          <circle cx="17" cy="17" r="8.6" fill="#FFFFFF"/>
-          <circle cx="17" cy="17" r="3.7" fill="#151519"/>
-        </svg>
-        <span class="word">Fastshot</span>
-      </a>
-      <nav class="links" aria-label="Primary">
-        <a href="documents.html">Documents</a>
-        <a href="workspaces.html">Workspaces</a>
-        <a href="databases.html">Databases</a>
-        <a href="admin.html">Admin</a>
-      </nav>
-      <a class="cta" href="#" data-start><span>Get Started</span></a>
-      <label class="burger" for="menu" aria-label="Menu">
-        <svg viewBox="0 0 17 12" aria-hidden="true"><rect width="17" height="2" rx="1"/><rect y="10" width="17" height="2" rx="1"/></svg>
-      </label>
+      <button type="button" class="top-btn" id="sb-open" aria-label="Open sidebar" aria-controls="sb" aria-expanded="false">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="14" height="12" rx="2.5"/><path d="M8 4v12"/></svg>
+      </button>
+      <button type="button" class="top-btn" id="top-new" aria-label="New chat">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 4H5.5A1.5 1.5 0 0 0 4 5.5v9A1.5 1.5 0 0 0 5.5 16h9a1.5 1.5 0 0 0 1.5-1.5V10"/><path d="M14.3 3.7a1.4 1.4 0 0 1 2 2L10.5 11.5 8 12l.5-2.5Z"/></svg>
+      </button>
     </header>
-
-    <div class="sheet">
-      <div class="sheet-inner">
-        <div class="panel">
-          <a href="documents.html">Documents</a>
-          <a href="workspaces.html">Workspaces</a>
-          <a href="databases.html">Databases</a>
-          <a href="admin.html">Admin</a>
-          <a class="cta" href="#" data-start><span>Get Started</span></a>
-        </div>
-      </div>
-    </div>
 
     <main class="hero">
       <h1 class="h1">Describe an app. We'll build it.</h1>
@@ -699,7 +806,10 @@ button{cursor:pointer}
   const MODEL_KEY = 'fastshot.model';
   const DB_KEY = 'fastshot.database';
   const WS_KEY = 'fastshot.workspace'; /* shared with workspaces.html */
-  const PANEL_KEY = 'fastshot.workspaces-panel';
+  const SIDEBAR_KEY = 'fastshot.sidebar';
+  const CHATS_KEY = 'fastshot.chats';
+  const MAX_CHATS = 200;
+  const ADMIN_KEY = 'fastshot.admin'; /* shared with admin.html: this tab only */
   const MAX_DOC_BYTES = 50 * 1024 * 1024; /* workspaces.max_upload_mb on the server */
   const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 
@@ -713,6 +823,7 @@ button{cursor:pointer}
     models: [], model: null, offline: false, messages: [], attachments: [], busy: false, abort: null,
     databases: [], database: null, /* a saved connection the model answers from (databases.html) */
     workspaces: [], workspace: null, /* a workspace whose documents every answer is based on (workspaces.html) */
+    chatId: null, /* the saved chat on screen; null until its first reply */
   };
 
   const keep = (key) => ({
@@ -722,7 +833,7 @@ button{cursor:pointer}
   const store = keep(MODEL_KEY);
   const dbStore = keep(DB_KEY);
   const wsStore = keep(WS_KEY);
-  const panelStore = keep(PANEL_KEY);
+  const sidebarStore = keep(SIDEBAR_KEY);
   state.database = dbStore.get();
   state.workspace = wsStore.get();
   const node = (tag, cls, text) => {
@@ -856,9 +967,26 @@ button{cursor:pointer}
     if (e.key !== 'Escape') return;
     toggleMenu(false);
     el.figma.hidden = true;
+    if (!$('user-menu').hidden) { toggleUserMenu(false); $('user-btn').focus(); }
+    else if (!wide() && root.classList.contains('sb-open')) toggleSidebar(false);
   });
 
-  /* ── Workspaces panel ── */
+  /* ── Sidebar ── */
+  const wide = () => window.matchMedia('(min-width:1181px)').matches;
+  function toggleSidebar(open, remember = true) {
+    root.classList.toggle('sb-open', open);
+    $('sb-open').setAttribute('aria-expanded', String(open));
+    /* Only the wide layout remembers: on a phone the sidebar covers the chat, so it starts closed. */
+    if (remember && wide()) sidebarStore.set(open ? 'open' : 'closed');
+    if (!open) toggleUserMenu(false);
+  }
+  const closeIfNarrow = () => { if (!wide()) toggleSidebar(false); };
+  $('sb-open').addEventListener('click', () => toggleSidebar(true));
+  $('sb-close').addEventListener('click', () => toggleSidebar(false));
+  $('sb-scrim').addEventListener('click', () => toggleSidebar(false));
+  toggleSidebar(wide() && sidebarStore.get() !== 'closed', false);
+
+  /* ── Workspace (in the sidebar) ── */
   const currentWorkspace = () => state.workspaces.find((w) => w.id === state.workspace) || null;
   const plural = (n, one, many) => n + ' ' + (n === 1 ? one : many);
   async function loadWorkspaces() {
@@ -883,11 +1011,9 @@ button{cursor:pointer}
     const list = $('spaces-list');
     list.replaceChildren();
     const ws = currentWorkspace();
-    $('spaces-toggle-label').textContent = ws ? ws.name : 'Workspaces';
-    $('spaces-toggle').classList.toggle('on', !!ws);
+    $('spaces-now').textContent = ws ? ws.name : '';
     $('spaces-manage').href = 'workspaces.html' + (ws ? '#' + encodeURIComponent(ws.id) : '');
-    const items = [null, ...state.workspaces];
-    for (const w of items) {
+    for (const w of [null, ...state.workspaces]) {
       const b = node('button', 'space');
       b.type = 'button';
       b.setAttribute('role', 'option');
@@ -900,21 +1026,14 @@ button{cursor:pointer}
       b.append(text, node('span', 's-tick'));
       b.addEventListener('click', () => {
         setWorkspace(w ? w.id : null);
-        if (window.innerWidth < 1180) toggleSpaces(false);
+        closeIfNarrow();
         el.prompt.focus();
       });
       list.append(b);
     }
     if (!state.workspaces.length) list.append(node('p', 'spaces-empty', 'No workspaces yet. Name one below, then add its documents.'));
   }
-  function toggleSpaces(open, remember = true) {
-    root.classList.toggle('spaces-open', open);
-    $('spaces-toggle').setAttribute('aria-expanded', String(open));
-    if (remember) panelStore.set(open ? 'open' : 'closed');
-    if (open) loadWorkspaces();
-  }
-  $('spaces-toggle').addEventListener('click', () => toggleSpaces(true));
-  $('spaces-close').addEventListener('click', () => toggleSpaces(false));
+  $('spaces').addEventListener('toggle', () => { if ($('spaces').open) loadWorkspaces(); });
   $('spaces-new').addEventListener('submit', async () => {
     const input = $('spaces-new-name');
     const name = input.value.trim();
@@ -932,9 +1051,224 @@ button{cursor:pointer}
       flash(err instanceof TypeError ? 'The backend is not reachable' : err.message);
     }
   });
-  /* Open by default where there is room beside the chat, unless the reader closed it. */
-  toggleSpaces(panelStore.get() ? panelStore.get() === 'open' : window.innerWidth >= 1280, false);
-  if (!root.classList.contains('spaces-open')) loadWorkspaces();
+  loadWorkspaces();
+
+  /* ── Saved chats: kept in this browser (localStorage), newest first ── */
+  const chats = {
+    all() {
+      try { const list = JSON.parse(localStorage.getItem(CHATS_KEY) || '[]'); return Array.isArray(list) ? list : []; }
+      catch { return []; }
+    },
+    /* A full browser store drops the oldest chats until this one fits. */
+    write(list) {
+      for (;;) {
+        try { localStorage.setItem(CHATS_KEY, JSON.stringify(list)); return true; }
+        catch {
+          if (list.length <= 1) return false;
+          list = list.slice(0, -1);
+        }
+      }
+    },
+  };
+  const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  function titleOf(messages) {
+    const first = messages.find((m) => m.role === 'user');
+    const text = first ? (first.content || '').trim().split('\n')[0] || (first.names || [])[0] || '' : '';
+    return text.length > 60 ? text.slice(0, 59) + '…' : text || 'New chat';
+  }
+  /* What is kept of a message: pictures are left out (they would fill the browser's store). */
+  const storable = (m) => (m.images && m.images.length ? { ...m, images: [] } : m);
+  function saveChat(id, messages) {
+    const list = chats.all().filter((c) => c.id !== id);
+    const old = chats.all().find((c) => c.id === id);
+    list.unshift({ id, title: old ? old.title : titleOf(messages), updated: Date.now(), messages: messages.map(storable) });
+    if (list.length > MAX_CHATS) list.length = MAX_CHATS;
+    if (!chats.write(list)) flash('This chat could not be saved: the browser storage is full');
+    renderChats();
+  }
+  function deleteChat(id) {
+    chats.write(chats.all().filter((c) => c.id !== id));
+    if (state.chatId === id) reset();
+    renderChats();
+  }
+  function dayGroup(time) {
+    const start = new Date(); start.setHours(0, 0, 0, 0);
+    const days = (start - new Date(time).setHours(0, 0, 0, 0)) / 864e5;
+    return days <= 0 ? 'Today' : days === 1 ? 'Yesterday' : days < 7 ? 'Previous 7 days' : days < 30 ? 'Previous 30 days' : 'Older';
+  }
+  function renderChats() {
+    const box = $('chat-list');
+    box.replaceChildren();
+    const query = $('chat-search').value.trim().toLowerCase();
+    const list = chats.all().filter((c) => !query || c.title.toLowerCase().includes(query)
+      || c.messages.some((m) => (m.content || '').toLowerCase().includes(query)));
+    let group = '';
+    for (const c of list) {
+      const g = dayGroup(c.updated);
+      if (g !== group) { box.append(node('p', 'sb-label', g)); group = g; }
+      const row = node('div', 'sb-chat' + (c.id === state.chatId ? ' on' : ''));
+      const open = node('button', 'sb-open-chat', c.title);
+      open.type = 'button';
+      open.title = c.title;
+      if (c.id === state.chatId) open.setAttribute('aria-current', 'true');
+      open.addEventListener('click', () => openChat(c.id));
+      const del = node('button', 'sb-del');
+      del.type = 'button';
+      del.setAttribute('aria-label', 'Delete chat: ' + c.title);
+      del.innerHTML = '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 6h11M8 6V4.5h4V6M6.2 6l.7 9.5h6.2l.7-9.5"/></svg>';
+      del.addEventListener('click', () => { if (confirm('Delete "' + c.title + '"?')) deleteChat(c.id); });
+      row.append(open, del);
+      box.append(row);
+    }
+    if (!list.length) {
+      box.append(node('p', 'sb-label', 'Chats'));
+      box.append(node('p', 'sb-empty', query ? 'No chat matches.' : 'Your chats will show here. They are kept in this browser only.'));
+    }
+    $('chats-hint').textContent = 'Chats are saved in this browser only (' + plural(chats.all().length, 'chat', 'chats')
+      + ' now). Pictures attached to a message are not kept.';
+  }
+  function openChat(id) {
+    const chat = chats.all().find((c) => c.id === id);
+    if (!chat) { renderChats(); return; }
+    reset(false);
+    state.chatId = id;
+    state.messages = chat.messages;
+    for (const m of chat.messages) {
+      if (m.role === 'user') { addUser(m, m.names || []); continue; }
+      const v = m.view || {};
+      const out = addBot(v.label || 'Fastshot');
+      if (v.title) out.name.title = v.title;
+      out.stats.textContent = v.stats || '';
+      for (const note of v.notes || []) out.body.before(node('div', 'note', note));
+      for (const spec of v.charts || []) {
+        const box = node('details', 'think tool done');
+        box.open = true;
+        const text = node('div', 'think-text');
+        text.append(chartView(spec));
+        box.append(node('summary', '', 'Made a chart' + (spec.title ? ': ' + spec.title : '')), text);
+        out.body.before(box);
+      }
+      out.body.innerHTML = render(m.content);
+      if (v.sources) out.bubble.append(sourcesView(v.sources));
+    }
+    root.classList.remove('anim');
+    root.classList.add('chat');
+    follow.go();
+    renderChats();
+    closeIfNarrow();
+    el.prompt.focus();
+  }
+  const newChat = () => { reset(); closeIfNarrow(); };
+  $('new-chat').addEventListener('click', newChat);
+  $('top-new').addEventListener('click', newChat);
+  $('chat-search').addEventListener('input', renderChats);
+  window.addEventListener('storage', (e) => { if (e.key === CHATS_KEY) renderChats(); });
+
+  /* ── Account menu, Settings, and the Admin panel (shown to the admin only) ── */
+  /* Hiding it is for tidiness; the server checks the password on every admin request. */
+  const admin = {
+    get() { try { return sessionStorage.getItem(ADMIN_KEY) || ''; } catch { return ''; } },
+    set(v) { try { if (v) sessionStorage.setItem(ADMIN_KEY, v); else sessionStorage.removeItem(ADMIN_KEY); } catch {} },
+  };
+  function toggleUserMenu(open) {
+    $('user-menu').hidden = !open;
+    $('user-btn').setAttribute('aria-expanded', String(open));
+  }
+  $('user-btn').addEventListener('click', () => toggleUserMenu($('user-menu').hidden));
+  document.addEventListener('click', (e) => { if (!e.target.closest('.sb-foot')) toggleUserMenu(false); });
+
+  function renderAdmin() {
+    const on = !!admin.get();
+    root.classList.toggle('is-admin', on);
+    $('avatar').textContent = on ? 'A' : 'U';
+    $('user-name').textContent = on ? 'Admin' : 'User';
+    $('user-sub').textContent = on ? 'Settings · Admin panel' : 'Settings';
+    for (const id of ['open-admin', 'admin-rule', 'admin-out', 'tab-admin', 'admin-on']) $(id).hidden = !on;
+    $('admin-in').hidden = on;
+    if (!on && !$('panel-admin').hidden) showTab('general');
+    if (!on) $('panel-admin').replaceChildren(); /* the panel's page goes with the sign-in */
+  }
+  function adminStatus(text, kind) {
+    const s = $('admin-status');
+    s.hidden = !text;
+    s.className = 'set-status' + (kind ? ' ' + kind : '');
+    s.textContent = text || '';
+  }
+  async function checkAdmin(password) {
+    let res;
+    try {
+      res = await fetch(API + '/api/admin/login', { method: 'POST', headers: { 'X-Admin-Password': password } });
+    } catch {
+      throw new Error('The backend is not reachable. Start it with ./run.sh.');
+    }
+    if (res.ok) return;
+    const detail = (await res.json().catch(() => ({}))).detail;
+    throw new Error(typeof detail === 'string' ? detail : 'Could not sign in (' + res.status + ')');
+  }
+  function signOutAdmin() {
+    admin.set('');
+    renderAdmin();
+    toggleUserMenu(false);
+  }
+  $('admin-form').addEventListener('submit', async () => {
+    const input = $('admin-password');
+    const password = input.value;
+    if (!password) { input.focus(); return; }
+    $('admin-go').disabled = true;
+    adminStatus('Checking…');
+    try {
+      await checkAdmin(password);
+      admin.set(password);
+      input.value = '';
+      adminStatus('');
+      renderAdmin();
+      showTab('admin');
+    } catch (err) {
+      adminStatus(err.message, 'err');
+      input.select();
+    } finally {
+      $('admin-go').disabled = false;
+    }
+  });
+  $('admin-out').addEventListener('click', signOutAdmin);
+  $('admin-out-2').addEventListener('click', signOutAdmin);
+
+  function showTab(name) {
+    for (const tab of ['general', 'admin']) {
+      $('tab-' + tab).setAttribute('aria-selected', String(tab === name));
+      $('panel-' + tab).hidden = tab !== name;
+    }
+    if (name === 'admin' && !$('panel-admin').firstChild) {
+      /* The existing Admin page, without its own header; it reads the password this tab signed in with. */
+      const frame = node('iframe', 'set-iframe');
+      frame.title = 'Admin panel';
+      frame.src = 'admin.html?embed';
+      $('panel-admin').append(frame);
+    }
+  }
+  $('tab-general').addEventListener('click', () => showTab('general'));
+  $('tab-admin').addEventListener('click', () => showTab('admin'));
+  $('admin-show').addEventListener('click', () => showTab('admin'));
+  function openSettings(tab) {
+    toggleUserMenu(false);
+    renderChats();
+    showTab(tab === 'admin' && admin.get() ? 'admin' : 'general');
+    if (!$('settings').open) $('settings').showModal();
+  }
+  $('open-settings').addEventListener('click', () => openSettings('general'));
+  $('open-admin').addEventListener('click', () => openSettings('admin'));
+  $('settings-close').addEventListener('click', () => $('settings').close());
+  $('settings').addEventListener('click', (e) => { if (e.target === $('settings')) $('settings').close(); });
+  $('clear-chats').addEventListener('click', () => {
+    if (!chats.all().length || !confirm('Delete all chats saved in this browser?')) return;
+    chats.write([]);
+    reset();
+    renderChats();
+  });
+  /* A password kept from earlier in this tab is checked again: it may have been changed on the server. */
+  renderAdmin();
+  if (admin.get()) checkAdmin(admin.get()).catch(signOutAdmin);
+  renderChats();
 
   /* ── Attachments ── */
   function renderAttachments() {
@@ -1094,26 +1428,23 @@ button{cursor:pointer}
     if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); send(); }
   });
   el.send.addEventListener('click', (e) => { e.preventDefault(); send(); });
-  document.querySelectorAll('[data-start]').forEach((a) => a.addEventListener('click', (e) => {
-    e.preventDefault();
-    $('menu').checked = false;
-    el.prompt.focus();
-  }));
-  $('brand').addEventListener('click', (e) => { e.preventDefault(); reset(); });
+  $('brand').addEventListener('click', (e) => { e.preventDefault(); newChat(); });
 
   function setBusy(busy) {
     state.busy = busy;
     root.classList.toggle('busy', busy);
     el.send.setAttribute('aria-label', busy ? 'Stop' : 'Build it');
   }
-  function reset() {
+  function reset(focus = true) {
     if (state.abort) state.abort.abort();
     state.messages = [];
+    state.chatId = null;
     state.attachments = [];
     el.thread.replaceChildren();
     renderAttachments();
+    renderChats();
     root.classList.remove('chat');
-    el.prompt.focus();
+    if (focus) el.prompt.focus();
   }
 
   /* ── Charts (the create_chart skill): drawn here as SVG, no library, so it works offline ── */
@@ -1293,6 +1624,22 @@ button{cursor:pointer}
     return { bubble, body, stats, name };
   }
 
+  /* The passages an answer is based on, under it: [n] document · page, each opening to its text. */
+  function sourcesView(event) {
+    const box = node('div', 'sources');
+    box.append(node('div', 'sources-head', event.items.length
+      ? 'Sources from ' + event.workspace + ' (found by ' + event.mode + ')'
+      : 'No passage in ' + event.workspace + ' matched this question'));
+    for (const item of event.items) {
+      const d = node('details');
+      const s = node('summary');
+      s.append(node('b', '', '[' + item.n + ']'), item.document, item.label ? node('span', '', ' · ' + item.label) : '');
+      d.append(s, node('div', 'src-text', item.text));
+      box.append(d);
+    }
+    return box;
+  }
+
   /* ── Chat ── */
   async function send() {
     if (state.busy) { state.abort?.abort(); return; }
@@ -1305,9 +1652,13 @@ button{cursor:pointer}
       role: 'user',
       content,
       images: attached.filter((a) => a.kind === 'image').map((a) => a.data),
+      names: attached.map((a) => a.name), /* for the saved chat; not sent */
       files: attached.filter((a) => a.kind === 'file').map((a) => (a.id ? { id: a.id, name: a.name } : { name: a.name, content: a.content })),
     };
     const history = state.messages; /* reset() swaps the array, so a late reply can't leak into a new chat */
+    const chatId = state.chatId || newId();
+    state.chatId = chatId;
+    const view = { label: '', title: '', notes: [], charts: [], sources: null, stats: '' }; /* what the saved chat shows again */
     history.push(message);
     state.attachments = [];
     el.prompt.value = '';
@@ -1388,6 +1739,7 @@ button{cursor:pointer}
       if (event.chart) { /* the chart stays open: it is part of the answer */
         t.label.textContent = what + (event.chart.title ? ': ' + event.chart.title : '');
         t.text.replaceChildren(chartView(event.chart));
+        view.charts.push(event.chart);
         t.box.open = true;
         return;
       }
@@ -1418,21 +1770,6 @@ button{cursor:pointer}
       if ((event.preview || []).length < event.rows) wrap.append(node('div', '', 'First ' + event.preview.length + ' of ' + event.rows + ' rows shown.'));
       t.text.append(wrap);
     };
-    /* The passages the answer is based on, under it: [n] document · page, each opening to its text. */
-    const showSources = (event) => {
-      const box = node('div', 'sources');
-      box.append(node('div', 'sources-head', event.items.length
-        ? 'Sources from ' + event.workspace + ' (found by ' + event.mode + ')'
-        : 'No passage in ' + event.workspace + ' matched this question'));
-      for (const item of event.items) {
-        const d = node('details');
-        const s = node('summary');
-        s.append(node('b', '', '[' + item.n + ']'), item.document, item.label ? node('span', '', ' · ' + item.label) : '');
-        d.append(s, node('div', 'src-text', item.text));
-        box.append(d);
-      }
-      out.bubble.append(box);
-    };
     const fail = (text) => {
       out.bubble.classList.add('err');
       out.body.textContent = text;
@@ -1446,7 +1783,7 @@ button{cursor:pointer}
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: state.model, messages: history,
+          model: state.model, messages: history.map(({ names, view, ...m }) => m),
           database: state.database || undefined, workspace: state.workspace || undefined,
         }),
         signal: state.abort.signal,
@@ -1478,11 +1815,13 @@ button{cursor:pointer}
               : 'Routed by ' + event.source
               + (event.route ? ' to "' + event.route + '"' : '')
               + (event.confidence != null ? ' (confidence ' + event.confidence + ')' : '');
-            if (event.note) out.body.before(node('div', 'note', event.note));
+            if (event.note) { out.body.before(node('div', 'note', event.note)); view.notes.push(event.note); }
           } else if (event.type === 'sources') {
-            showSources(event);
+            out.bubble.append(sourcesView(event));
+            view.sources = event;
           } else if (event.type === 'notice') {
             out.body.before(node('div', 'note', event.message));
+            view.notes.push(event.message);
           } else if (event.type === 'thinking') {
             /* After a lookup the model thinks again: that goes in a block of its own, below the lookup. */
             if (!think || think.closed) { endThinking(); think = startThinking(); thought = ''; }
@@ -1528,7 +1867,11 @@ button{cursor:pointer}
       out.bubble.classList.remove('live');
       if (answer) {
         paint();
-        history.push({ role: 'assistant', content: answer, model: answeredBy });
+        view.label = out.name.textContent;
+        view.title = out.name.title;
+        view.stats = out.stats.textContent;
+        history.push({ role: 'assistant', content: answer, model: answeredBy, view });
+        if (state.messages === history) saveChat(chatId, history); /* not after New chat or another chat was opened */
       } else {
         history.pop(); /* nothing came back, so the turn does not join the history */
       }

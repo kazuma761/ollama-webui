@@ -5,11 +5,45 @@ not seen before. Read this first, then `PROJECT_FLOW.txt` for the code map.
 
 ## What this is
 
-A local chat web app on top of Ollama. A user picks a model (or "Auto"), sends
-a prompt with optional PDF/DOCX/text/image attachments, and the reply streams
-back. With "Auto", a router sends each message to a light model, a reasoning
-model or a vision model on this machine, or, for questions about software, to
-OpenCode's free cloud models.
+A local chat web app on top of llama.cpp's `llama-server`. A user picks a model
+(or "Auto"), sends a prompt with optional PDF/DOCX/text/image attachments, and
+the reply streams back. With "Auto", a router sends each message to the light
+or the strong local model, or, for questions about software, to OpenCode's free
+cloud models. The folder and package are still called `ollama/` and
+`ollama_pipeline`, and the code still talks to Ollama too, but **Ollama is not
+used**.
+
+## Latest branch: `14-db-connector`
+
+`UPDATE.md` lists what that branch added (sidebar, saved chats, Settings with the Admin panel
+for the admin only), what was tested, the bugs found and not yet fixed, and what to check on
+the server. Read it before the open tasks below.
+
+## Where it runs (read first)
+
+- **The server runs the app.** RTX 4080 Super (16 GB), 32 GB RAM,
+  i7-13700K. Two `llama-server` processes, one model each:
+  - **Gemma 4 12B**, port 8080: the strong one. Hard questions, documents,
+    screenshots and invoices (it reads pictures, with `--mmproj`).
+  - **Llama 3.1 8B**, port 8081: the light one. Quick questions and the SQL
+    connector (good at calling tools).
+  - Optionally a third, small server for embeddings (nomic-embed-text), port
+    8082, for searching workspaces by meaning.
+  The config for this is `ollama/config.llamacpp/models.yaml`, copied to
+  `ollama/config.local/` on the server. Its header has the exact
+  `llama-server` commands; the section "llama-server on the RTX 4080 Super"
+  below has the flags and the memory budget.
+- **The development Mac has no local model.** It is an M1 with 8 GB, no
+  llama.cpp and no Ollama. Code is written and tested there by AI test agents
+  without a model: the self-checks, the API, the pages in a browser, Docker
+  test databases, and stand-in model servers where a reply is needed. Anything
+  that needs a real model reply is checked on the server; reports mark it
+  "needs a model". Do not install llama.cpp or Ollama or download models
+  there without asking.
+- Sections further down that say `ollama pull`, `ollama ps`,
+  `OLLAMA_MAX_LOADED_MODELS`, `qwen3:14b` or `llama3.2:3b` come from earlier
+  test runs on Ollama. On the server, use the llama-server equivalent: the
+  model files and flags in `ollama/config.llamacpp/models.yaml`.
 
 ## Open tasks: start here (asked for by the user, 19 October 2026)
 
@@ -590,16 +624,19 @@ Five steps. "Setup" further down has the details and the reasons.
 1. **Python packages.** `cd backend && uv sync --extra router` (needs
    [uv](https://docs.astral.sh/uv/) and Python 3.12+). Without uv:
    `pip install -r requirements.txt` from the repo root.
-2. **Ollama** running, with the models this machine will use pulled
-   (`ollama list` shows them). The Word documents page needs `qwen3:14b`.
+2. **The two llama-servers** running (Gemma 4 12B on 8080, Llama 3.1 8B on
+   8081, both with `--jinja`, Gemma with `--mmproj`). The commands are at the
+   top of `ollama/config.llamacpp/models.yaml`. On a machine with no model
+   (the development Mac), skip this: the app starts and says the models are
+   not reachable.
 3. **OpenCode 1.18.34, exactly that version:**
    `npm install -g opencode-ai@1.18.34`, then `opencode --version` must print
    `1.18.34`. Not the package `@opencode/cli`: that is 2.x and does not work.
-4. **Models: one file, `ollama/config/models.yaml`.** The header at its top
-   names the three entries to change. Nothing else in the project names a
-   model.
+4. **Models: one file.** On the server, `cp -r ollama/config.llamacpp
+   ollama/config.local` (or merge it into an existing `config.local`). Nothing
+   else in the project names a model.
 5. **Check, then run.** `cd backend && uv run --inexact python -m ollama_pipeline`
-   lists every model as ready or not. Then `./run.sh` (Windows:
+   lists both hosts as `ok (llama.cpp ...)` and every model as ready or not. Then `./run.sh` (Windows:
    `powershell -ExecutionPolicy Bypass -File run.ps1`) and open
    <http://127.0.0.1:8000>. The server log should show `Router: Von is ready`
    and `OpenCode: server ready at …`.
@@ -1129,7 +1166,9 @@ rows, UnitPrice and UnitAmount, and the fixes listed above come from.
 
 ## Your task on this machine
 
-1. Get the app running against real Ollama (Setup below).
+1. On the server: get the app running against the two llama-servers (Setup
+   below). On the development Mac: there is no model, so run the self-checks
+   and test through the API and the browser instead.
 2. Run the checks in "What to verify" and note pass/fail for each.
 3. Fix what fails, keeping to "Rules".
 4. Report back: hardware, models pulled, what passed, what failed, what you
@@ -1138,16 +1177,16 @@ rows, UnitPrice and UnitAmount, and the fixes listed above come from.
 ## Setup
 
 Requirements: Python 3.11+ (3.12+ for Von), [uv](https://docs.astral.sh/uv/),
-[Ollama](https://ollama.com/download) running, and for the cloud routes
-Node.js with OpenCode 1.18.34. Ask the user before installing Ollama or
-pulling models — models are several GB each.
+on the server llama.cpp's `llama-server` with the Gemma 4 12B and Llama 3.1 8B
+GGUF files, and for the cloud routes Node.js with OpenCode 1.18.34. Ask the
+user before installing llama.cpp or downloading models: they are several GB
+each.
 
 ```bash
 cd backend && uv sync --extra router    # Python packages, with the Von router
 npm install -g opencode-ai@1.18.34      # OpenCode, the tested version
-ollama pull llama3.2:3b      # "simple" route
-ollama pull qwen3:14b        # "complex" route (~9 GB)
-ollama pull gemma3:4b        # screenshots (optional)
+cp -r ollama/config.llamacpp ollama/config.local   # on the server, once
+# start both llama-servers with the commands at the top of that models.yaml
 ./run.sh                     # http://127.0.0.1:8000
 ```
 
@@ -1162,7 +1201,7 @@ Von 1.3.7.
 
 Downloads go to the user's home folder by default. If that disk is short of
 space, set `UV_CACHE_DIR` before `uv sync` (packages) and `HF_HOME` in
-`backend/.env` (Von's weights). Ollama keeps models where `OLLAMA_MODELS` points.
+`backend/.env` (Von's weights). llama-server loads the GGUF file named by its `-m`.
 
 Check hosts and which configured models are pulled:
 
@@ -1172,26 +1211,26 @@ cd backend && uv run --inexact python -m ollama_pipeline
 
 ### Models: one file
 
-`ollama/config/models.yaml` is the only place that names models: the Ollama
-tags, the OpenCode ids, and which route uses which. To use other local models,
-change the `model:` tag and the `label:` of the `general`, `reasoning` and
-`vision` entries (the file's header says the same) and restart. Any other
-model pulled in Ollama appears in the picker by itself (`discover: true`).
-`python -m ollama_pipeline` shows what is ready.
+`models.yaml` is the only place that names models: the hosts, the model
+names, the OpenCode ids, and which route uses which. On the server it is
+`ollama/config.local/models.yaml`, copied from `ollama/config.llamacpp/`.
+`ollama/config/models.yaml` is the older Ollama setup, kept for a machine that
+runs Ollama. `python -m ollama_pipeline` shows which folder is in use and what
+is ready.
 
 ### Fit the models to this machine's hardware
 
 Check GPU memory first (`nvidia-smi`, or system info on a Mac).
-`ollama/config/` targets the production server: edit it there. On any other
-machine copy that folder to `ollama/config.local/` and edit the copy: it is
-ignored by git and used automatically when present. The server log and
+The server uses `ollama/config.local/`, a copy of `ollama/config.llamacpp/`:
+it is ignored by git and used automatically when present. The server log and
 `python -m ollama_pipeline` print which folder is in use. In `models.yaml`:
 
-- If `qwen3:14b` does not fit, point the `reasoning` entry at a smaller tag
-  (e.g. `qwen3:8b`, or `qwen3:4b` on a 4 GB GPU) and pull that instead.
-- `default_options.num_ctx` is 16384. If replies are very slow or `ollama ps`
-  shows a model partly on CPU, lower it (8192). Do not go below 8192 unless
-  necessary: attached documents get cut off.
+- With llama-server, the context size is its `-c` flag (divided by `-np`
+  slots), not `num_ctx`; the app reads it from `/props`. Do not go below
+  8192 tokens per request unless necessary: attached documents get cut off.
+- Both models fully on the GPU leave about 1 GB for context on 16 GB. See
+  "llama-server on the RTX 4080 Super" above for the flags (`-fa on`, a q8 KV
+  cache, `--kv-unified`) and the trade-offs.
 - The target production server is an RTX 4080 Super (16 GB VRAM), 32 GB RAM,
   i7-13700K. The light and reasoning models must fit in 16 GB together.
 
@@ -1308,6 +1347,6 @@ run.sh, run.ps1                  start the app (macOS/Linux, Windows)
 
 ## Not built yet
 
-No login (the Admin panel has one shared password), no saved chat history, no text from scanned PDFs, Figma links are
+No login (the Admin panel has one shared password), chat history only in the browser (not on the server), no text from scanned PDFs, Figma links are
 passed as text only, no paid cloud models (e.g. Claude) - only OpenCode's
 free tier.

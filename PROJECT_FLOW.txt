@@ -2,7 +2,8 @@ OLLAMA-WEBUI - HOW THE PROJECT WORKS
 ====================================
 
 WHAT IT IS
-A chat web app for local Ollama models. The user picks a model, types a
+A chat web app for local models (llama.cpp llama-server: Gemma 4 12B and
+Llama 3.1 8B on the server; the ollama/ names are historical). The user picks a model, types a
 prompt (optionally attaching files or screenshots), and the reply streams back.
 
 FOLDERS (each has one job; calls only go frontend -> backend -> documents -> ollama)
