@@ -1,0 +1,137 @@
+# ==========================================================================
+# MODELS FOR A MACHINE THAT RUNS llama.cpp (llama-server) INSTEAD OF OLLAMA.
+#
+# Two llama-server processes, one model each:
+#     Gemma 4 12B   on port 8080   the strong one: hard questions, documents,
+#                                  screenshots and invoices (reads pictures)
+#     Llama 3.1 8B  on port 8081   the light one: quick questions, and the
+#                                  SQL connector (good at calling tools)
+#
+# Start them like this (file names are examples; -c is the context size,
+# which only the server can set):
+#   llama-server -m gemma-4-12b-it-Q4_K_M.gguf --mmproj mmproj-gemma-4-12b.gguf \
+#       --jinja -c 16384 -ngl 99 --port 8080 --alias gemma4:12b
+#   llama-server -m Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf \
+#       --jinja -c 16384 -ngl 99 --port 8081 --alias llama3.1:8b
+#   --jinja      needed for tool calls (the SQL connector) and thinking
+#   --mmproj     needed for Gemma to read screenshots and scanned invoices
+#   --alias      optional: a server with one model answers to any name here
+#
+# For searching workspace documents by meaning, a third, small server:
+#   llama-server -m nomic-embed-text-v1.5.Q8_0.gguf --embedding \
+#       -c 8192 -b 2048 -ub 2048 --port 8082
+# Without it, workspaces still work: passages are found by keywords.
+#
+# To use this file:  cp -r ollama/config.llamacpp ollama/config.local
+# (or set OLLAMA_PIPELINE_CONFIG=/path/to/ollama/config.llamacpp), restart, and
+# check:  cd backend && python -m ollama_pipeline
+#
+# Fully local: the OpenCode cloud routes of ollama/config/models.yaml are left
+# out. Copy its `opencode:` block, the opencode-* models and the `code` and
+# `expert` routes (with code_route / expert_route) in here to have them back.
+# ==========================================================================
+
+# Each host is one server. `kind: llamacpp` = a llama-server (OpenAI API);
+# a plain URL is an Ollama server. OLLAMA_HOST_GEMMA=... overrides a URL.
+hosts:
+  gemma: {url: http://127.0.0.1:8080, kind: llamacpp}
+  llama: {url: http://127.0.0.1:8081, kind: llamacpp}
+  embed: {url: http://127.0.0.1:8082, kind: llamacpp}   # embeddings for workspaces (optional)
+
+default_host: gemma
+
+# llama-server lists the one model it serves; nothing else to discover.
+discover: false
+
+# Sent with every request. num_ctx is not: llama-server's context size is its
+# -c flag. It is still used here to warn when a chat is longer than that.
+default_options:
+  num_ctx: 16384
+
+router:
+  enabled: true
+  backend: von           # needs the Von extra; without it keyword rules decide
+  device: cpu
+  min_confidence: 0.7
+  instructions: Which kind of assistant should answer this request?
+  default_route: simple
+  heavy_route: complex
+  image_model: gemma     # messages with screenshots go straight here
+  routes:
+    simple:
+      model: llama
+      description: >-
+        Everyday writing and quick questions: emails, messages, replies,
+        rewording, translation, short summaries, simple facts, small talk.
+    complex:
+      model: gemma
+      description: >-
+        Work that needs careful thinking: analysing or reviewing documents,
+        contracts, reports and data, logic and maths problems, comparing
+        options, multi-step reasoning, code and technical questions.
+
+# The Word-documents page. Local models only.
+documents:
+  model: gemma
+  max_jobs: 1          # one llama-server answers one request at a time unless started with -np
+  second_check: false
+  keep_hours: 24
+  allow_cloud: false
+
+# The Invoices tab. The model must read pictures: start Gemma with --mmproj.
+invoices:
+  model: gemma
+  max_jobs: 1
+  max_pages: 40
+  image_side: 1600
+  date_format: "%d-%b-%Y"
+
+# The SQL connector (the Databases page, and a database picked in the chat).
+# Llama 3.1 calls tools reliably; set `model: gemma` to compare.
+sql:
+  model: llama
+  max_rows: 200
+  timeout: 30
+  max_rounds: 8
+
+# Workspaces: documents a team adds once, searched for every question.
+workspaces:
+  embed_host: embed
+  embed_model: nomic-embed-text   # any name: the server serves one model
+  query_prefix: "search_query: "
+  document_prefix: "search_document: "
+  chunk_chars: 1200
+  overlap_chars: 200
+  top_k: 6
+  max_upload_mb: 50
+
+default_model: llama
+
+models:
+  - id: llama
+    label: Llama 3.1 8B
+    model: llama3.1:8b       # the --alias, or the name `curl 127.0.0.1:8081/v1/models` shows
+    host: llama
+    description: Fast general assistant; answers from databases
+    tools: true              # Llama 3.1's template calls tools (needs --jinja)
+    vision: false
+    system: |
+      You are an internal assistant for our engineering team. Be direct and
+      concise. Use Markdown, and fenced code blocks for any code. When documents
+      are attached, base your answer on their content and say so if something is
+      not in them or you are unsure.
+    options:
+      temperature: 0.7
+
+  - id: gemma
+    label: Gemma 4 12B
+    model: gemma4:12b        # the --alias, or the name `curl 127.0.0.1:8080/v1/models` shows
+    host: gemma
+    description: Reasoning, documents, screenshots and invoices
+    system: |
+      You are a careful senior engineer and analyst. Work through the problem
+      step by step, then give a clear final answer. Use fenced code blocks
+      with a language tag for any code. When documents are attached, base
+      your answer on their content and say so if something is not in them.
+    options:
+      temperature: 0.3

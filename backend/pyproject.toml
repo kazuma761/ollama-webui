@@ -10,6 +10,9 @@ dependencies = [
     "python-multipart>=0.0.9",
     "ollama-pipeline",
     "document-engine",
+    "sql-connector",
+    "workspace-engine",
+    "agent-skills",
 ]
 
 [project.optional-dependencies]
@@ -21,3 +24,6 @@ package = false
 [tool.uv.sources]
 ollama-pipeline = { path = "../ollama", editable = true }
 document-engine = { path = "../documents", editable = true }
+sql-connector = { path = "../sql", editable = true }
+workspace-engine = { path = "../workspaces", editable = true }
+agent-skills = { path = "../skills", editable = true }

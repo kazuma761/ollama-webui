@@ -52,10 +52,17 @@ class OllamaClient:
         return await self._request("POST", "/api/show", json={"model": model})
 
     async def chat_stream(
-        self, model: str, messages: list[dict[str, Any]], options: dict[str, Any] | None = None
+        self, model: str, messages: list[dict[str, Any]], options: dict[str, Any] | None = None,
+        *, tools: list[dict[str, Any]] | None = None,
     ) -> AsyncIterator[dict[str, Any]]:
-        """Yields Ollama's raw /api/chat chunks as they arrive."""
+        """Yields Ollama's raw /api/chat chunks as they arrive.
+
+        `tools` are function definitions the model may call; its calls arrive as
+        `message.tool_calls`. Only sent when given: most chats have none.
+        """
         payload: dict[str, Any] = {"model": model, "messages": messages, "stream": True}
+        if tools:
+            payload["tools"] = tools
         if options:
             payload["options"] = options
         try:
@@ -99,6 +106,14 @@ class OllamaClient:
                 return json.loads(found.group(0)) if found else None
             except ValueError:
                 return None
+
+    async def embed(self, model: str, texts: list[str]) -> list[list[float]]:
+        """One vector per text, from an embedding model (e.g. `ollama pull nomic-embed-text`)."""
+        data = await self._request("POST", "/api/embed", json={"model": model, "input": texts}, timeout=JSON_TIMEOUT)
+        vectors = data.get("embeddings") or []
+        if len(vectors) != len(texts):
+            raise OllamaError(f"{model} returned {len(vectors)} vectors for {len(texts)} texts. Is it an embedding model?")
+        return vectors
 
     async def aclose(self) -> None:
         await self._http.aclose()

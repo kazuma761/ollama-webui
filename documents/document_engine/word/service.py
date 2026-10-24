@@ -67,7 +67,7 @@ class WordService:
         entry = await self._entry(model_id)
         if not instructions.strip() and not sources:
             raise PipelineError("Add source files or say what the document should be about.")
-        context = int(entry.options.get("num_ctx") or 4096)
+        context = entry.budget  # llama-server's slot size, or num_ctx for Ollama
         limit = max(3000, int((context - ANSWER_TOKENS) * CHARS_PER_TOKEN))
         source_text, cut = share(sources, limit)
         if self._slots.locked():
@@ -77,7 +77,7 @@ class WordService:
             if cut:
                 yield {"type": "notice", "message": (
                     f"{', '.join(cut)}: longer than {entry.label} can read beside the other files, so only the first part "
-                    "was used. Add fewer files, or raise num_ctx in ollama/config/models.yaml."
+                    "was used. Add fewer files, or give the model more context (llama-server's -c, or num_ctx for Ollama)."
                 )}
             request = (
                 f"KIND OF DOCUMENT: {prompts.KINDS.get(template, prompts.KINDS['blank'])}\n\n"

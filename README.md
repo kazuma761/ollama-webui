@@ -1,6 +1,6 @@
 # ollama-webui
 
-A chat interface for local Ollama models: pick a model, type a prompt, get a streamed reply.
+A chat interface for local models served by llama.cpp's `llama-server` (Gemma 4 12B and Llama 3.1 8B on the server): pick a model, type a prompt, get a streamed reply. The `ollama/` folder name is historical; Ollama itself is not used.
 
 ## Structure
 
@@ -19,17 +19,17 @@ A chat interface for local Ollama models: pick a model, type a prompt, get a str
 
 ## Run
 
-Requires [Ollama](https://ollama.com/download), Python 3.12+ with [uv](https://docs.astral.sh/uv/) (or pip), and for the cloud routes Node.js.
+Requires llama.cpp's `llama-server` with the two GGUF models, Python 3.12+ with [uv](https://docs.astral.sh/uv/) (or pip), and for the cloud routes Node.js.
 
 ```bash
 cd backend && uv sync --extra router && cd ..   # or: pip install -r requirements.txt
 npm install -g opencode-ai@1.18.34              # OpenCode: this version, not 2.x
-ollama pull llama3.2:3b
-ollama pull qwen3:14b
+cp -r ollama/config.llamacpp ollama/config.local
+# start both llama-servers with the commands at the top of ollama/config.local/models.yaml
 ./run.sh
 ```
 
-To use other models, edit `ollama/config/models.yaml`: it is the only file that names models, and its header says which lines to change.
+`ollama/config.local/models.yaml` is the only file that names models. AGENTS.md ("Where it runs") has the details.
 
 Open <http://127.0.0.1:8000>. On Windows use `powershell -ExecutionPolicy Bypass -File run.ps1` instead of `./run.sh`.
 
@@ -37,4 +37,4 @@ With **Auto** selected, each message is routed to the light or the reasoning mod
 
 Optional cloud route: with [OpenCode](https://github.com/anomalyco/opencode) 1.x installed (`npm i -g opencode-ai@1`), Auto sends questions about software to its free models, trying the next one when a model does not answer. Those messages leave your machine; attached files never do.
 
-Any model you pull shows up in the picker. To add labels, system prompts or another Ollama server, edit `ollama/config/models.yaml` and restart. For a model list that applies to one machine only, copy `ollama/config/` to `ollama/config.local/` and edit that: it is not in git and is used automatically.
+To change labels, system prompts or servers, edit `ollama/config.local/models.yaml` and restart. It is not in git and is used automatically when present.

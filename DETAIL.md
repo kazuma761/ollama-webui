@@ -149,7 +149,9 @@ error: "Can't reach Ollama at …", "… is not pulled. Run `ollama pull …`",
    returns its text (20 MB limit, 200,000 characters kept). An image stays in
    the browser as base64. A Figma link is added as text only.
 4. Send calls `POST /api/chat` with `{model, messages}`. The whole
-   conversation is sent each time: the server keeps no chat history.
+   conversation is sent each time: the server keeps no chat history. The
+   browser keeps it: each chat is saved in `localStorage` (`fastshot.chats`)
+   after every reply and listed in the sidebar, without attached pictures.
 5. Pressing the send button during a reply aborts the request, and generation
    stops.
 
@@ -198,6 +200,9 @@ error: "Can't reach Ollama at …", "… is not pulled. Run `ollama pull …`",
 | `notice` | A note above the reply (context too large, attachments not sent, a model failed). |
 | `thinking` | A "Thinking…" block fills live, then folds to "Thought for Ns". |
 | `delta` | The answer grows, with an orange caret until it ends. |
+| `sources` | A workspace was searched: the passages are listed under the answer, each opening to its text. |
+| `tool_call` | A lookup starts: a block above the answer ("Running a query…", "Making a chart…"). |
+| `tool_result` | The block shows what came back: the query and its first rows, a chart drawn in place, the memory saved or forgotten. |
 | `done` | Speed and time next to the model name. |
 | `error` | The reply turns into an error message. |
 
@@ -264,7 +269,14 @@ nothing and does not need Ollama.
 
 ## 9. Docs page (Word files)
 
-The rule behind every tab: **the model never writes the Word file.** It
+`documents.html` opens on four tasks: Create a new document (`word.html`),
+Fill in a template (`#fill`; a designed template goes to `#library`, "Fill in a
+saved template"), Change a document (`#edit`) and Read invoices into a sheet
+(`invoices.html`). Each task shows its numbered steps. "Write a new one"
+(`/api/documents/create`) is no longer on the page: Create a new document does
+the same with more choices; the endpoint stays, and `#create` leads there.
+
+The rule behind every task: **the model never writes the Word file.** It
 answers in JSON (which blank gets which value, which edit operations to run)
 and our code applies that to a copy of the file. Local models only.
 
@@ -443,6 +455,21 @@ its Open WebUI and network parts removed. Settings: the `documents:` block.
 | GET | `/api/documents/invoices/config` | Models, columns, scoring |
 | POST | `/api/documents/invoices/read` | Read one invoice file, streamed |
 | POST | `/api/documents/invoices/export` | Rows → `.xlsx` or `.csv` |
+| GET, POST | `/api/sql/connections` | List saved databases; save one (tested first) |
+| POST | `/api/sql/connections/test` | Connect and run `SELECT 1`, without saving |
+| DELETE | `/api/sql/connections/{id}` | Remove a saved database |
+| GET | `/api/sql/connections/{id}/tables` | Its tables and views |
+| GET, POST | `/api/workspaces` | List workspaces and the search state; make one |
+| GET, POST, DELETE | `/api/workspaces/{id}` | One workspace with its documents; rename / instructions; delete |
+| POST | `/api/workspaces/{id}/documents` | Add one file, streamed (read, split, embed) |
+| DELETE | `/api/workspaces/{id}/documents/{doc}` | Remove a document |
+| POST | `/api/workspaces/{id}/reindex` | Give every passage a vector, streamed |
+| POST | `/api/workspaces/{id}/search` | The passages a question would be answered from |
+| GET | `/api/skills` | Which agent skills are on (open, read-only) |
+| POST | `/api/admin/login` | Check the admin password (`X-Admin-Password`) |
+| GET, POST | `/api/admin/skills` | The switches, and the model that runs skills; change them |
+| GET, POST | `/api/admin/memories` | A workspace's memories; add one |
+| POST, DELETE | `/api/admin/memories/{id}` | Edit or remove a memory |
 
 Every streamed endpoint sends `application/x-ndjson` with
 `X-Accel-Buffering: no`, so a proxy in front does not hold the text back.
@@ -459,6 +486,10 @@ Every streamed endpoint sends `application/x-ndjson` with
 | Word tab sources | Not stored; text is extracted and returned | — |
 | Word tab results | `backend/data/documents/` | 24 hours |
 | Invoice files and rows | Not stored | — |
+| Saved databases (with passwords) | `backend/data/sql/connections.json`, mode 600 | Kept |
+| Workspaces: settings, passages, vectors | `backend/data/workspaces/<id>/` | Until the workspace is deleted |
+| Skill switches and memories | `backend/data/admin/` | Kept |
+| Picked workspace and database | Browser `localStorage` | Kept |
 | OpenCode's own data | `ollama/.opencode/` | Safe to delete |
 | Von's weights | Hugging Face cache (`HF_HOME`) | Kept |
 
@@ -475,9 +506,59 @@ None of these folders are in git.
 | A conversation is larger than `num_ctx` | A warning in the reply; the start is cut. |
 | A scanned PDF in chat | "… has no selectable text (a scanned PDF?)". Send a screenshot to the vision model instead. |
 | A Python package for invoices is missing | The app still starts; the tab names the package. |
+| A llama-server is down | "Can't reach llama-server at … Is `llama-server` running?" (HTTP 503). |
+| A model is asked to call tools but llama-server lacks `--jinja` | The reply says to start it with `--jinja`. |
+| The embedding model is not running | Workspaces search by words only; the Workspaces page says so; Re-index later. |
+| A query that could write | Refused before it reaches the database; the model reads why and tries again. |
+| No local model can call tools | A chat with a database, chart or memory request says so (HTTP 404). |
+| `ADMIN_PASSWORD` is not set | The Admin panel is closed (HTTP 403); skills keep their last switches. |
+
+## 13b. Added on the `tools` branch
+
+**llama.cpp.** A host written `{url: ..., kind: llamacpp}` in `models.yaml`
+is a llama-server. `registry.py` gives it a `LlamaCppClient` (`llamacpp.py`),
+which talks to `/v1/chat/completions` and `/v1/embeddings` and hands back the
+same chunks as Ollama: text, thinking (`reasoning_content`), tool calls (which
+llama-server sends in pieces, put back together here) and timings. Nothing
+above it knows which server answered. `ollama/config.llamacpp/` is a ready
+config for Gemma 4 12B and Llama 3.1 8B.
+
+**Tools in the chat.** `chat_stream()` takes any `tools` and a `run_tool`
+function. When the model asks for a tool, it runs, its answer goes back as a
+`tool` message, and the model is asked again, at most `sql.max_rounds` times;
+the last round has no tools, so it must answer. `/api/chat` decides which
+tools a message gets (`agent_skills.Toolbox`): the SQL connector's four when a
+database is picked, `create_chart` when a chart is asked for or a database /
+workspace is picked, `save_memory` / `forget_memory` when the message says
+remember or forget. Any tool means a local model that can call them
+(`select_tool_model`, preferring `sql.model`).
+
+**SQL connector** (`sql/sql_connector/`). Saved connections; the tools
+`list_databases`, `list_tables`, `get_table_schema`, `query`. A query must
+pass `safety.check` (one read statement, read as that database reads its
+strings, no comments), and runs on a connection that is read-only (SQLite
+`mode=ro`; a read-only transaction and session elsewhere), runs one statement
+only (prepared statements on PostgreSQL), has a time limit and returns at
+most `sql.max_rows` rows.
+
+**Workspaces** (`workspaces/workspace_engine/`). Files are split into
+overlapping passages (a PDF page by page), stored in one SQLite file per
+workspace with a full-text index, and given vectors by the embedding model
+when it runs. A question is ranked by words and by meaning, the two lists are
+merged, and the best `top_k` passages go to a local model with numbers to
+cite; a `sources` event lists them under the answer.
+
+**Agent skills and the Admin panel** (`skills/agent_skills/`,
+`backend/app/admin/`, `admin.html`). Switches for Database queries, Charts,
+Memory and "save and forget from the chat"; memories per workspace and a
+general list, added to the system message of every local reply. The panel
+needs `ADMIN_PASSWORD`.
+
+**Documents page.** Opens on four tasks instead of six tabs; each task shows
+its numbered steps.
 
 ## 14. Not built
 
-No login, no saved chat history, no text from scanned PDFs in chat, Figma
+No login (the Admin panel has one shared password), chat history only in the browser (not on the server), no text from scanned PDFs in chat, Figma
 links are text only, no paid cloud models. What has not been tested on real
 hardware is listed in `AGENTS.md` under "Not done".

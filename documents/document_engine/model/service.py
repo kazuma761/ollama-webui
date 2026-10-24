@@ -119,7 +119,7 @@ class DocumentService:
         """How many characters of source text fit beside the rest of a request."""
         if entry.provider != "ollama":
             return 60_000
-        context = int(entry.options.get("num_ctx") or 4096)
+        context = entry.budget  # llama-server's slot size, or num_ctx for Ollama
         return max(3000, int((context - PROMPT_TOKENS) * CHARS_PER_TOKEN))
 
     async def _ask(self, entry: ModelEntry, system: str, user: str, schema: dict[str, Any]) -> dict[str, Any]:

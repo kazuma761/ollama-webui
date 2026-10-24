@@ -1,0 +1,19 @@
+[project]
+name = "workspace-engine"
+version = "0.1.0"
+description = "Workspaces: documents a team adds once, split into passages, indexed on this machine and searched for every question."
+requires-python = ">=3.11"
+dependencies = [
+    "ollama-pipeline",
+    "numpy>=1.26",  # comparing a question's vector with every passage's
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["workspace_engine"]
+
+[tool.uv.sources]
+ollama-pipeline = { path = "../ollama", editable = true }

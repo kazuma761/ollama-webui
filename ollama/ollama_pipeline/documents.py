@@ -58,7 +58,21 @@ def _plain(name: str, data: bytes) -> str:
     return data.decode("utf-8", errors="replace")
 
 
-def extract_text(name: str, data: bytes) -> tuple[str, bool]:
+def extract_pages(name: str, data: bytes) -> list[str]:
+    """A PDF's text, one string per page, so a passage can say which page it is from."""
+    try:
+        reader = PdfReader(BytesIO(data))
+        if reader.is_encrypted and not reader.decrypt(""):
+            raise UnsupportedDocument(f"{name} is password-protected")
+        pages = [page.extract_text() or "" for page in reader.pages]
+    except (PyPdfError, ValueError, KeyError) as exc:
+        raise UnsupportedDocument(f"{name} could not be read as a PDF") from exc
+    if not any(p.strip() for p in pages):
+        raise UnsupportedDocument(f"{name} has no selectable text (a scanned PDF?)")
+    return pages
+
+
+def extract_text(name: str, data: bytes, limit: int = MAX_FILE_CHARS) -> tuple[str, bool]:
     """Returns (text, truncated). Raises UnsupportedDocument with a user-facing reason."""
     suffix = PurePath(name).suffix.lower()
     if suffix == ".pdf" or data.startswith(b"%PDF-"):
@@ -73,4 +87,4 @@ def extract_text(name: str, data: bytes) -> tuple[str, bool]:
     text = text.strip()
     if not text:
         raise UnsupportedDocument(f"{name} is empty")
-    return text[:MAX_FILE_CHARS], len(text) > MAX_FILE_CHARS
+    return text[:limit], len(text) > limit

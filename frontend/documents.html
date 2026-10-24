@@ -53,7 +53,7 @@ h1{font-size:clamp(26px,4.2vw,36px);font-weight:410;letter-spacing:.0018em;line-
 /* Modes */
 .modes{display:flex;flex-wrap:wrap;gap:6px;margin:26px 0 14px}
 .mode{
-  height:36px;padding:0 15px;border-radius:11px;font-size:13.5px;font-weight:500;color:#B9BABD;
+  height:38px;padding:0 16px;border-radius:11px;font-size:13.5px;font-weight:500;color:#B9BABD;
   background:linear-gradient(180deg,rgba(255,255,255,.088),rgba(255,255,255,.038));border:1px solid rgba(255,255,255,.06);
 }
 .mode:hover{color:#fff}
@@ -67,11 +67,11 @@ a.mode{display:inline-flex;align-items:center}
   box-shadow:inset 0 0 0 1px var(--line),0 22px 60px rgba(0,0,0,.30);
 }
 .card h2{font-size:15px;font-weight:600;letter-spacing:-.005em}
-.card h2 small{font-weight:400;color:var(--muted);font-size:13px;margin-left:6px}
-.hint{color:var(--muted);font-size:13px}
+.card h2 small{font-weight:400;color:var(--muted);font-size:14px;margin-left:6px}
+.hint{color:var(--muted);font-size:14px}
 .row{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
 .gap{margin-top:16px}
-label.cap{display:block;font-size:12.5px;font-weight:500;color:var(--muted);margin-bottom:6px}
+label.cap{display:block;font-size:13.5px;font-weight:500;color:var(--muted);margin-bottom:6px}
 
 /* File pickers */
 .drop{
@@ -81,11 +81,11 @@ label.cap{display:block;font-size:12.5px;font-weight:500;color:var(--muted);marg
 .drop:hover,.drop.over{background:rgba(255,255,255,.07);border-color:var(--accent)}
 .drop svg{width:22px;height:22px;flex:none;color:var(--muted)}
 .drop b{display:block;font-weight:500;font-size:14px}
-.drop span{display:block;color:var(--muted);font-size:12.5px}
+.drop span{display:block;color:var(--muted);font-size:13.5px}
 .drop.has{border-style:solid;border-color:rgba(255,255,255,.14)}
 .drop.has svg{color:var(--accent)}
 .pills{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
-.pill{display:inline-flex;align-items:center;gap:6px;height:27px;padding:0 6px 0 10px;border-radius:8px;font-size:12.5px;background:rgba(255,255,255,.07)}
+.pill{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 6px 0 11px;border-radius:8px;font-size:13.5px;background:rgba(255,255,255,.07)}
 .pill button{width:17px;height:17px;border-radius:50%;line-height:1;color:var(--muted)}
 .pill button:hover{color:#fff;background:rgba(255,255,255,.14)}
 
@@ -102,29 +102,29 @@ select{width:auto;max-width:100%;padding-right:30px;appearance:none;cursor:point
 select option{background:#1c1c1f}
 
 .btn{
-  height:40px;padding:0 20px;border-radius:12px;font-size:14px;font-weight:520;color:#1d1d20;
+  height:42px;padding:0 22px;border-radius:12px;font-size:14px;font-weight:520;color:#1d1d20;
   background:linear-gradient(163deg,#FBBC94,#F49D70 46%,#E88654);box-shadow:0 3px 12px rgba(210,110,60,.34);
 }
 .btn:hover{filter:brightness(1.07)} .btn:active{transform:scale(.98)}
-.btn[disabled]{opacity:.45;cursor:default;filter:none;transform:none}
+.btn[disabled]{color:#8B8C8E;background:rgba(255,255,255,.09);box-shadow:none;cursor:default;filter:none;transform:none}
 .btn.ghost{color:var(--text);background:linear-gradient(180deg,#3d3d3f,#1d1d20);box-shadow:inset 0 1px 0 rgba(255,255,255,.10)}
 .grow{flex:1}
 
 /* Status */
-.status{display:flex;align-items:center;gap:9px;color:var(--muted);font-size:13px;min-height:22px}
+.status{display:flex;align-items:center;gap:9px;color:var(--muted);font-size:14px;min-height:22px}
 .status i{width:7px;height:7px;border-radius:50%;background:var(--accent);animation:pulse 1s ease-in-out infinite}
-.status.err{color:var(--warn)} .status.err i,.status.idle i{animation:none;background:currentColor;opacity:.6}
+.status.err{color:var(--warn)} .status.err i,.status.idle i{display:none}
 @keyframes pulse{0%,100%{opacity:.25}50%{opacity:1}}
 
 /* Blanks */
 .fields{display:grid;gap:8px;margin-top:14px}
 .f{display:grid;grid-template-columns:minmax(120px,34%) 1fr;gap:6px 14px;align-items:start;padding:10px 12px;border-radius:13px;background:rgba(255,255,255,.04)}
 .f .name{font-weight:500;font-size:13.5px;overflow-wrap:anywhere}
-.f .ctx{color:var(--dim);font-size:12px;margin-top:2px;overflow-wrap:anywhere}
+.f .ctx{color:var(--dim);font-size:13px;margin-top:2px;overflow-wrap:anywhere}
 .f .ctx em{font-style:normal;color:var(--accent)}
 .f textarea{min-height:38px;padding:8px 10px;border-radius:10px;font-size:13.5px}
 .f.section textarea{min-height:92px}
-.tag{display:inline-block;margin-top:5px;padding:1px 8px;border-radius:999px;font-size:11.5px;font-weight:500}
+.tag{display:inline-block;margin-top:5px;padding:1px 8px;border-radius:999px;font-size:12.5px;font-weight:500}
 .tag.source,.tag.prompt{color:var(--ok);background:rgba(143,211,168,.12)}
 .tag.model,.tag.unsupported{color:var(--warn);background:rgba(251,188,148,.13)}
 .tag.kind{color:var(--muted);background:rgba(255,255,255,.07);margin:0 0 0 6px}
@@ -146,18 +146,18 @@ select option{background:#1c1c1f}
 .paper .bullet{padding-left:16px;position:relative}
 .paper .bullet::before{content:"•";position:absolute;left:3px}
 .paper table{border-collapse:collapse;margin:6px 0 12px;width:100%}
-.paper td{border:1px solid #c9c9c6;padding:5px 8px;vertical-align:top;white-space:pre-wrap;font-size:13px}
-.note{color:var(--dim);font-size:12px;margin-top:8px}
+.paper td{border:1px solid #c9c9c6;padding:5px 8px;vertical-align:top;white-space:pre-wrap;font-size:14px}
+.note{color:var(--dim);font-size:13px;margin-top:8px}
 .paper td>p:last-child{margin-bottom:0}
 .paper .boxed{background:#ECEEF5;border-radius:4px;padding:2px 6px}
 
 /* Template library */
 .tpl{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:11px 13px;border-radius:13px;background:rgba(255,255,255,.04);margin-top:8px}
-.tpl b{font-weight:500} .tpl small{display:block;color:var(--muted);font-size:12.5px}
-.mini{height:30px;padding:0 12px;border-radius:9px;font-size:12.5px;font-weight:500;color:#D5D5D8;background:rgba(255,255,255,.08)}
+.tpl b{font-weight:500} .tpl small{display:block;color:var(--muted);font-size:13.5px}
+.mini{height:32px;padding:0 14px;border-radius:9px;font-size:13.5px;font-weight:500;color:#D5D5D8;background:rgba(255,255,255,.08)}
 .mini:hover{background:rgba(255,255,255,.15);color:#fff}
 .mini.go{color:#1d1d20;background:var(--accent)}
-.legend{display:flex;flex-wrap:wrap;gap:6px 14px;margin:10px 0 0;font-size:12.5px;color:var(--muted)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;margin:10px 0 0;font-size:13.5px;color:var(--muted)}
 .legend i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:5px;vertical-align:-1px}
 .r-fixed{background:#cfcfcb} .r-field{background:#9fdcb5} .r-group{background:#a9c7f5} .r-none{background:#f3d9a4}
 /* The label view shows the whole template and scrolls with the page: no window inside a window.
@@ -173,23 +173,59 @@ select option{background:#1c1c1f}
 .labelled p[data-role="group_item"]{background:#e1ecfd;border-left-color:#5b8fe0}
 .labelled p[data-role=""]{background:#fbf0d6;border-left-color:#d9a93c}
 .labelled p.sel{outline:2px solid #E88654}
-.labelled p[data-id]::after{content:attr(data-tag);margin-left:8px;font-size:10.5px;font-weight:600;color:#5d5d59;white-space:nowrap}
+.labelled p[data-id]::after{content:attr(data-tag);margin-left:8px;font-size:11.5px;font-weight:600;color:#5d5d59;white-space:nowrap}
 .editor{display:flex;flex-wrap:wrap;align-items:end;gap:10px;margin-top:12px;padding:12px;border-radius:13px;background:rgba(0,0,0,.26)}
-.editor label{display:block;font-size:11.5px;color:var(--muted);margin-bottom:4px}
-.editor .in{padding:7px 9px;border-radius:9px;font-size:13px}
-.editor select{padding:7px 28px 7px 9px;border-radius:9px;font-size:13px}
+.editor label{display:block;font-size:12.5px;color:var(--muted);margin-bottom:4px}
+.editor .in{padding:7px 9px;border-radius:9px;font-size:14px}
+.editor select{padding:7px 28px 7px 9px;border-radius:9px;font-size:14px}
 .item{margin-top:10px;padding:10px 12px;border-radius:13px;background:rgba(255,255,255,.04)}
-.item h3{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:#D5D5D8}
+.item h3{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;color:#D5D5D8}
 .item h3 span{flex:1}
 .gtitle{margin-top:18px;font-size:13.5px;font-weight:600;display:flex;align-items:center;gap:10px}
 .gtitle span{flex:1}
 
+/* Start screen: one card per task */
+.tasks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:26px}
+.task{
+  display:flex;flex-direction:column;gap:8px;padding:20px 22px;border-radius:20px;min-width:0;
+  background:var(--glass);-webkit-backdrop-filter:blur(26px) saturate(112%);backdrop-filter:blur(26px) saturate(112%);
+  box-shadow:inset 0 0 0 1px var(--line),0 22px 60px rgba(0,0,0,.30);transition:box-shadow .18s ease,transform .18s ease;
+}
+.task:hover{box-shadow:inset 0 0 0 1px rgba(244,157,112,.55),0 22px 60px rgba(0,0,0,.30);transform:translateY(-1px)}
+.task svg{width:28px;height:28px;color:var(--accent)}
+.task b{font-size:17px;font-weight:600;letter-spacing:-.01em}
+.task>span{color:#C9C9CC;font-size:14px}
+.task .io{margin-top:auto;padding-top:8px;display:grid;gap:2px;color:var(--muted);font-size:13px}
+.task .io em{font-style:normal;color:var(--dim);display:inline-block;min-width:68px}
+/* Inside a task */
+.back{display:inline-block;margin-bottom:12px;font-size:14px;color:#D5D5D8}
+.back:hover{color:#fff}
+.steps{display:flex;flex-wrap:wrap;gap:8px;margin:22px 0 16px;padding:0;list-style:none;counter-reset:step}
+.steps li{counter-increment:step;display:inline-flex;align-items:center;gap:8px;padding:6px 14px 6px 6px;border-radius:999px;font-size:13.5px;color:var(--muted);background:rgba(255,255,255,.05)}
+.steps li::before{content:counter(step);display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;font-size:12.5px;font-weight:600;background:rgba(255,255,255,.10);color:#D5D5D8}
+.steps li.now{color:#fff;background:rgba(244,157,112,.16)}
+.steps li.now::before{background:var(--accent);color:#1d1d20}
+.steps li.done::before{content:"✓";background:rgba(143,211,168,.22);color:var(--ok)}
+.saved{margin-top:12px}
+.saved .cap{display:block;font-size:13px;font-weight:500;color:var(--muted);margin-bottom:6px}
+.saved-list{display:flex;flex-wrap:wrap;gap:6px}
+.link{display:inline-block;margin-top:8px;font-size:13.5px;color:var(--accent)}
+.link:hover{text-decoration:underline}
+
 @media (max-width:620px){
+  .tasks{grid-template-columns:1fr}
   .f{grid-template-columns:1fr}
   .links a{padding:7px 10px;font-size:14px}
   .brand span{display:none}
 }
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+/* Five links do not fit beside the logo on a phone: they scroll sideways inside the bar instead. */
+.nav{gap:12px}
+.links{min-width:0;overflow-x:auto;scrollbar-width:none}
+.links::-webkit-scrollbar{display:none}
+.links a{flex:none}
+@media (max-width:620px){.links a{padding:7px 9px;font-size:13.5px}}
+a.mini{display:inline-flex;align-items:center}
 </style>
 </head>
 <body>
@@ -205,26 +241,56 @@ select option{background:#1c1c1f}
     </a>
     <nav class="links" aria-label="Primary">
       <a href="index.html">Chat</a>
+      <a href="workspaces.html">Workspaces</a>
       <a href="documents.html" aria-current="page">Documents</a>
+      <a href="databases.html">Databases</a>
     </nav>
   </header>
 
-  <h1>Word documents</h1>
-  <p class="lede" id="lede">Fill a template, change a document, or write a new one. Your files are worked on by the models on this machine and are deleted from it after a day.</p>
+  <!-- Start: what do you want to do? -->
+  <section id="start">
+    <h1>Documents</h1>
+    <p class="lede" id="lede">Pick what you want to do. Your files are worked on by the models on this machine and deleted from it after a day.</p>
+    <div class="tasks">
+      <a class="task" href="word.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5M12 11v6M9 14h6"/></svg>
+        <b>Create a new document</b>
+        <span>Say what you need and add the files to work from. The model writes a designed report, proposal, letter or memo.</span>
+        <span class="io"><span><em>You give</em> instructions, PDFs, Word, Excel</span><span><em>You get</em> Word or PDF</span></span>
+      </a>
+      <a class="task" href="#fill">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5M9 13h6M9 17h3"/></svg>
+        <b>Fill in a template</b>
+        <span>An offer letter, a contract, a resume. The details go into your template and its look stays exactly as it is.</span>
+        <span class="io"><span><em>You give</em> a Word template and the details</span><span><em>You get</em> the filled Word file</span></span>
+      </a>
+      <a class="task" href="#edit">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+        <b>Change a document</b>
+        <span>Say in plain words what to change: replace a name, add a row, shorten a section, centre the title.</span>
+        <span class="io"><span><em>You give</em> a Word file and the changes</span><span><em>You get</em> a new version</span></span>
+      </a>
+      <a class="task" href="invoices.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 2h12v20l-3-2-3 2-3-2-3 2Z"/><path d="M9 7h6M9 11h6M9 15h4"/></svg>
+        <b>Read invoices into a sheet</b>
+        <span>Invoice number, dates, seller, GST, every line and the tax breakdown, checked and ready for accounts.</span>
+        <span class="io"><span><em>You give</em> PDFs, scans, photos</span><span><em>You get</em> Excel or CSV</span></span>
+      </a>
+    </div>
+  </section>
 
-  <div class="modes" role="tablist" aria-label="What to do">
-    <button class="mode" role="tab" data-mode="fill" aria-selected="true">Fill a template</button>
-    <button class="mode" role="tab" data-mode="edit" aria-selected="false">Change a document</button>
-    <button class="mode" role="tab" data-mode="create" aria-selected="false">Write a new one</button>
-    <button class="mode" role="tab" data-mode="library" aria-selected="false">Template library</button>
-    <a class="mode" href="word.html">Word document</a>
-    <a class="mode" href="invoices.html">Invoices</a>
-  </div>
+  <!-- Inside a task: where you are, and the steps -->
+  <section id="taskbar" hidden>
+    <a class="back" href="documents.html">← All document tasks</a>
+    <h1 id="task-title"></h1>
+    <p class="lede" id="task-about"></p>
+    <ol class="steps" id="steps" aria-label="Steps"></ol>
+  </section>
 
   <!-- Template library -->
   <section class="card" id="library" hidden>
     <h2>Saved templates <small id="lib-count"></small></h2>
-    <p class="hint" style="margin-top:4px">For designed templates such as a resume or a report with a fixed look. Prepare one once; after that it can be filled from any file and keeps its design.</p>
+    <p class="hint" style="margin-top:4px">Designed templates, such as a resume or a styled report, have no blanks to fill. Add one here and prepare it once (the model marks which lines are values); after that, fill it as often as you like and its design is kept.</p>
     <div id="tpl-list"></div>
     <button type="button" class="drop gap" id="tpl-drop">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
@@ -271,6 +337,11 @@ select option{background:#1c1c1f}
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg>
         <span><b id="main-title">Choose a Word template</b><span id="main-sub">.docx or .dotx, up to 20 MB. Its look is kept exactly.</span></span>
       </button>
+      <div class="saved" id="saved" hidden>
+        <span class="cap">Or use a saved template</span>
+        <div class="saved-list" id="saved-list"></div>
+        <a class="link" href="#library">Manage saved templates</a>
+      </div>
     </div>
 
     <div class="gap" id="source-block">
@@ -289,7 +360,7 @@ select option{background:#1c1c1f}
 
     <div class="row gap">
       <select id="model" aria-label="Model"></select>
-      <span class="grow"></span>
+      <span class="hint grow" id="go-hint"></span>
       <button type="button" class="btn" id="go" disabled>Suggest values</button>
     </div>
     <div class="status idle gap" id="status" hidden><i></i><span></span></div>
@@ -370,6 +441,24 @@ select option{background:#1c1c1f}
     library:{ cap: 'Template', title: '', sub: '', inst: 'Anything to add? (optional)', go: 'Read my content', source: true,
               ph: 'For example: write a three-sentence profile for a backend role. Leave out the internship.' },
   };
+  /* What each task is called on the page, and its steps. */
+  const TASKS = {
+    fill: { title: 'Fill in a template', about: 'Choose your Word template and give the details. The model suggests what goes in each blank; you check every value before the file is made.',
+            steps: ['Choose the template', 'Add the details', 'Check the values', 'Download'] },
+    edit: { title: 'Change a document', about: 'Choose a Word file and say what to change. Only that is changed; the rest of the file stays as it was.',
+            steps: ['Choose the document', 'Say what to change', 'Download'] },
+    library: { title: 'Fill in a saved template', about: 'For designed templates such as a resume: pick one, add the content, check it, and download the file with its design kept.',
+               steps: ['Pick the template', 'Add the content', 'Check it', 'Download'] },
+  };
+  function step(n) {
+    const t = TASKS[state.mode];
+    if (!t) return;
+    $('steps').replaceChildren(...t.steps.map((label, i) => {
+      const li = node('li', i + 1 < n ? 'done' : i + 1 === n ? 'now' : '', label);
+      if (i + 1 === n) li.setAttribute('aria-current', 'step');
+      return li;
+    }));
+  }
   const ORIGIN = { source: 'from your files', prompt: 'from your instructions', model: 'written by the model - check', unsupported: 'could not be confirmed - check' };
 
   /* ── Small helpers ── */
@@ -405,6 +494,11 @@ select option{background:#1c1c1f}
   function setBusy(busy) {
     state.busy = busy;
     for (const id of ['go', 'make', 'apply', 'prep-run', 'tpl-save', 'shape-make']) $(id).disabled = busy || (id === 'go' && !ready());
+    /* Say what the button is waiting for, rather than leaving it greyed out without a reason. */
+    $('go-hint').textContent = busy || ready() ? '' : {
+      fill: 'Choose a template first.', edit: 'Choose a document first.',
+      library: state.use ? 'Add files or write what to put in.' : 'Pick a saved template above.',
+    }[state.mode] || '';
   }
   const ready = () => state.mode === 'create' ? !!$('instructions').value.trim()
     : state.mode === 'library' ? !!state.use && (state.sources.length > 0 || !!$('instructions').value.trim()) : !!state.job;
@@ -431,7 +525,11 @@ select option{background:#1c1c1f}
   function setMode(mode) {
     state.mode = mode;
     const t = TEXT[mode];
-    document.querySelectorAll('.mode[data-mode]').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.mode === mode)));
+    $('start').hidden = true;
+    $('taskbar').hidden = false;
+    $('task-title').textContent = TASKS[mode].title;
+    $('task-about').textContent = TASKS[mode].about;
+    step(1);
     $('main-cap').textContent = t.cap; $('inst-cap').textContent = t.inst; $('instructions').placeholder = t.ph; $('go').textContent = t.go;
     $('source-block').hidden = !t.source;
     $('source-cap').firstChild.textContent = 'Information to use ';
@@ -442,10 +540,37 @@ select option{background:#1c1c1f}
     $('library').hidden = mode !== 'library';
     $('inputs').hidden = mode === 'library';
     $('main-block').hidden = mode === 'library';
+    $('saved').hidden = true;
     status($('status'), ''); setBusy(false);
     if (mode === 'library') loadLibrary();
+    if (mode === 'fill') loadSaved();
+    window.scrollTo(0, 0);
   }
-  document.querySelectorAll('.mode[data-mode]').forEach((b) => b.addEventListener('click', () => { if (!state.busy) setMode(b.dataset.mode); }));
+  /* The start screen, or a task, from the address: documents.html#fill, #edit, #library */
+  function route() {
+    if (state.busy) return;
+    const hash = location.hash.slice(1);
+    if (hash === 'create') { location.replace('word.html'); return; } /* "Write a new one" is now "Create a new document" */
+    if (TASKS[hash]) { setMode(hash); return; }
+    state.mode = null;
+    $('start').hidden = false;
+    $('taskbar').hidden = true;
+    for (const id of ['inputs', 'library', 'review', 'writing', 'result', 'prep', 'shape']) $(id).hidden = true;
+  }
+  window.addEventListener('hashchange', route);
+  /* Saved, prepared templates, offered where a template is chosen. */
+  async function loadSaved() {
+    try {
+      const list = (await (await fetch(API + '/api/documents/templates')).json()).templates.filter((t) => t.ready);
+      $('saved-list').replaceChildren(...list.map((t) => {
+        const b = node('button', 'mini', t.name);
+        b.type = 'button';
+        b.addEventListener('click', () => { history.replaceState(null, '', '#library'); setMode('library'); useTemplate(t); });
+        return b;
+      }));
+      $('saved').hidden = state.mode !== 'fill' || !list.length;
+    } catch { /* the upload still works without the list */ }
+  }
 
   /* ── Files ── */
   function wire(drop, input, handle) {
@@ -472,11 +597,12 @@ select option{background:#1c1c1f}
       status($('status'), '');
       if (state.mode !== 'edit' && !data.letterhead && !data.fields.length) {
         /* Its body is the design and it has no blanks: neither filling blanks nor writing over it would keep the layout. */
-        setBusy(false); setMode('library'); await addTemplate([file]);
+        setBusy(false); history.replaceState(null, '', '#library'); setMode('library'); await addTemplate([file]);
         status($('lib-status'), 'This file is a designed template, so it was opened here: label it once and it can be filled with its layout kept.', 'idle');
         return;
       }
       if (state.mode === 'fill') showFields(data);
+      step(2);
     } catch (err) { status($('status'), err.message, 'err'); }
     setBusy(false);
   }
@@ -511,7 +637,7 @@ select option{background:#1c1c1f}
     $('review-hint').textContent = '';
     if (!data.fields.length) {
       $('review').hidden = true;
-      status($('status'), 'No blanks were found in this file. To put new text on its letterhead, use "Write a new one" and choose it as the style.', 'idle');
+      status($('status'), 'No blanks were found in this file. To write new text on it as a letterhead, use "Create a new document" and add it there as the letterhead.', 'idle');
       return;
     }
     for (const f of data.fields) {
@@ -576,6 +702,7 @@ select option{background:#1c1c1f}
     document.querySelectorAll('#result .pdf').forEach((n) => n.remove());
     if (data.pdf) { const view = node('object', 'pdf'); view.data = API + data.pdf; view.type = 'application/pdf'; view.style.cssText = 'width:100%;height:520px;margin-top:14px;border-radius:10px'; $('paper').before(view); }
     $('result').hidden = false;
+    if (TASKS[state.mode]) step(TASKS[state.mode].steps.length);
     $('result').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
@@ -589,6 +716,7 @@ select option{background:#1c1c1f}
           else if (e.type === 'values') putValues(e.values);
           else if (e.type === 'done') { status($('status'), ''); $('review-hint').textContent = e.filled + ' of ' + e.blanks + ' blanks have a suggestion.'; }
         });
+      step(3);
       $('review').scrollIntoView({ behavior: 'smooth', block: 'start' });
     } catch (err) { status($('status'), err.message, 'err'); }
     setBusy(false);
@@ -743,7 +871,7 @@ select option{background:#1c1c1f}
     state.use = t; state.shape = null;
     for (const id of ['prep', 'shape', 'result']) $(id).hidden = true;
     $('inputs').hidden = false; $('source-cap').firstChild.textContent = 'Content for "' + t.name + '" ';
-    status($('status'), ''); setBusy(false); $('inputs').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    status($('status'), ''); setBusy(false); step(2); $('inputs').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
   /* The extracted content as an editable form, in the shape of the template's slot map. */
   function field(label, value, origin, big) {
@@ -780,6 +908,7 @@ select option{background:#1c1c1f}
     }
     state.shape.read = read;
     $('shape-count').textContent = 'for ' + state.use.name;
+    step(3);
     $('shape').hidden = false; $('shape').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
   async function readContent() {
@@ -831,7 +960,7 @@ select option{background:#1c1c1f}
   $('make').addEventListener('click', () => { if (!state.busy) make(); });
   $('apply').addEventListener('click', () => { if (!state.busy) change($('refine').value, $('refine-status')); });
 
-  setMode(location.hash.slice(1) in TEXT ? location.hash.slice(1) : 'fill');  // the invoices page links to #edit, #create ...
+  route();
   loadModels();
 })();
 </script>

@@ -7,19 +7,21 @@ called goes through `chat_stream`.
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Awaitable, Callable
 from datetime import date
 from typing import Any
 
 from .config import Theme
 from .documents import MAX_FILE_CHARS
-from .errors import PipelineError
+from .context import budget_for, fit, shrink
+from .errors import ContextOverflow, ModelNotFound, PipelineError
 from .opencode import PROVIDER as OPENCODE, OpenCodeError
 from .registry import ModelEntry, Registry
 from .router import AUTO_ID, Router
 
-# Rough characters-per-token figure, only used to warn about an overfull context.
-CHARS_PER_TOKEN = 3.5
+# Runs one tool call: (name, arguments) -> (text the model reads, a summary for the page).
+RunTool = Callable[[str, Any], Awaitable[tuple[str, dict[str, Any]]]]
+
 
 
 def build_messages(system: str, messages: list[dict[str, Any]], *, keep_images: bool = True) -> list[dict[str, Any]]:
@@ -109,17 +111,60 @@ async def select_model(
     return entry, event, []
 
 
-def _context_notice(entry: ModelEntry, payload: list[dict[str, Any]], options: dict[str, Any]) -> str | None:
-    limit = options.get("num_ctx")
-    if not limit:
-        return None
-    estimate = int(sum(len(m["content"]) for m in payload) / CHARS_PER_TOKEN)
-    if estimate <= limit * 0.9:
-        return None
-    return (
-        f"This conversation is roughly {estimate:,} tokens but {entry.label} is set to read {limit:,}, "
-        "so part of it will be cut off. Raise num_ctx in ollama/config/models.yaml or attach less."
-    )
+async def select_tool_model(
+    registry: Registry, model_id: str | None, preferred: str = "", source: str = "database"
+) -> tuple[ModelEntry, dict[str, Any]]:
+    """The local model for a chat that uses tools, and a `route` event saying so.
+
+    The picked model when it is local and can call tools; otherwise `preferred`
+    (an id from models.yaml), else the first local model that can. Never a
+    cloud model: what the tools return stays on this machine. `source` goes
+    into the route event: "database", or "skills" for charts and memory.
+    """
+    note = None
+    if model_id not in (AUTO_ID, None):
+        picked = await registry.resolve(model_id)
+        if picked.provider != OPENCODE and picked.tools is not False:
+            return picked, {"type": "route", "model": picked.id, "label": picked.label, "route": None,
+                            "source": "picked", "confidence": None}
+        why = "runs in the cloud" if picked.provider == OPENCODE else "cannot call tools"
+        note = f"{picked.label} {why}, so a local model that can use tools answers."
+
+    entries = [e for e in await registry.list_models() if e.available and e.provider != OPENCODE]
+    chosen = next((e for e in entries if e.id == preferred and e.tools is not False), None)
+    chosen = chosen or next((e for e in entries if e.tools), None)
+    if chosen is None:
+        if not entries:
+            await registry.resolve(None)  # raises the usual clear error: Ollama down, or nothing pulled
+        raise ModelNotFound(
+            "None of the local models here can call tools, which this needs (a database, a chart or memory). "
+            "Pull one that can, e.g. `ollama pull qwen3:14b`."
+        )
+    event = {"type": "route", "model": chosen.id, "label": chosen.label, "route": None,
+             "source": source, "confidence": None}
+    if note:
+        event["note"] = note
+    return chosen, event
+
+
+async def select_local_model(
+    registry: Registry, router: Router, model_id: str | None, messages: list[dict[str, Any]]
+) -> tuple[ModelEntry, dict[str, Any] | None]:
+    """`select_model`, but never a cloud model: for replies whose context must stay on this machine."""
+    entry, route, fallbacks = await select_model(registry, router, model_id, messages)
+    if entry.provider != OPENCODE:
+        return entry, route
+    if model_id not in (AUTO_ID, None):
+        raise PipelineError(f"{entry.label} runs in the cloud, and workspace documents and attached files stay on this machine. "
+                            "Pick a local model or Auto.")
+    local = next((e for e in fallbacks if e.provider != OPENCODE), None)
+    if local is None:
+        heavy = router.config.route(router.config.heavy_route)
+        local = await registry.resolve(heavy.model if heavy else None)
+    return local, {
+        "type": "route", "model": local.id, "label": local.label, "route": None, "source": "fallback",
+        "confidence": None, "note": "Documents and attached files stay on this machine, so a local model answers.",
+    }
 
 
 async def chat_stream(
@@ -128,9 +173,21 @@ async def chat_stream(
     messages: list[dict[str, Any]],
     options: dict[str, Any] | None = None,
     fallbacks: list[ModelEntry] | None = None,
+    *,
+    tools: list[dict[str, Any]] | None = None,
+    run_tool: RunTool | None = None,
+    max_rounds: int = 8,
 ) -> AsyncIterator[dict[str, Any]]:
-    """Yields {"type": "route" | "notice" | "thinking" | "delta" | "done", ...} events for one reply."""
+    """Yields {"type": "route" | "notice" | "thinking" | "delta" | "tool_call" | "tool_result" | "done", ...} events.
+
+    With `tools` and `run_tool` the model may call those tools: each call is
+    run, its result goes back to the model, and the model is asked again,
+    until it answers without calling one (at most `max_rounds` times). The
+    caller decides what the tools are; this module knows none of them.
+    """
     fallbacks = list(fallbacks or [])
+    if tools and entry.provider == OPENCODE:
+        raise PipelineError(f"{entry.label} runs in the cloud and cannot use this chat's tools. Pick a local model.")
     if entry.provider == OPENCODE and (messages[-1].get("files") or messages[-1].get("images")):
         yield {"type": "notice", "message": f"Attached files are not sent to {entry.label}; it only sees your text."}
     while entry.provider == OPENCODE:
@@ -157,19 +214,68 @@ async def chat_stream(
 
     payload = build_messages(entry.system, messages, keep_images=can_see)
     merged = {**entry.options, **(options or {})}
+    # Every request is made to fit what the model can read at once (see context.py):
+    # the oldest turns go first, and room is kept for the answer.
+    budget = budget_for(entry.context or merged.get("num_ctx"), merged)
+    turn = max((i for i, m in enumerate(payload) if m["role"] == "user"), default=0)
+    noticed = False
 
-    notice = _context_notice(entry, payload, merged)
-    if notice:
-        yield {"type": "notice", "message": notice}
+    client = registry.client(entry.host)
+    offered = tools if tools and run_tool else None
+    rounds = 0
+    while True:
+        text, calls, last = "", [], {}
+        for attempt in range(3):
+            sent, note = payload, None
+            if budget:
+                fitted = fit(payload, budget.prompt, keep_from=turn)
+                sent, note = fitted.messages, fitted.notice(budget)
+            received = False
+            try:
+                async for chunk in client.chat_stream(entry.model, sent, merged, tools=offered):
+                    if not received and note and not noticed:  # said once, for the request the server took
+                        noticed = True
+                        yield {"type": "notice", "message": note}
+                    received = True
+                    message = chunk.get("message") or {}
+                    if message.get("thinking"):
+                        yield {"type": "thinking", "content": message["thinking"]}
+                    if message.get("content"):
+                        text += message["content"]
+                        yield {"type": "delta", "content": message["content"]}
+                    calls += message.get("tool_calls") or []
+                    if chunk.get("done"):
+                        last = chunk
+                break
+            except ContextOverflow as exc:
+                # The estimate was short of the server's count: fit again with its numbers.
+                if received or attempt == 2:
+                    raise PipelineError(
+                        f"This is more than {entry.label} can read at once even after shortening it "
+                        f"({exc}). Start a new chat, or ask about a smaller part."
+                    ) from exc
+                budget = shrink(budget, sent, exc.prompt_tokens, exc.context)
+        if not calls or not offered:
+            yield {"type": "done", "model": entry.id, "stats": _stats(last)}
+            return
 
-    async for chunk in registry.client(entry.host).chat_stream(entry.model, payload, merged):
-        message = chunk.get("message") or {}
-        if message.get("thinking"):
-            yield {"type": "thinking", "content": message["thinking"]}
-        if message.get("content"):
-            yield {"type": "delta", "content": message["content"]}
-        if chunk.get("done"):
-            yield {"type": "done", "model": entry.id, "stats": _stats(chunk)}
+        # The model asked for tools: run them, give it the results, and ask again.
+        payload.append({"role": "assistant", "content": text, "tool_calls": calls})
+        for call in calls:
+            function = call.get("function") or {}
+            name, args = function.get("name") or "", function.get("arguments") or {}
+            yield {"type": "tool_call", "name": name, "args": args}
+            result, summary = await run_tool(name, args)
+            yield {"type": "tool_result", **summary, "name": name}
+            payload.append({"role": "tool", "content": result, "tool_name": name,
+                            **({"tool_call_id": call["id"]} if call.get("id") else {})})
+        if text:
+            yield {"type": "delta", "content": "\n\n"}
+        rounds += 1
+        if rounds >= max_rounds:
+            # Enough lookups: the last turn gets no tools, so the model answers with what it has.
+            offered = None
+            payload.append({"role": "user", "content": "Stop calling tools now and answer with what you found."})
 
 
 def todays_theme(themes: list[Theme], today: date | None = None) -> Theme | None:

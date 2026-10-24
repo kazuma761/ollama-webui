@@ -31,7 +31,10 @@ class Store:
     def cleanup(self) -> None:
         for folder in self.root.iterdir():
             if folder.is_dir() and _JOB.match(folder.name):
-                newest = max((f.stat().st_mtime for f in folder.iterdir()), default=folder.stat().st_mtime)
+                try:
+                    newest = max((f.stat().st_mtime for f in folder.iterdir()), default=folder.stat().st_mtime)
+                except OSError:
+                    continue  # another request removed it while this one looked
                 if time.time() - newest > self.keep_seconds:
                     shutil.rmtree(folder, ignore_errors=True)
 

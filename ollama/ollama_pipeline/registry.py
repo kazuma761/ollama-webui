@@ -7,6 +7,7 @@ from dataclasses import asdict, dataclass, field
 from typing import Any
 
 from .client import OllamaClient
+from .llamacpp import KIND as LLAMACPP, LlamaCppClient
 from .config import PipelineConfig
 from .errors import ModelNotFound, OllamaError, OllamaUnavailable
 from .opencode import PROVIDER as OPENCODE, OpenCodeClient
@@ -22,6 +23,8 @@ class ModelEntry:
     available: bool = False
     vision: bool | None = None  # None = the server did not report capabilities
     thinking: bool = False  # the model reasons before it answers (Ollama capability "thinking")
+    tools: bool | None = None  # the model can call tools (Ollama capability "tools"); None = not reported
+    context: int | None = None  # tokens one request may hold: llama-server's slot size, or num_ctx for Ollama
     configured: bool = False
     size: int | None = None
     parameter_size: str | None = None
@@ -29,26 +32,51 @@ class ModelEntry:
     options: dict[str, Any] = field(default_factory=dict)
     provider: str = "ollama"  # "opencode" = answered in the cloud, not on this machine
 
+    @property
+    def budget(self) -> int:
+        """Tokens one request may hold, with a careful default when the server does not say."""
+        return int(self.context or self.options.get("num_ctx") or 4096)
+
+    @property
+    def local(self) -> bool:
+        """Answered on this machine (Ollama or llama-server), not in the cloud."""
+        return self.provider != OPENCODE
+
     def public(self) -> dict[str, Any]:
         data = asdict(self)
         del data["system"], data["options"]
         return data
 
 
-def _find_tag(tags: list[dict[str, Any]] | None, model: str) -> dict[str, Any] | None:
+def _find_tag(tags: list[dict[str, Any]] | None, model: str, *, only_one_served: bool = False) -> dict[str, Any] | None:
     wanted = {model, f"{model}:latest", model.removesuffix(":latest")}
-    return next((t for t in tags or [] if t["name"] in wanted), None)
+    found = next((t for t in tags or [] if t["name"] in wanted), None)
+    # A llama-server started for one model serves it under its file name unless given --alias:
+    # an entry on such a host means that model, whatever name the entry gives it.
+    if found is None and only_one_served and tags and len(tags) == 1:
+        return tags[0]
+    return found
 
 
 class Registry:
     def __init__(self, config: PipelineConfig):
         self.config = config
-        self._clients = {name: OllamaClient(url) for name, url in config.hosts.items()}
+        self._clients = {
+            name: LlamaCppClient(url) if config.host_kinds.get(name) == LLAMACPP else OllamaClient(url)
+            for name, url in config.hosts.items()
+        }
         self.opencode = OpenCodeClient(config.opencode)
         self._capabilities: dict[tuple[str, str], list[str]] = {}
 
-    def client(self, host: str) -> OllamaClient:
+    def client(self, host: str) -> OllamaClient | LlamaCppClient:
         return self._clients[host]
+
+    def kind(self, host: str) -> str:
+        """"ollama", or "llamacpp" for a llama-server."""
+        return self.config.host_kinds.get(host, "ollama")
+
+    def server_name(self, host: str) -> str:
+        return "llama-server" if self.kind(host) == LLAMACPP else "Ollama"
 
     def warm_up(self) -> None:
         """Starts anything slow to start in the background, so the first chat does not wait for it."""
@@ -77,6 +105,15 @@ class Registry:
         installed = dict(zip(hosts, await asyncio.gather(*(self._installed(h) for h in hosts))))
         down = {h for h, tags in installed.items() if tags is None}
 
+        # What one request may hold on each llama-server (its slot size); Ollama's comes from num_ctx.
+        slots: dict[str, int | None] = {}
+        for host in hosts:
+            if host not in down and self.kind(host) == LLAMACPP:
+                try:
+                    slots[host] = (await self._clients[host].context())[0]
+                except OllamaError:
+                    slots[host] = None
+
         entries: list[ModelEntry] = []
         claimed: set[tuple[str, str]] = set()
         cloud_aliases = [a for a in self.config.models if a.provider == OPENCODE]
@@ -93,14 +130,16 @@ class Registry:
                         description=alias.description,
                         available=alias.model in cloud_models,
                         vision=False,
+                        tools=False,
                         configured=True,
                         provider=OPENCODE,
                     )
                 )
                 continue
-            tag = _find_tag(installed[alias.host], alias.model)
+            tag = _find_tag(installed[alias.host], alias.model, only_one_served=self.kind(alias.host) == LLAMACPP)
             caps = await self._caps(alias.host, tag) if tag else []
             vision = alias.vision if alias.vision is not None else ("vision" in caps if caps else None)
+            tools = alias.tools if alias.tools is not None else ("tools" in caps if caps else None)
             entries.append(
                 ModelEntry(
                     id=alias.id,
@@ -111,6 +150,8 @@ class Registry:
                     available=tag is not None,
                     vision=vision,
                     thinking="thinking" in caps,
+                    tools=tools,
+                    context=slots.get(alias.host) or (alias.options.get("num_ctx") or self.config.default_options.get("num_ctx")),
                     configured=True,
                     size=tag.get("size") if tag else None,
                     parameter_size=(tag.get("details") or {}).get("parameter_size") if tag else None,
@@ -138,6 +179,8 @@ class Registry:
                             available=True,
                             vision="vision" in caps if caps else None,
                             thinking="thinking" in caps,
+                            tools="tools" in caps if caps else None,
+                            context=slots.get(host) or self.config.default_options.get("num_ctx"),
                             size=tag.get("size"),
                             parameter_size=(tag.get("details") or {}).get("parameter_size"),
                             options=dict(self.config.default_options),
@@ -163,7 +206,7 @@ class Registry:
         if entry is None:
             if down:
                 host = sorted(down)[0]
-                raise OllamaUnavailable(f"Can't reach Ollama at {self.config.hosts[host]}. Is `ollama serve` running?")
+                raise OllamaUnavailable(self._down(host))
             if model_id is None:
                 raise ModelNotFound("No models are available yet. Pull one first, e.g. `ollama pull llama3.2:3b`.")
             raise ModelNotFound(f"Unknown model '{model_id}'.")
@@ -174,13 +217,22 @@ class Registry:
                     f"offers `{entry.model}` (see `opencode models`)."
                 )
             if entry.host in down:
-                raise OllamaUnavailable(
-                    f"Can't reach Ollama at {self.config.hosts[entry.host]}. Is `ollama serve` running?"
+                raise OllamaUnavailable(self._down(entry.host))
+            if self.kind(entry.host) == LLAMACPP:
+                raise ModelNotFound(
+                    f"{entry.label} is not served by the llama-server at {self.config.hosts[entry.host]}. "
+                    f"Start it with that model (`--alias {entry.model}`), or set `model:` in models.yaml "
+                    "to the name `curl {url}/v1/models` shows.".replace("{url}", self.config.hosts[entry.host])
                 )
             raise ModelNotFound(
                 f"{entry.label} is not pulled on host '{entry.host}'. Run `ollama pull {entry.model}`."
             )
         return entry
+
+    def _down(self, host: str) -> str:
+        if self.kind(host) == LLAMACPP:
+            return f"Can't reach llama-server at {self.config.hosts[host]}. Is `llama-server` running?"
+        return f"Can't reach Ollama at {self.config.hosts[host]}. Is `ollama serve` running?"
 
     async def health(self) -> dict[str, dict[str, Any]]:
         async def check(name: str) -> dict[str, Any]:

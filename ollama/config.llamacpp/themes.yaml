@@ -1,0 +1,16 @@
+# Prompts behind the "Today's Theme" chip. One is picked per day, in order.
+themes:
+  - title: Internal dashboard
+    prompt: Build an internal dashboard that shows our weekly deploys, open incidents and on-call owner, with filters by team.
+  - title: Code review
+    prompt: Review the attached code for bugs, unclear naming and missing tests. List the issues by severity, then show the fixed version.
+  - title: Spec to tasks
+    prompt: Turn the attached spec into an ordered list of engineering tasks with acceptance criteria and rough estimates.
+  - title: Screen to component
+    prompt: Look at the attached screenshot and write the HTML and CSS for that screen as one self-contained file.
+  - title: Data cleanup
+    prompt: Write a Python script that loads the attached CSV, fixes inconsistent dates and duplicates, and reports what it changed.
+  - title: Explain it
+    prompt: Explain the attached file to a new team member - what it does, how it is structured, and what to be careful about when changing it.
+  - title: API design
+    prompt: Design a REST API for a small expense-approval tool - endpoints, request and response shapes, and the error cases.

@@ -5,11 +5,531 @@ not seen before. Read this first, then `PROJECT_FLOW.txt` for the code map.
 
 ## What this is
 
-A local chat web app on top of Ollama. A user picks a model (or "Auto"), sends
-a prompt with optional PDF/DOCX/text/image attachments, and the reply streams
-back. With "Auto", a router sends each message to a light model, a reasoning
-model or a vision model on this machine, or, for questions about software, to
-OpenCode's free cloud models.
+A local chat web app on top of llama.cpp's `llama-server`. A user picks a model
+(or "Auto"), sends a prompt with optional PDF/DOCX/text/image attachments, and
+the reply streams back. With "Auto", a router sends each message to the light
+or the strong local model, or, for questions about software, to OpenCode's free
+cloud models. The folder and package are still called `ollama/` and
+`ollama_pipeline`, and the code still talks to Ollama too, but **Ollama is not
+used**.
+
+## Latest branch: `14-db-connector`
+
+`UPDATE.md` lists what that branch added (sidebar, saved chats, Settings with the Admin panel
+for the admin only), what was tested, the bugs found and not yet fixed, and what to check on
+the server. Read it before the open tasks below.
+
+## Where it runs (read first)
+
+- **The server runs the app.** RTX 4080 Super (16 GB), 32 GB RAM,
+  i7-13700K. Two `llama-server` processes, one model each:
+  - **Gemma 4 12B**, port 8080: the strong one. Hard questions, documents,
+    screenshots and invoices (it reads pictures, with `--mmproj`).
+  - **Llama 3.1 8B**, port 8081: the light one. Quick questions and the SQL
+    connector (good at calling tools).
+  - Optionally a third, small server for embeddings (nomic-embed-text), port
+    8082, for searching workspaces by meaning.
+  The config for this is `ollama/config.llamacpp/models.yaml`, copied to
+  `ollama/config.local/` on the server. Its header has the exact
+  `llama-server` commands; the section "llama-server on the RTX 4080 Super"
+  below has the flags and the memory budget.
+- **The development Mac has no local model.** It is an M1 with 8 GB, no
+  llama.cpp and no Ollama. Code is written and tested there by AI test agents
+  without a model: the self-checks, the API, the pages in a browser, Docker
+  test databases, and stand-in model servers where a reply is needed. Anything
+  that needs a real model reply is checked on the server; reports mark it
+  "needs a model". Do not install llama.cpp or Ollama or download models
+  there without asking.
+- Sections further down that say `ollama pull`, `ollama ps`,
+  `OLLAMA_MAX_LOADED_MODELS`, `qwen3:14b` or `llama3.2:3b` come from earlier
+  test runs on Ollama. On the server, use the llama-server equivalent: the
+  model files and flags in `ollama/config.llamacpp/models.yaml`.
+
+## Open tasks: start here (asked for by the user, 19 October 2026)
+
+Work on the branch `new-db-approach13` (or a new branch made from it). Do
+these in order. When one is done, move it to "Done" at the end of this list,
+say what was tested and how, and push. Keep to "Rules" near the end of this
+file.
+
+### Task 1. Check the large-file work on the real server
+
+The branch was tested only against stand-in llama-servers (see the next
+section). On the server with Gemma 4 12B and Llama 3.1 8B:
+
+1. Run `cd backend && python -m ollama_pipeline`. Both models must show as
+   ready, and the context per request must be what llama-server's `-c` /
+   `-np` gives (it is read from `/props`). Try it with and without
+   `--kv-unified`.
+2. In the chat (Ctrl+Shift+R first):
+   - Attach a 100+ page PDF and ask about one fact in it. Check that the
+     Sources list shows the right page.
+   - Ask "summarise this PDF". "Reading … parts read" should count up, and
+     the answer should come from the notes.
+   - Attach a 50,000-row Excel file and ask "total sales by region as a
+     chart". The SQL must be SQLite, use the sheet's table and column names,
+     and give the right figures.
+3. Note the time for the summary of a 250-page file and what other users
+   feel meanwhile. Reading in parts is two requests at a time per person
+   (`CONCURRENT_PARTS` in `workspaces/workspace_engine/chatfiles.py`).
+4. Try the llama-server flags from the next section. Read the KV cache size
+   from the `llama_kv_cache ... size` line of the server log, then write the
+   flags that worked into the header of
+   `ollama/config.llamacpp/models.yaml`.
+
+### Task 2. Check document generation and fix what is broken
+
+The documents section is `frontend/documents.html`. It offers four tasks:
+- **Create a new document:** `frontend/word.html`, served by
+  `backend/app/documents/word.py` and `documents/document_engine/word/`.
+- **Fill in a template.**
+- **Change a document.**
+- **Read invoices into a sheet:** `frontend/invoices.html`.
+
+The first three are served by `backend/app/documents/routes.py` and
+`documents/document_engine/engine/` and `model/`.
+
+1. Run the checks that need no model, then go through each task in a browser
+   as a person would:
+   - `cd backend && python -m document_engine.word`;
+   - the invoice checks described under "Invoices tab".
+   Use a real model on the server, or a stand-in (an example is
+   described under "Tested end to end" below). Write down every step that
+   fails or confuses.
+2. **Known gap.** These pages still split the model's context between their
+   sources (`share()` in `documents/document_engine/word/service.py`), so a
+   very big source is cut, with a note. Make them read big sources the way
+   the chat now does:
+   - passages that match the request, via `workspace_engine.ChatFiles` /
+     `Workspace.search`;
+   - or notes from reading in parts (`ChatFiles.read_whole`);
+   - and spreadsheets as SQL tables (`sql_connector.import_file`) when only
+     figures are needed.
+   Keep "local models only" and "the model writes Markdown, never the file".
+3. Fix the two old lint warnings in
+   `documents/document_engine/engine/wordedit.py`: the unused `W_TBL` import
+   and the unused `first`.
+4. Check: `python -m document_engine.word` passes, and ruff passes
+   (`uvx ruff check --select E,F,W --ignore E501 --exclude '**/.venv' .`).
+   Also open a made file in Word or LibreOffice.
+
+### Task 3. Add presentation generation (PowerPoint)
+
+The user wants slides made like "Create a new document" makes Word files.
+It is a new part of the documents section.
+
+Build it with the same split as the Word part:
+- `documents/document_engine/slides/`:
+  - `prompts.py`: what the model is told. It writes the deck as Markdown, for
+    example `# Slide title`, bullets, `Notes:` lines for speaker notes, a
+    Markdown table, or a fenced `chart` block with labels and values.
+  - `service.py`: the sources and the request go to the local model; the
+    text streams back. Reuse `word/sources.py` to read the sources, and the
+    big-file handling from Task 2.
+  - `build.py` (no model): Markdown to slides with `python-pptx`. It covers a
+    title slide, a section slide, title + bullets, two columns, a table, and
+    a native chart (bar, line or pie) from the figures. A slide that
+    overflows is split into two.
+  - `__main__.py`: a check with no model, which builds a deck from a
+    hand-written Markdown and reads it back with python-pptx.
+- `backend/app/documents/slides.py`: routes like `word.py`:
+  - `GET /api/documents/slides/config`
+  - `POST /api/documents/slides/create`, which streams like the Word one
+  - `POST /api/documents/slides/build`, which builds again from edited text
+  - `GET /api/documents/slides/{job}/pdf`, through LibreOffice as in `word.py`
+  A made deck is an ordinary documents job, downloaded through
+  `/api/documents/{job}/download`.
+- `frontend/slides.html`: the same layout as `word.html`. The page has
+  sources, the request, and choices: slide count, one colour, 16:9 or 4:3,
+  and an optional company template `.pptx` (its masters and layouts are used,
+  its slides removed). The text is shown and can be edited, then built again
+  without the model. Add a fifth task card, "Create a presentation", on
+  `documents.html`.
+- Dependency: `python-pptx` (MIT). Add it to `documents/pyproject.toml`, run
+  `cd backend && uv sync --inexact`, then regenerate `requirements.txt` with
+  the command in its header. It is not installed yet.
+
+Rules, the same as for the Word part:
+- Local models only, with no cloud path.
+- The model never writes the file.
+- Nothing is fetched (no pictures from URLs).
+- The page's choices win over the model's text.
+- Figures from Excel are copied exactly.
+
+Check:
+- `python -m document_engine.slides` passes.
+- A deck from a PDF and an Excel source opens in LibreOffice Impress (and
+  PowerPoint if available) with no repair prompt.
+- The chart is a real chart, not a picture.
+- Add a section to this file like "Word document tab": what it does, its
+  rules, and what is not done.
+
+### Done
+- Big files without losing the context: the branch section below (tested
+  with stand-ins; Task 1 checks it on the server).
+
+## Running the `new-db-approach13` branch: big files without losing the context
+
+The problem this branch fixes: with a big PDF or Excel file the model "lost
+the context". Before, a file's whole text (up to 200,000 characters) went into
+the chat message and the browser sent it again with every later message. One
+llama-server request only holds one slot: `-c` divided by `-np` (e.g. 32768 /
+4 = 8192 tokens). A 100-page PDF is about 60,000 tokens, so the request was
+refused (`exceed_context_size_error`) or the model saw only part of it.
+
+What it does now (studied from AnythingLLM, then adapted):
+
+1. **Every request is fitted to the model's real context**
+   (`ollama/ollama_pipeline/context.py`). The slot size is read from
+   llama-server's `/props` (`n_ctx` per slot, re-read every 60 s;
+   `ModelEntry.context`, `ModelEntry.budget`), or `num_ctx` for Ollama.
+   - Room is kept for the answer (a fifth of the context, 1024 to 4096).
+   - The oldest history goes first and the current turn is kept. The middle
+     of a message that is still too big is cut, with a marker saying so.
+   - If llama-server still refuses (`ContextOverflow`, from its own token
+     count), the request is shrunk and retried, at most twice.
+   - The documents and Word pages use the same real budget.
+2. **Chat files stay on the server** (`workspaces/workspace_engine/chatfiles.py`,
+   `POST /api/files`). They are kept in `backend/data/chatfiles/<id>/` for
+   `documents.keep_hours` (24 h), and messages carry only `{id, name}`.
+   For each question:
+   - Files that fit are given whole.
+   - From bigger ones, the passages that match the question, as many as fit
+     (words with FTS5, plus meaning when the embedding model runs; vectors are
+     made in the background after the upload answers). A "Sources" list shows
+     them.
+   - A summary request ("summarise", "key points", "whole document";
+     `wants_whole`) reads the whole file in parts that fit, two at a time. It
+     notes each part, combines the notes if needed, and answers from the
+     notes. Notes are cached per model, so the next question does not read it
+     again. The chat shows "Reading X: part i of n".
+   - An expired file is named in the reply ("attach it again").
+3. **Spreadsheets become SQLite tables** (`sql/sql_connector/sheets.py`).
+   - The header is found under title rows, and columns are typed: Indian
+     number commas, ₹, day-first dates, and leading-zero codes kept as text.
+   - Up to 1,000,000 rows per sheet.
+   - A small sheet (600 cells or fewer) is given whole as Markdown.
+   - For a bigger one the model gets its tables, columns and 5 sample rows,
+     and queries it with the read-only SQL tools (SQLite dialect). The
+     database does the sums and counts, and charts work on the results.
+   - AnythingLLM embeds sheets as text instead, which cannot total a column.
+4. **Prompt layout for llama-server's prompt cache.** What stays the same from
+   turn to turn goes in the system message: rules, the tools prompt,
+   memories. What belongs to this question (passages, file text) goes in the
+   last user message inside `<context>…</context>`. How the budget is shared:
+   a workspace and files together get 25% and 40% of it; a workspace alone
+   45%; files alone 60% (`_shares` in `backend/app/routes.py`).
+
+What AnythingLLM does, for comparison:
+- Storage: Prisma + SQLite (`workspace_chats` keeps prompt and response per
+  user and thread), and LanceDB for vectors.
+- Retrieval: top 4 passages, similarity 0.25, the last 20 messages of history.
+- Budget: system 15%, history 15%, the user's message 70%. When that is too
+  big it cuts the middle ("cannonball").
+- "Pinned" documents are given whole.
+
+We do the same, with budgets measured from the real slot instead of a fixed
+model size.
+
+Not changed: chat history still lives in the browser only. Server-side chat
+storage (an SQLite table like AnythingLLM's `workspace_chats`) belongs with
+logins, which do not exist yet.
+
+### llama-server on the RTX 4080 Super (16 GB) for 10-12 people
+
+What the GPU memory goes to:
+- **Weights.** Gemma 12B Q4_K_M is about 7.3 GB, plus about 0.85 GB for
+  `--mmproj`. Llama 3.1 8B Q4_K_M is about 4.9 GB.
+- **The KV cache, which grows with the context.**
+  - Llama 3.1 8B needs 128 KiB per token at f16, about 68 KiB at q8_0. So
+    32768 tokens of context are about 2.2 GB at q8_0.
+  - Gemma's sliding window makes its per-token cost smaller.
+  - Read the real figure from the server's startup line
+    `llama_kv_cache ... size = ...`.
+
+**Both chat models fully on the GPU leave about 1 GB for context. That is the
+main limit.** Either:
+- run one chat model on the GPU and give it the context: Gemma for everything,
+  with Llama as a smaller fallback partly on the CPU (`-ngl` lower); or
+- keep both with small contexts.
+
+Flags worth using:
+- `-fa on -ctk q8_0 -ctv q8_0`: flash attention and a q8 KV cache. This
+  halves the cache at almost no quality cost.
+- `-c 32768 -np 4 --kv-unified`: 4 people answered at once. With
+  `--kv-unified` the slots share the 32768 tokens, so one big request can use
+  more than a quarter of them. `python -m ollama_pipeline` and
+  `/props` show the per-request size the app uses.
+- `--cache-reuse 256`: reuses the cached prompt start (system message,
+  history) between turns.
+- `--no-mmproj-offload` if pictures are rare: the vision part stays in RAM.
+- The embedding server on the CPU:
+  `-ngl 0 --embedding -b 2048 -ub 2048` (nomic-embed-text, about 0.3 GB).
+- 10-12 people at 45-50 tokens/s in total means about 4-5 tokens/s each when
+  all of them type at once. `-np` above 4 adds queueing, not speed.
+
+Checks without a model: `cd backend && .venv/bin/python -m ollama_pipeline.selfcheck`,
+`python -m sql_connector` (spreadsheets), `python -m workspace_engine`
+(chat files: whole, passages, reading in parts, expiry).
+
+**Tested end to end with stand-in llama-servers** (19 October 2026). The
+stand-ins report a 4096-token slot in `/props` and refuse a bigger prompt
+with `exceed_context_size_error`, as llama-server does. All of these passed:
+- **The slot size was read.** `/api/models` showed `context: 4096` for both
+  models.
+- **A 60-page PDF** (about 76,000 tokens) was uploaded through `/api/files`.
+  A question about one fact on page 37 found that passage first, sent a
+  2,151-token request, and the answer quoted it.
+- **"Summarise this document"** read the PDF in 30 parts, with progress
+  events. No part was refused, and the largest request was 3,000 tokens. The
+  answer came from the notes and kept the page-37 fact. Asking again used the
+  cached notes.
+- **A 20,000-row Excel file** (title rows above the header, amounts written
+  as "12,345"). "Show the total amount by region as a chart" made the model
+  call `query` with `SUM ... GROUP BY region`. The totals matched a Python
+  sum of the file exactly, and `create_chart` drew them.
+- **A server that says its slot is 8192 but refuses at 3000.** A chat with
+  24 long earlier messages was refused once (5,715 tokens), shrunk, and
+  answered at 1,757 tokens.
+  - Fixed after that run: the "left out to fit" notice now comes with the
+    request the server accepted, so it gives the real size.
+  - Also fixed: the progress text now reads "Reading X: 3 of 30 parts read"
+    instead of "part 0 of 30".
+
+**Not done, check these on the server:**
+- **No real model has been used**, only stand-ins. With Gemma 4 12B and
+  Llama 3.1 8B, try:
+  - a 100+ page PDF question (passages and Sources);
+  - "summarise this PDF" (progress, then an answer from notes);
+  - a 50,000-row Excel file ("total sales by region", then a chart).
+  Check that Llama writes SQLite SQL for the sheet's table and column names.
+- Whether llama-server's `/props` reports `n_ctx` per slot as expected with
+  and without `--kv-unified`.
+- Reading in parts uses the chat model for every part: a 250-page file is
+  about 40 requests. Two run at once per person, so others wait behind them.
+- **The browser was not clicked through for this branch.** Check:
+  - the file pills ("60 pages", "1 sheet · 20,000 rows");
+  - the "Reading … parts read" lookup block;
+  - the notice;
+  - the Sources list under a file answer.
+- A file older than `documents.keep_hours` (24 h) is gone. The reply should
+  name it ("attach it again"); this was not tried in a browser.
+- The llama.cpp flags above are not yet in the header of
+  `ollama/config.llamacpp/models.yaml`; copy them there once they are tried
+  on the 4080 Super. Read the real KV size from the `llama_kv_cache` line in
+  the server log.
+- `documents/document_engine/engine/wordedit.py` has two old lint warnings
+  (unused `W_TBL` import, unused `first`); they are not from this branch.
+
+The next tasks the user asked for are in "Open tasks: start here" at the top of this file.
+
+## Running the `tools` branch on the server (llama.cpp, SQL connector, workspaces)
+
+This branch adds four things (Workspaces and Agent skills have their own sections below), and a round of fixes:
+
+- **llama.cpp instead of Ollama.** The server runs llama.cpp's `llama-server`
+  with Gemma 4 12B and Llama 3.1 8B, not Ollama. A host in `models.yaml`
+  written `{url: ..., kind: llamacpp}` is a llama-server: the app talks to its
+  OpenAI API (`/v1/chat/completions`) through
+  `ollama/ollama_pipeline/llamacpp.py`, which gives back the same chunks as
+  Ollama, so the chat, Auto, documents, invoices and the SQL tools work
+  unchanged. A plain URL is still an Ollama server; both can be mixed.
+  `provider: ollama` on a model still means "local" (on one of `hosts:`).
+- **The SQL connector**, rebuilt from AnythingLLM's SQL agent skill
+  (`server/utils/agents/aibitat/plugins/sql-agent/`). Databases are saved on
+  the new **Databases** page (`frontend/databases.html`); picking one in the
+  chat's model menu lets a local model answer from it with four tools:
+  `list_databases`, `list_tables`, `get_table_schema`, `query`. Each lookup
+  is shown in the reply (the query and the first rows).
+
+Steps on the server:
+
+1. **Get the branch.** `git fetch && git checkout tools`
+2. **Install the new packages** (`psycopg[binary]`, `pymysql`, `numpy`, the
+   project's own `sql/`, `workspaces/` and `skills/`): `pip install -r requirements.txt`, or
+   `cd backend && uv sync --extra router --inexact`. SQLite needs nothing.
+3. **Start both llama-servers with `--jinja`** (tool calls need it), Gemma
+   with `--mmproj` (pictures). The commands are at the top of
+   `ollama/config.llamacpp/models.yaml`: Gemma on port 8080, Llama on 8081.
+4. **Use that config:** `cp -r ollama/config.llamacpp ollama/config.local`
+   (or edit the ports and names in the copy first). If a `config.local`
+   already exists, copy the `hosts:`, `sql:` and model entries into it.
+5. **Check:** `cd backend && python -m ollama_pipeline` lists both hosts as
+   `ok (llama.cpp ...)` and `llama ... ready, calls tools`.
+   `python -m sql_connector` must print that all checks pass.
+6. **Restart**, open <http://127.0.0.1:8000/databases.html>, add a database
+   (Test, then Save), then in the chat open the model menu, pick it under
+   "Answer from a database", and ask about its data. Ctrl+Shift+R first.
+
+Rules to keep:
+
+- **Read-only, three times over.** `safety.py` refuses anything but one
+  SELECT / WITH / SHOW / DESCRIBE / EXPLAIN, and writes hidden inside one
+  (`WITH x AS (DELETE ...)`, `SELECT ... INTO`, `FOR UPDATE`, `pg_sleep`,
+  `nextval`); SQLite is opened `mode=ro`; PostgreSQL and MySQL run every
+  query in a read-only transaction with a time limit (`sql.timeout`).
+  AnythingLLM only asks its model to send SELECTs. Still give the app a
+  database user that can only read.
+- **Local models only.** A database chat never goes to OpenCode; Auto's
+  routing is skipped and `sql.model` answers (or the picked model, when it is
+  local and can call tools; otherwise the reply says which one answers).
+- **Passwords stay on the server**, in `backend/data/sql/connections.json`
+  (mode 600, not in git), as AnythingLLM keeps them. The page never gets them
+  back; leaving the password empty when changing a connection keeps it.
+- **The model never sees more than it asked for:** at most `sql.max_rows`
+  rows per query, and at most `sql.max_rounds` lookups before it must answer.
+- `ollama_pipeline` knows nothing about SQL: `chat_stream` takes any `tools`
+  and a `run_tool` function; the backend passes the SQL ones in.
+
+Not done, check these on the server:
+
+- **No real model has called the tools.** Tested against stand-ins for Ollama
+  and for llama-server that make the calls a model would (including
+  llama-server's way of sending a tool call in pieces). Check that Llama 3.1
+  8B calls `list_tables` before `query` and writes SQL for the right dialect;
+  try `sql.model: gemma` too.
+- Whether Gemma 4's template is seen as able to call tools (`/props`
+  `chat_template` mentions tools). If not, add `tools: true` to its entry.
+- **No live PostgreSQL or MySQL was reached**, only SQLite. Try one of each:
+  Test, Tables, a question, and a write such as "delete the orders" (it must
+  be refused).
+- llama-server answers one request at a time unless started with `-np 2`
+  or more; Auto's router and a reply then wait for each other.
+- `num_ctx` cannot change llama-server's context; its `-c` does.
+
+### Workspaces (document search with sources, RAG)
+
+Modelled on AnythingLLM's workspaces. A team puts its documents (PDF, Word,
+Excel, CSV, text; many at once) in a workspace on the **Workspaces** page
+(`frontend/workspaces.html`). In the chat, the **Workspaces** panel on the
+left picks one; every answer is then based on the passages of its documents
+that match the question, and a "Sources" list under the answer shows each
+passage (document, page) with its text.
+
+How it works (`workspaces/workspace_engine/`, package `workspace_engine`):
+
+1. The backend reads the file (`backend/app/workspaces/routes.py`): a PDF page
+   by page, so a passage can name its page; Word, Excel, CSV and text through
+   the Word tab's `read_source`. Up to 5 million characters per file.
+2. `chunking.py` splits it into passages of about `chunk_chars` (1200) that
+   overlap by `overlap_chars` (200) and end at a paragraph or sentence.
+3. `service.py` gets a vector for each passage from the embedding model
+   (`workspaces.embed_model`), and `index.py` stores passages, vectors and a
+   full-text index in `backend/data/workspaces/<id>/index.db` (SQLite FTS5).
+4. For a question, `index.py` ranks passages by words (BM25) and by meaning
+   (vectors), combines the two (reciprocal rank fusion) and the top `top_k`
+   (6) go into the system message with numbers; `prompts.py` tells the model
+   to cite them as [1], [2] and to say when the documents do not cover it.
+   A short follow-up ("and for flights?") is searched together with the
+   question before it.
+
+Rules to keep:
+- **Local models only.** A workspace chat never goes to OpenCode: Auto picks
+  a local model (`select_local_model`); picking a cloud model is refused.
+- **It works without an embedding model.** Without one (not set, not running,
+  or failing) passages are found by words only, and the page says so. Passages
+  indexed that way get vectors later with **Re-index**. Vectors from another
+  embedding model are not mixed with new ones: the workspace asks to be
+  re-indexed.
+- **The same file twice is skipped; a changed file with the same name
+  replaces the old one.**
+- To change what the model is told, edit `workspace_engine/prompts.py` only.
+
+Embedding model: `workspaces.embed_model` in `models.yaml`. With llama.cpp, a
+third llama-server started with `--embedding` (the command is at the top of
+`ollama/config.llamacpp/models.yaml`, port 8082). With Ollama,
+`ollama pull nomic-embed-text`. `query_prefix` / `document_prefix` are what
+nomic-embed-text expects; empty them for other models.
+
+Checks without a model: `cd backend && python -m workspace_engine`.
+
+Not done, check these on the server:
+- **No real embedding model has been used**, only a stand-in. Run
+  nomic-embed-text v1.5 on llama-server with `-b 2048 -ub 2048` (a passage
+  longer than the batch fails) and check that "Search by meaning" shows on
+  the Workspaces page.
+- **No real chat model has answered from passages.** Check that Llama 3.1 8B
+  and Gemma 4 12B cite [n] and say so when the documents do not cover a
+  question. The top 6 passages are always sent, even weak ones; if answers
+  drift, lower `top_k`.
+- Speed of adding a large PDF (hundreds of pages) with a real embedding model.
+- Scanned PDFs have no text and are refused, as in the chat.
+- There are no logins yet: anyone who can open the app can see and delete
+  every workspace.
+
+### Agent skills (charts, memory) and the Admin panel
+
+Modelled on AnythingLLM's agent skills (`rechart`, `memory`) and its Admin ->
+Agent Skills page. Code: `skills/agent_skills/` (package `agent_skills`, no
+model in it), `backend/app/admin/routes.py`, `frontend/admin.html`.
+
+- **Charts.** The model calls `create_chart` with the kind (bar, line, area,
+  pie), labels and series; `charts.py` checks the numbers ("₹1,200" becomes
+  1200, a series must have one value per label) and the chat draws the chart
+  as SVG, with no chart library, so it works offline. A wrong call is sent back
+  with the reason so the model can fix it.
+- **Memory.** Short facts per workspace, plus a "general" list for chats
+  without one, in `backend/data/admin/memories.json`. Every chat answered by a
+  local model gets its scope's memories in the system message (never a cloud
+  model). Admins add, edit and remove them on the Admin panel; in the chat the
+  model saves or forgets one only when the user asks (`save_memory`,
+  `forget_memory`), if "Save and forget from the chat" is on. When several
+  memories could be meant, nothing is forgotten and the model is told to ask.
+- **Switches** (`backend/data/admin/skills.json`): Database queries, Charts,
+  Memory, Save and forget from the chat. All on by default. With Database
+  queries off, the chat hides the database picker and `/api/chat` refuses a
+  database (403).
+- **A skill is offered only when the message needs it** (`toolbox.py`): charts
+  with a database or workspace picked or when a chart is asked for; the memory
+  tools when the message says remember or forget. Small models call tools
+  they do not need, so an everyday chat gets none. A message that does get a
+  skill is answered by `sql.model` (the local model that calls tools).
+- **The Admin panel needs `ADMIN_PASSWORD`** in `backend/.env`. Without it
+  the panel is closed (403); a wrong password waits a second. It stands in
+  for users and roles, which do not exist yet. The Databases and Workspaces
+  pages are still open to everyone.
+
+On the server: set `ADMIN_PASSWORD`, restart, open
+<http://127.0.0.1:8000/admin.html>. Check without a model:
+`cd backend && python -m agent_skills`.
+
+Not done, check these on the server:
+- **No real model has called `create_chart`, `save_memory` or
+  `forget_memory`**, only a stand-in. Check that Llama 3.1 8B copies the
+  numbers exactly and saves a memory only when asked.
+- Charts were looked at in Chromium only.
+
+### Fixed in this round (review of the branch)
+
+- **SQL, critical:** on PostgreSQL a crafted query could run a write. psycopg
+  runs every statement of a query sent without parameters, and the text check
+  read `#` and `\'` the MySQL way, so `SELECT 1 # x; COMMIT; SET
+  default_transaction_read_only = off; DELETE FROM orders` passed it. Now
+  PostgreSQL queries go as prepared statements (one statement only), the
+  check reads strings as each database does and refuses comments, and MySQL
+  sessions are read-only too. The bypasses are in `python -m sql_connector`.
+- Workspaces with names in Kannada, Hindi or with accents could not be
+  created; ids are now ASCII (`workspace-<random>` when nothing is left).
+- A picture sent alone in a workspace no longer searches for nothing.
+- `python -m ollama_pipeline` no longer fails when only the optional
+  embeddings server is down.
+- llama-server's "--jinja" and "mmproj" errors now say what to start it with.
+- A database lookup cut off by Stop no longer shows "Running a query…".
+- **Documents pages:** the six tabs are gone. `documents.html` opens on four
+  tasks (Create a new document, Fill in a template, Change a document, Read
+  invoices into a sheet); each task shows its steps and what the button is
+  waiting for. "Write a new one" was folded into Create a new document
+  (`word.html`, which has the letterhead too); saved templates are offered
+  right where a template is chosen. `documents.html#create` goes to
+  `word.html`. The chat's menu lost its two placeholder links.
+
+UI fixes in this branch: the chat composer's text, chips and model name no
+longer shrink below a readable size on laptop screens (floors, positions
+unchanged); the model menu is wider and shows whole descriptions; selected
+items show a tick and finished Thinking / lookup blocks a chevron instead of
+more dots; status dots only show while something is running; the documents
+pages' small text is a size larger and their buttons taller with more padding,
+and a disabled button looks switched off.
 
 ## Running the `11-word` branch on the server
 
@@ -104,16 +624,19 @@ Five steps. "Setup" further down has the details and the reasons.
 1. **Python packages.** `cd backend && uv sync --extra router` (needs
    [uv](https://docs.astral.sh/uv/) and Python 3.12+). Without uv:
    `pip install -r requirements.txt` from the repo root.
-2. **Ollama** running, with the models this machine will use pulled
-   (`ollama list` shows them). The Word documents page needs `qwen3:14b`.
+2. **The two llama-servers** running (Gemma 4 12B on 8080, Llama 3.1 8B on
+   8081, both with `--jinja`, Gemma with `--mmproj`). The commands are at the
+   top of `ollama/config.llamacpp/models.yaml`. On a machine with no model
+   (the development Mac), skip this: the app starts and says the models are
+   not reachable.
 3. **OpenCode 1.18.34, exactly that version:**
    `npm install -g opencode-ai@1.18.34`, then `opencode --version` must print
    `1.18.34`. Not the package `@opencode/cli`: that is 2.x and does not work.
-4. **Models: one file, `ollama/config/models.yaml`.** The header at its top
-   names the three entries to change. Nothing else in the project names a
-   model.
+4. **Models: one file.** On the server, `cp -r ollama/config.llamacpp
+   ollama/config.local` (or merge it into an existing `config.local`). Nothing
+   else in the project names a model.
 5. **Check, then run.** `cd backend && uv run --inexact python -m ollama_pipeline`
-   lists every model as ready or not. Then `./run.sh` (Windows:
+   lists both hosts as `ok (llama.cpp ...)` and every model as ready or not. Then `./run.sh` (Windows:
    `powershell -ExecutionPolicy Bypass -File run.ps1`) and open
    <http://127.0.0.1:8000>. The server log should show `Router: Von is ready`
    and `OpenCode: server ready at …`.
@@ -643,7 +1166,9 @@ rows, UnitPrice and UnitAmount, and the fixes listed above come from.
 
 ## Your task on this machine
 
-1. Get the app running against real Ollama (Setup below).
+1. On the server: get the app running against the two llama-servers (Setup
+   below). On the development Mac: there is no model, so run the self-checks
+   and test through the API and the browser instead.
 2. Run the checks in "What to verify" and note pass/fail for each.
 3. Fix what fails, keeping to "Rules".
 4. Report back: hardware, models pulled, what passed, what failed, what you
@@ -652,16 +1177,16 @@ rows, UnitPrice and UnitAmount, and the fixes listed above come from.
 ## Setup
 
 Requirements: Python 3.11+ (3.12+ for Von), [uv](https://docs.astral.sh/uv/),
-[Ollama](https://ollama.com/download) running, and for the cloud routes
-Node.js with OpenCode 1.18.34. Ask the user before installing Ollama or
-pulling models — models are several GB each.
+on the server llama.cpp's `llama-server` with the Gemma 4 12B and Llama 3.1 8B
+GGUF files, and for the cloud routes Node.js with OpenCode 1.18.34. Ask the
+user before installing llama.cpp or downloading models: they are several GB
+each.
 
 ```bash
 cd backend && uv sync --extra router    # Python packages, with the Von router
 npm install -g opencode-ai@1.18.34      # OpenCode, the tested version
-ollama pull llama3.2:3b      # "simple" route
-ollama pull qwen3:14b        # "complex" route (~9 GB)
-ollama pull gemma3:4b        # screenshots (optional)
+cp -r ollama/config.llamacpp ollama/config.local   # on the server, once
+# start both llama-servers with the commands at the top of that models.yaml
 ./run.sh                     # http://127.0.0.1:8000
 ```
 
@@ -676,7 +1201,7 @@ Von 1.3.7.
 
 Downloads go to the user's home folder by default. If that disk is short of
 space, set `UV_CACHE_DIR` before `uv sync` (packages) and `HF_HOME` in
-`backend/.env` (Von's weights). Ollama keeps models where `OLLAMA_MODELS` points.
+`backend/.env` (Von's weights). llama-server loads the GGUF file named by its `-m`.
 
 Check hosts and which configured models are pulled:
 
@@ -686,26 +1211,26 @@ cd backend && uv run --inexact python -m ollama_pipeline
 
 ### Models: one file
 
-`ollama/config/models.yaml` is the only place that names models: the Ollama
-tags, the OpenCode ids, and which route uses which. To use other local models,
-change the `model:` tag and the `label:` of the `general`, `reasoning` and
-`vision` entries (the file's header says the same) and restart. Any other
-model pulled in Ollama appears in the picker by itself (`discover: true`).
-`python -m ollama_pipeline` shows what is ready.
+`models.yaml` is the only place that names models: the hosts, the model
+names, the OpenCode ids, and which route uses which. On the server it is
+`ollama/config.local/models.yaml`, copied from `ollama/config.llamacpp/`.
+`ollama/config/models.yaml` is the older Ollama setup, kept for a machine that
+runs Ollama. `python -m ollama_pipeline` shows which folder is in use and what
+is ready.
 
 ### Fit the models to this machine's hardware
 
 Check GPU memory first (`nvidia-smi`, or system info on a Mac).
-`ollama/config/` targets the production server: edit it there. On any other
-machine copy that folder to `ollama/config.local/` and edit the copy: it is
-ignored by git and used automatically when present. The server log and
+The server uses `ollama/config.local/`, a copy of `ollama/config.llamacpp/`:
+it is ignored by git and used automatically when present. The server log and
 `python -m ollama_pipeline` print which folder is in use. In `models.yaml`:
 
-- If `qwen3:14b` does not fit, point the `reasoning` entry at a smaller tag
-  (e.g. `qwen3:8b`, or `qwen3:4b` on a 4 GB GPU) and pull that instead.
-- `default_options.num_ctx` is 16384. If replies are very slow or `ollama ps`
-  shows a model partly on CPU, lower it (8192). Do not go below 8192 unless
-  necessary: attached documents get cut off.
+- With llama-server, the context size is its `-c` flag (divided by `-np`
+  slots), not `num_ctx`; the app reads it from `/props`. Do not go below
+  8192 tokens per request unless necessary: attached documents get cut off.
+- Both models fully on the GPU leave about 1 GB for context on 16 GB. See
+  "llama-server on the RTX 4080 Super" above for the flags (`-fa on`, a q8 KV
+  cache, `--kv-unified`) and the trade-offs.
 - The target production server is an RTX 4080 Super (16 GB VRAM), 32 GB RAM,
   i7-13700K. The light and reasoning models must fit in 16 GB together.
 
@@ -778,6 +1303,21 @@ documents/document_engine/       the Word documents page: engine/ (files) and mo
 documents/document_engine/invoices/   the Invoices tab: reader, checks, export, and the model's part
 documents/document_engine/word/  the Word document tab: sources, renderer, build, and the model's part
 documents/read_invoices.py       invoices from a terminal
+sql/sql_connector/               the SQL connector: connectors, safety, saved connections, tools
+backend/app/sql/                 its HTTP routes (/api/sql/connections)
+frontend/databases.html          its page
+ollama/ollama_pipeline/llamacpp.py   llama-server client (hosts with kind: llamacpp)
+ollama/config.llamacpp/          models.yaml for llama-server: Gemma 4 12B + Llama 3.1 8B
+workspaces/workspace_engine/     workspaces: passages, index (SQLite FTS5 + vectors), search, prompts
+workspaces/workspace_engine/chatfiles.py   files attached in the chat: kept 24 h, passages, read in parts
+ollama/ollama_pipeline/context.py   fitting every request to the model's real context
+sql/sql_connector/sheets.py      Excel/CSV -> SQLite tables the model queries
+backend/data/chatfiles/          chat files on disk (not in git)
+skills/agent_skills/             agent skills: charts, memory, the switches, the per-message toolbox
+backend/app/admin/               the Admin panel's routes (/api/admin, /api/skills)
+frontend/admin.html              the Admin panel
+backend/app/workspaces/          its HTTP routes (/api/workspaces)
+frontend/workspaces.html         its page; the chat's left panel picks a workspace
 backend/app/documents/           its HTTP routes and storage
 frontend/documents.html          its page
 frontend/invoices.html           the Invoices tab
@@ -807,6 +1347,6 @@ run.sh, run.ps1                  start the app (macOS/Linux, Windows)
 
 ## Not built yet
 
-No login, no saved chat history, no text from scanned PDFs, Figma links are
+No login (the Admin panel has one shared password), chat history only in the browser (not on the server), no text from scanned PDFs, Figma links are
 passed as text only, no paid cloud models (e.g. Claude) - only OpenCode's
 free tier.

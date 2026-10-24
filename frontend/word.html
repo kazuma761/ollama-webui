@@ -51,7 +51,7 @@ h1{font-size:clamp(26px,4.2vw,36px);font-weight:410;letter-spacing:.0018em;line-
 /* The tabs of the documents section; the first four open the Word page */
 .modes{display:flex;flex-wrap:wrap;gap:6px;margin:26px 0 14px}
 .mode{
-  display:inline-flex;align-items:center;height:36px;padding:0 15px;border-radius:11px;font-size:13.5px;font-weight:500;color:#B9BABD;
+  display:inline-flex;align-items:center;height:38px;padding:0 16px;border-radius:11px;font-size:13.5px;font-weight:500;color:#B9BABD;
   background:linear-gradient(180deg,rgba(255,255,255,.088),rgba(255,255,255,.038));border:1px solid rgba(255,255,255,.06);
 }
 .mode:hover{color:#fff}
@@ -63,8 +63,8 @@ h1{font-size:clamp(26px,4.2vw,36px);font-weight:410;letter-spacing:.0018em;line-
   box-shadow:inset 0 0 0 1px var(--line),0 22px 60px rgba(0,0,0,.30);
 }
 .card h2{font-size:15px;font-weight:600;letter-spacing:-.005em}
-.card h2 small{font-weight:400;color:var(--muted);font-size:13px;margin-left:6px}
-.hint{color:var(--muted);font-size:13px}
+.card h2 small{font-weight:400;color:var(--muted);font-size:14px;margin-left:6px}
+.hint{color:var(--muted);font-size:14px}
 .row{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
 .gap{margin-top:16px}
 .grow{flex:1}
@@ -76,7 +76,7 @@ h1{font-size:clamp(26px,4.2vw,36px);font-weight:410;letter-spacing:.0018em;line-
 .drop:hover,.drop.over{background:rgba(255,255,255,.07);border-color:var(--accent)}
 .drop svg{width:22px;height:22px;flex:none;color:var(--muted)}
 .drop b{display:block;font-weight:500;font-size:14px}
-.drop span{display:block;color:var(--muted);font-size:12.5px}
+.drop span{display:block;color:var(--muted);font-size:13.5px}
 
 select{
   max-width:100%;padding:10px 30px 10px 12px;border-radius:12px;background:rgba(0,0,0,.26);appearance:none;cursor:pointer;
@@ -88,33 +88,33 @@ select:focus{outline:none;box-shadow:inset 0 0 0 1px rgba(244,157,112,.7)}
 select option{background:#1c1c1f}
 
 .btn{
-  height:40px;padding:0 20px;border-radius:12px;font-size:14px;font-weight:520;color:#1d1d20;
+  height:42px;padding:0 22px;border-radius:12px;font-size:14px;font-weight:520;color:#1d1d20;
   background:linear-gradient(163deg,#FBBC94,#F49D70 46%,#E88654);box-shadow:0 3px 12px rgba(210,110,60,.34);
 }
 .btn:hover{filter:brightness(1.07)} .btn:active{transform:scale(.98)}
-.btn[disabled]{opacity:.45;cursor:default;filter:none;transform:none}
+.btn[disabled]{color:#8B8C8E;background:rgba(255,255,255,.09);box-shadow:none;cursor:default;filter:none;transform:none}
 .btn.ghost{color:var(--text);background:linear-gradient(180deg,#3d3d3f,#1d1d20);box-shadow:inset 0 1px 0 rgba(255,255,255,.10)}
-.mini{height:28px;padding:0 10px;border-radius:9px;font-size:12.5px;font-weight:500;color:#D5D5D8;background:rgba(255,255,255,.08)}
+.mini{height:32px;padding:0 14px;border-radius:9px;font-size:13.5px;font-weight:500;color:#D5D5D8;background:rgba(255,255,255,.08)}
 .mini:hover{background:rgba(255,255,255,.15);color:#fff}
 .mini[aria-pressed="true"]{color:#12301f;background:var(--ok)}
-.link{color:var(--muted);font-size:13px;text-decoration:underline;text-underline-offset:3px}
+.link{color:var(--muted);font-size:14px;text-decoration:underline;text-underline-offset:3px}
 .link:hover{color:#fff}
 
-.status{display:flex;align-items:center;gap:9px;color:var(--muted);font-size:13px;min-height:22px}
+.status{display:flex;align-items:center;gap:9px;color:var(--muted);font-size:14px;min-height:22px}
 .status i{width:7px;height:7px;border-radius:50%;background:var(--accent);animation:pulse 1s ease-in-out infinite}
-.status.err{color:var(--warn)} .status.err i,.status.idle i{animation:none;background:currentColor;opacity:.6}
+.status.err{color:var(--warn)} .status.err i,.status.idle i{display:none}
 @keyframes pulse{0%,100%{opacity:.25}50%{opacity:1}}
 
 /* The source files */
 .file{display:flex;align-items:center;gap:10px 12px;padding:9px 12px;border-radius:12px;background:rgba(255,255,255,.04);margin-top:6px}
 .file .name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13.5px}
-.file .what{color:var(--muted);font-size:12.5px;text-align:right;max-width:58%}
+.file .what{color:var(--muted);font-size:13.5px;text-align:right;max-width:58%}
 .file.reading .what{color:var(--accent)} .file.done .what{color:var(--ok)} .file.error .what{color:var(--warn)}
 .file .x{width:20px;height:20px;border-radius:50%;line-height:1;color:var(--muted);flex:none}
 .file .x:hover{color:#fff;background:rgba(255,255,255,.14)}
 .drop.has{border-style:solid;border-color:rgba(255,255,255,.14)} .drop.has svg{color:var(--accent)}
 
-label.cap{display:block;font-size:12.5px;font-weight:500;color:var(--muted);margin-bottom:6px}
+label.cap{display:block;font-size:13.5px;font-weight:500;color:var(--muted);margin-bottom:6px}
 textarea,.in{
   width:100%;padding:10px 12px;border-radius:12px;background:rgba(0,0,0,.26);
   box-shadow:inset 0 0 0 1px rgba(255,255,255,.09);color:var(--text);font-size:14px;line-height:1.45;
@@ -122,16 +122,16 @@ textarea,.in{
 textarea{min-height:84px;resize:vertical;display:block}
 textarea::placeholder,.in::placeholder{color:#77787B}
 textarea:focus,.in:focus{outline:none;box-shadow:inset 0 0 0 1px rgba(244,157,112,.7)}
-#draft{min-height:260px;max-height:60vh;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12.5px;line-height:1.55}
+#draft{min-height:260px;max-height:60vh;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:13.5px;line-height:1.55}
 .look{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
-.opt{display:inline-flex;align-items:center;gap:8px;color:var(--muted);font-size:13px;cursor:pointer}
+.opt{display:inline-flex;align-items:center;gap:8px;color:var(--muted);font-size:14px;cursor:pointer}
 .opt input{appearance:auto;width:15px;height:15px;accent-color:#F49D70}
 .swatch{display:flex;align-items:center;gap:8px}
 .swatch input[type=color]{appearance:auto;width:40px;height:40px;padding:0;border-radius:10px;cursor:pointer;background:none}
 a.btn{display:inline-flex;align-items:center}
 a.btn[aria-disabled="true"]{opacity:.45;pointer-events:none}
-.notes{margin-top:8px;color:var(--warn);font-size:12.5px}
-.list{margin:10px 0 0 18px;color:var(--muted);font-size:13px}
+.notes{margin-top:8px;color:var(--warn);font-size:13.5px}
+.list{margin:10px 0 0 18px;color:var(--muted);font-size:14px}
 .list .skip{color:var(--warn)}
 
 /* A rough view of the Word file: its text, headings and tables, not its fonts and colours */
@@ -144,7 +144,7 @@ a.btn[aria-disabled="true"]{opacity:.45;pointer-events:none}
 .paper .bullet{padding-left:16px;position:relative}
 .paper .bullet::before{content:"•";position:absolute;left:3px}
 .paper table{border-collapse:collapse;margin:6px 0 12px;width:100%}
-.paper td{border:1px solid #c9c9c6;padding:5px 8px;vertical-align:top;white-space:pre-wrap;font-size:13px;background:none}
+.paper td{border:1px solid #c9c9c6;padding:5px 8px;vertical-align:top;white-space:pre-wrap;font-size:14px;background:none}
 .paper td>p:last-child{margin-bottom:0}
 .pdf{width:100%;height:min(78vh,900px);margin-top:14px;border-radius:10px;background:#fff}
 
@@ -154,6 +154,15 @@ a.btn[aria-disabled="true"]{opacity:.45;pointer-events:none}
   .file{flex-wrap:wrap} .file .what{max-width:100%;text-align:left}
 }
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+/* Five links do not fit beside the logo on a phone: they scroll sideways inside the bar instead. */
+.nav{gap:12px}
+.links{min-width:0;overflow-x:auto;scrollbar-width:none}
+.links::-webkit-scrollbar{display:none}
+.links a{flex:none}
+@media (max-width:620px){.links a{padding:7px 9px;font-size:13.5px}}
+a.mini{display:inline-flex;align-items:center}
+.back{display:inline-block;margin-bottom:12px;font-size:14px;color:#D5D5D8}
+.back:hover{color:#fff}
 </style>
 </head>
 <body>
@@ -169,21 +178,15 @@ a.btn[aria-disabled="true"]{opacity:.45;pointer-events:none}
     </a>
     <nav class="links" aria-label="Primary">
       <a href="index.html">Chat</a>
+      <a href="workspaces.html">Workspaces</a>
       <a href="documents.html" aria-current="page">Documents</a>
+      <a href="databases.html">Databases</a>
     </nav>
   </header>
 
-  <h1>A designed Word document</h1>
-  <p class="lede">Add the files to work from: PDFs, Word files, Excel sheets, CSV or text. A model on this machine reads them together and writes the document; the app turns that into a Word file with a cover, numbered sections, tables and highlighted boxes. Download it as Word or as PDF. Nothing leaves this machine.</p>
-
-  <nav class="modes" aria-label="Documents">
-    <a class="mode" href="documents.html#fill">Fill a template</a>
-    <a class="mode" href="documents.html#edit">Change a document</a>
-    <a class="mode" href="documents.html#create">Write a new one</a>
-    <a class="mode" href="documents.html#library">Template library</a>
-    <a class="mode" href="word.html" aria-current="page">Word document</a>
-    <a class="mode" href="invoices.html">Invoices</a>
-  </nav>
+  <a class="back" href="documents.html">← All document tasks</a>
+  <h1>Create a new document</h1>
+  <p class="lede">Say what you need and add the files to work from: PDFs, Word files, Excel sheets, CSV or text. A model on this machine reads them and writes the document; you choose its look and download it as Word or PDF. Nothing leaves this machine.</p>
 
   <!-- What goes in -->
   <section class="card" id="inputs">

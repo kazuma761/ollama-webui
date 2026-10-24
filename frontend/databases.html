@@ -1,0 +1,388 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Fastshot — Databases</title>
+<meta name="description" content="Connect a database, then ask about its data in the chat.">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,100..900&display=block" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+button,input,textarea,select{font:inherit;color:inherit;background:none;border:0}
+svg{display:block}
+[hidden]{display:none!important}
+
+:root{
+  --glass:rgba(41,41,43,.955);
+  --line:rgba(214,228,255,.14);
+  --soft:rgba(255,255,255,.07);
+  --text:#ECECEF; --muted:#98999C; --dim:#77787B;
+  --accent:#F49D70; --warn:#FBBC94; --ok:#8FD3A8;
+}
+html,body{height:100%}
+body{
+  background:#0a0d12;color:var(--text);
+  font-family:Inter,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-size:14px;line-height:1.5;
+  font-synthesis:none;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;
+}
+:focus-visible{outline:2px solid #F8B285;outline-offset:3px;border-radius:6px}
+a{color:inherit;text-decoration:none}
+button{cursor:pointer}
+
+.bg{position:fixed;inset:0;width:100%;height:100%;object-fit:cover;z-index:0}
+.shade{position:fixed;inset:0;z-index:0;background:linear-gradient(180deg,rgba(8,10,14,.55),rgba(8,10,14,.78))}
+.page{position:relative;z-index:1;height:100%;overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.25) transparent}
+.wrap{max-width:900px;margin:0 auto;padding:clamp(18px,3.2vh,34px) clamp(16px,4vw,32px) 64px}
+
+.nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:clamp(26px,5vh,54px)}
+.brand{display:inline-flex;align-items:center;gap:12px;font-size:18.5px;font-weight:500;letter-spacing:-.0154em;text-shadow:0 1px 10px rgba(0,0,0,.3)}
+.brand svg{width:34px;height:34px}
+.links{display:flex;gap:6px}
+.links a{padding:7px 14px;border-radius:10px;font-size:15px;color:#D5D5D8;transition:background .18s ease}
+.links a:hover{background:var(--soft)}
+.links a[aria-current]{background:rgba(255,255,255,.11);color:#fff}
+
+h1{font-size:clamp(26px,4.2vw,36px);font-weight:410;letter-spacing:.0018em;line-height:1.12;text-shadow:0 2px 22px rgba(0,0,0,.3)}
+.lede{margin-top:10px;margin-bottom:26px;max-width:62ch;color:#D5D5D8;font-size:15px;text-shadow:0 1px 12px rgba(0,0,0,.35)}
+
+.card{
+  border-radius:22px;padding:clamp(16px,2.4vw,24px);margin-bottom:14px;
+  background:var(--glass);-webkit-backdrop-filter:blur(26px) saturate(112%);backdrop-filter:blur(26px) saturate(112%);
+  box-shadow:inset 0 0 0 1px var(--line),0 22px 60px rgba(0,0,0,.30);
+}
+.card h2{font-size:15px;font-weight:600;letter-spacing:-.005em}
+.card h2 small{font-weight:400;color:var(--muted);font-size:14px;margin-left:6px}
+.hint{color:var(--muted);font-size:14px}
+.row{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.gap{margin-top:16px}
+.grow{flex:1}
+label.cap{display:block;font-size:13.5px;font-weight:500;color:var(--muted);margin-bottom:6px}
+
+.grid{display:grid;grid-template-columns:repeat(6,1fr);gap:12px 12px}
+.grid>div{grid-column:span 3;min-width:0}
+.grid>.wide{grid-column:span 6}
+.grid>.port{grid-column:span 1}
+.grid>.host{grid-column:span 5}
+
+.in,select{
+  width:100%;padding:10px 12px;border-radius:12px;background:rgba(0,0,0,.26);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.09);color:var(--text);font-size:14px;line-height:1.45;
+}
+.in::placeholder{color:#77787B}
+.in:focus,select:focus{outline:none;box-shadow:inset 0 0 0 1px rgba(244,157,112,.7)}
+select{padding-right:30px;appearance:none;cursor:pointer;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 5'%3E%3Cpath fill='%2398999C' d='M1 0l3 3 3-3 1 1-4 4-4-4Z'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 11px center;background-size:8px}
+select option{background:#1c1c1f}
+.check{display:inline-flex;align-items:center;gap:8px;font-size:13.5px;color:#D5D5D8;cursor:pointer}
+.check input{width:16px;height:16px;accent-color:#F49D70}
+
+.btn{
+  height:42px;padding:0 22px;border-radius:12px;font-size:14px;font-weight:520;color:#1d1d20;
+  background:linear-gradient(163deg,#FBBC94,#F49D70 46%,#E88654);box-shadow:0 3px 12px rgba(210,110,60,.34);
+}
+.btn:hover{filter:brightness(1.07)} .btn:active{transform:scale(.98)}
+.btn[disabled]{color:#8B8C8E;background:rgba(255,255,255,.09);box-shadow:none;cursor:default;filter:none;transform:none}
+.btn.ghost{color:var(--text);background:linear-gradient(180deg,#3d3d3f,#1d1d20);box-shadow:inset 0 1px 0 rgba(255,255,255,.10)}
+.mini{height:32px;padding:0 14px;border-radius:9px;font-size:13.5px;font-weight:500;color:#D5D5D8;background:rgba(255,255,255,.08)}
+.mini:hover{background:rgba(255,255,255,.15);color:#fff}
+.mini.go{color:#1d1d20;background:var(--accent)}
+
+.status{display:flex;align-items:center;gap:9px;color:var(--muted);font-size:14px;min-height:22px}
+.status i{width:7px;height:7px;border-radius:50%;background:var(--accent);animation:pulse 1s ease-in-out infinite}
+.status.err{color:var(--warn)} .status.ok{color:var(--ok)}
+.status.err i,.status.ok i,.status.idle i{display:none}
+@keyframes pulse{0%,100%{opacity:.25}50%{opacity:1}}
+
+.conn{padding:11px 13px;border-radius:13px;background:rgba(255,255,255,.04);margin-top:8px}
+.conn .row{gap:8px 12px}
+.conn b{font-weight:500}
+.conn small{display:block;color:var(--muted);font-size:13.5px;overflow-wrap:anywhere}
+.tables{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.tables span{padding:2px 9px;border-radius:8px;font-size:13.5px;background:rgba(255,255,255,.07)}
+.tables span i{font-style:normal;color:var(--dim);margin-left:5px}
+.empty{color:var(--muted);font-size:13.5px;margin-top:8px}
+.rules{margin-top:10px;display:grid;gap:5px;font-size:14px;color:#C9C9CC}
+.rules li{list-style:none;padding-left:18px;position:relative}
+.rules li::before{content:"";position:absolute;left:3px;top:.6em;width:6px;height:6px;border-radius:50%;background:var(--ok)}
+
+@media (max-width:620px){
+  .grid>div,.grid>.host{grid-column:span 6}
+  .grid>.port{grid-column:span 6}
+  .links a{padding:7px 10px;font-size:14px}
+  .brand span{display:none}
+}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+/* Five links do not fit beside the logo on a phone: they scroll sideways inside the bar instead. */
+.nav{gap:12px}
+.links{min-width:0;overflow-x:auto;scrollbar-width:none}
+.links::-webkit-scrollbar{display:none}
+.links a{flex:none}
+@media (max-width:620px){.links a{padding:7px 9px;font-size:13.5px}}
+a.mini{display:inline-flex;align-items:center}
+</style>
+</head>
+<body>
+<video class="bg" autoplay muted loop playsinline preload="auto"
+  src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260826_124724_bc041163-d651-425f-aea3-2acc1efc2c96.mp4"></video>
+<div class="shade"></div>
+
+<div class="page"><div class="wrap">
+  <header class="nav">
+    <a class="brand" href="index.html" aria-label="Fastshot home">
+      <svg viewBox="0 0 34 34" aria-hidden="true"><circle cx="17" cy="17" r="17" fill="#9C86CE"/><circle cx="17" cy="17" r="8.6" fill="#fff"/><circle cx="17" cy="17" r="3.7" fill="#151519"/></svg>
+      <span>Fastshot</span>
+    </a>
+    <nav class="links" aria-label="Primary">
+      <a href="index.html">Chat</a>
+      <a href="workspaces.html">Workspaces</a>
+      <a href="documents.html">Documents</a>
+      <a href="databases.html" aria-current="page">Databases</a>
+    </nav>
+  </header>
+
+  <h1>Databases</h1>
+  <p class="lede">Connect a database here, then pick it in the chat's model menu and ask about its data. A model on this machine looks at the tables and runs read-only queries to answer.</p>
+
+  <section class="card">
+    <h2>Connections <small id="count"></small></h2>
+    <div id="list"></div>
+    <div class="status idle gap" id="list-status" hidden><i></i><span></span></div>
+  </section>
+
+  <section class="card">
+    <div class="row">
+      <h2 class="grow" id="form-title">Add a connection</h2>
+      <button type="button" class="mini" id="cancel" hidden>Cancel editing</button>
+    </div>
+    <form id="form" class="gap" autocomplete="off" onsubmit="return false">
+      <div class="grid">
+        <div><label class="cap" for="name">Name</label><input class="in" id="name" placeholder="sales-db" required></div>
+        <div><label class="cap" for="engine">Kind</label><select id="engine"></select></div>
+
+        <div class="wide" data-for="sqlite"><label class="cap" for="path">SQLite file on this machine</label>
+          <input class="in" id="path" placeholder="/home/me/data/shop.db"></div>
+
+        <div class="host" data-for="server"><label class="cap" for="host">Host</label><input class="in" id="host" placeholder="127.0.0.1"></div>
+        <div class="port" data-for="server"><label class="cap" for="port">Port</label><input class="in" id="port" inputmode="numeric" placeholder="5432"></div>
+        <div data-for="server"><label class="cap" for="user">User</label><input class="in" id="user" placeholder="readonly_user"></div>
+        <div data-for="server"><label class="cap" for="password">Password</label><input class="in" id="password" type="password" autocomplete="new-password"></div>
+        <div data-for="server"><label class="cap" for="database">Database</label><input class="in" id="database" placeholder="sales"></div>
+        <div data-for="postgresql"><label class="cap" for="schema">Schema</label><input class="in" id="schema" placeholder="public"></div>
+        <div class="wide" data-for="server"><label class="check"><input type="checkbox" id="ssl"> Encrypt the connection (SSL), without checking the server's certificate</label></div>
+      </div>
+      <p class="hint gap" id="driver" hidden></p>
+      <div class="row gap">
+        <span class="grow"></span>
+        <button type="button" class="btn ghost" id="test">Test</button>
+        <button type="submit" class="btn" id="save">Save</button>
+      </div>
+      <div class="status idle gap" id="status" hidden><i></i><span></span></div>
+    </form>
+  </section>
+
+  <section class="card">
+    <h2>How it is kept safe</h2>
+    <ul class="rules">
+      <li>Only queries that read are run. Anything that could change the database is refused before it is sent, and the connection itself is opened read-only.</li>
+      <li>Only models on this machine are used. Rows never go to a cloud model.</li>
+      <li>Passwords stay on the server, in <code>backend/data/sql/</code>. They are never sent back to this page.</li>
+      <li>Still, give the app a database user that can only read.</li>
+    </ul>
+  </section>
+</div></div>
+
+<script>
+(() => {
+  const API = (window.FASTSHOT_API || '').replace(/\/$/, '');
+  const $ = (id) => document.getElementById(id);
+  const node = (tag, cls, text) => {
+    const n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text != null) n.textContent = text;
+    return n;
+  };
+  const PORTS = { postgresql: '5432', mysql: '3306' };
+  const state = { connections: [], engines: [], editing: null };
+
+  function status(el, text, kind) {
+    el.hidden = !text;
+    el.className = 'status gap ' + (kind || '');
+    el.querySelector('span').textContent = text || '';
+  }
+  async function call(path, options) {
+    let res;
+    try {
+      res = await fetch(API + path, options);
+    } catch {
+      throw new Error('The backend is not reachable. Start it with ./run.sh.');
+    }
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(typeof data.detail === 'string' ? data.detail : 'Request failed (' + res.status + ')');
+    return data;
+  }
+  const about = (c) => c.engine === 'sqlite' ? c.path
+    : c.user + '@' + c.host + (c.port ? ':' + c.port : '') + '/' + c.database + (c.schema ? ' · schema ' + c.schema : '');
+
+  /* ── The list ── */
+  async function load() {
+    try {
+      const data = await call('/api/sql/connections');
+      state.connections = data.connections;
+      state.engines = data.engines;
+      status($('list-status'), '');
+    } catch (err) {
+      status($('list-status'), err.message, 'err');
+    }
+    renderEngines();
+    renderList();
+  }
+
+  function renderList() {
+    const list = $('list');
+    list.replaceChildren();
+    $('count').textContent = state.connections.length ? String(state.connections.length) : '';
+    if (!state.connections.length) {
+      list.append(node('p', 'empty', 'No databases yet. Add one below.'));
+      return;
+    }
+    for (const c of state.connections) {
+      const box = node('div', 'conn');
+      const row = node('div', 'row');
+      const text = node('div', 'grow');
+      text.append(node('b', '', c.id), node('small', '', c.label + ' · ' + about(c)));
+      const tables = node('button', 'mini', 'Tables');
+      const edit = node('button', 'mini', 'Edit');
+      const remove = node('button', 'mini', 'Remove');
+      for (const b of [tables, edit, remove]) b.type = 'button';
+      row.append(text, tables, edit, remove);
+      const shown = node('div', 'tables');
+      box.append(row, shown);
+      list.append(box);
+
+      tables.addEventListener('click', async () => {
+        shown.replaceChildren(node('span', '', 'Reading…'));
+        try {
+          const data = await call('/api/sql/connections/' + encodeURIComponent(c.id) + '/tables');
+          shown.replaceChildren();
+          if (!data.tables.length) shown.append(node('span', '', 'No tables'));
+          for (const t of data.tables) {
+            const pill = node('span', '', t.name);
+            if (!/table/i.test(t.type)) pill.append(node('i', '', t.type.toLowerCase()));
+            shown.append(pill);
+          }
+        } catch (err) {
+          shown.replaceChildren(node('span', '', err.message));
+        }
+      });
+      edit.addEventListener('click', () => startEdit(c));
+      remove.addEventListener('click', async () => {
+        if (!confirm('Remove the connection "' + c.id + '"? The database itself is not touched.')) return;
+        try {
+          await call('/api/sql/connections/' + encodeURIComponent(c.id), { method: 'DELETE' });
+          if (state.editing === c.id) stopEdit();
+          await load();
+        } catch (err) {
+          status($('list-status'), err.message, 'err');
+        }
+      });
+    }
+  }
+
+  /* ── The form ── */
+  function renderEngines() {
+    const select = $('engine');
+    const was = select.value;
+    select.replaceChildren();
+    for (const e of state.engines) {
+      const opt = node('option', '', e.label + (e.missing ? ' (needs ' + e.missing + ')' : ''));
+      opt.value = e.id;
+      select.append(opt);
+    }
+    if (was && state.engines.some((e) => e.id === was)) select.value = was;
+    else if (state.engines.some((e) => e.id === 'postgresql')) select.value = 'postgresql';
+    showFields();
+  }
+  function showFields() {
+    const engine = $('engine').value;
+    document.querySelectorAll('[data-for]').forEach((el) => {
+      const f = el.dataset.for;
+      el.hidden = !(f === engine || (f === 'server' && engine && engine !== 'sqlite'));
+    });
+    $('port').placeholder = PORTS[engine] || '';
+    const e = state.engines.find((x) => x.id === engine);
+    $('driver').hidden = !(e && e.missing);
+    if (e && e.missing) {
+      $('driver').textContent = e.label + ' needs the Python package ' + e.missing
+        + ' on the server: pip install -r requirements.txt, then restart.';
+    }
+  }
+  $('engine').addEventListener('change', showFields);
+
+  function form() {
+    const value = (id) => $(id).value.trim();
+    return {
+      name: value('name'), engine: $('engine').value, path: value('path'),
+      host: value('host'), port: value('port') || null, user: value('user'), password: $('password').value,
+      database: value('database'), schema: value('schema'), ssl: $('ssl').checked,
+      original_id: state.editing,
+    };
+  }
+  function startEdit(c) {
+    state.editing = c.id;
+    $('form-title').textContent = 'Change ' + c.id;
+    $('cancel').hidden = false;
+    $('name').value = c.id;
+    $('engine').value = c.engine;
+    for (const id of ['path', 'host', 'user', 'database', 'schema']) $(id).value = c[id] || '';
+    $('port').value = c.port || '';
+    $('password').value = '';
+    $('password').placeholder = c.password ? 'Unchanged' : '';
+    $('ssl').checked = !!c.ssl;
+    showFields();
+    status($('status'), '');
+    $('name').focus();
+  }
+  function stopEdit() {
+    state.editing = null;
+    $('form-title').textContent = 'Add a connection';
+    $('cancel').hidden = true;
+    $('password').placeholder = '';
+    $('form').reset();
+    renderEngines();
+    status($('status'), '');
+  }
+  $('cancel').addEventListener('click', stopEdit);
+
+  async function submit(save) {
+    const body = form();
+    if (!body.name) { status($('status'), 'Give the connection a name.', 'err'); $('name').focus(); return; }
+    $('test').disabled = $('save').disabled = true;
+    status($('status'), save ? 'Connecting, then saving…' : 'Connecting…');
+    try {
+      const data = await call('/api/sql/connections' + (save ? '' : '/test'), {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+      });
+      if (save) {
+        stopEdit();
+        status($('status'), 'Saved "' + data.id + '". Pick it in the chat\'s model menu.', 'ok');
+        await load();
+      } else {
+        status($('status'), 'It works: connected to the ' + data.about + '.', 'ok');
+      }
+    } catch (err) {
+      status($('status'), err.message, 'err');
+    } finally {
+      $('test').disabled = $('save').disabled = false;
+    }
+  }
+  $('test').addEventListener('click', () => submit(false));
+  $('form').addEventListener('submit', () => submit(true));
+
+  load();
+})();
+</script>
+</body>
+</html>

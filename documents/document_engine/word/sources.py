@@ -58,18 +58,18 @@ def _excel(name: str, data: bytes) -> str:
     return "\n\n".join(parts)
 
 
-def read_source(name: str, data: bytes) -> tuple[str, bool]:
+def read_source(name: str, data: bytes, limit: int = MAX_CHARS) -> tuple[str, bool]:
     """Returns (text, truncated). Raises UnsupportedDocument with a reason the user can act on."""
     suffix = PurePath(name).suffix.lower()
     if suffix in (".xlsx", ".xlsm"):
         text = _excel(name, data).strip()
         if not text:
             raise UnsupportedDocument(f"{name} has no values in it")
-        return text[:MAX_CHARS], len(text) > MAX_CHARS
+        return text[:limit], len(text) > limit
     if suffix == ".xls":
         raise UnsupportedDocument(f"{name} is an old .xls file. Save it as .xlsx and add it again.")
     if suffix == ".doc":
         raise UnsupportedDocument(f"{name} is an old .doc file. Save it as .docx and add it again.")
     if suffix in _PICTURES:
         raise UnsupportedDocument(f"{name} is a picture. This tab reads text: PDF, Word, Excel, CSV and text files.")
-    return extract_text(name, data)
+    return extract_text(name, data, limit)

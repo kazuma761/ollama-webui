@@ -127,6 +127,34 @@ invoices:
                        # pages take too long.
   date_format: "%d-%b-%Y"   # dates in the sheet: 31-Mar-2026
 
+# The SQL connector: with a database picked in the chat, the model answers
+# from it by calling tools (list tables, read a table's columns, run a
+# read-only query). Databases are added on the Databases page. Local models
+# only, always: rows never leave this machine. The model must call tools:
+# `ollama show qwen3:14b` lists "tools" under Capabilities.
+sql:
+  model: documents     # id of a local model below (qwen3:14b). Used with Auto, and when the
+                       # picked model cannot call tools. Empty = the first local model that can.
+  max_rows: 200        # rows one query can give the model
+  timeout: 30          # seconds a query may run before the database stops it
+  max_rounds: 8        # tool calls in a row before the model must answer with what it has
+
+# Workspaces: a team adds its documents once (PDF, Word, Excel, CSV, text) on
+# the Workspaces page; picked in the chat's left panel, every question is
+# answered from the passages that match it, with the sources shown. Local
+# models only, always. Search by meaning needs an embedding model:
+#   ollama pull nomic-embed-text
+# Without one (or with embed_model empty) passages are found by keywords.
+workspaces:
+  embed_host: local
+  embed_model: nomic-embed-text
+  query_prefix: "search_query: "        # what nomic-embed-text expects; empty for other models
+  document_prefix: "search_document: "
+  chunk_chars: 1200    # length of one passage
+  overlap_chars: 200   # each passage repeats this much of the one before
+  top_k: 6             # passages given to the model with each question
+  max_upload_mb: 50    # largest file that can be added
+
 # Picked when the user has not chosen a model yet (and Auto is off). Falls back to the first
 # available model if this one is not pulled.
 default_model: general

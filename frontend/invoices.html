@@ -53,7 +53,7 @@ h1{font-size:clamp(26px,4.2vw,36px);font-weight:410;letter-spacing:.0018em;line-
 /* The tabs of the documents section; the first four open the Word page */
 .modes{display:flex;flex-wrap:wrap;gap:6px;margin:26px 0 14px}
 .mode{
-  display:inline-flex;align-items:center;height:36px;padding:0 15px;border-radius:11px;font-size:13.5px;font-weight:500;color:#B9BABD;
+  display:inline-flex;align-items:center;height:38px;padding:0 16px;border-radius:11px;font-size:13.5px;font-weight:500;color:#B9BABD;
   background:linear-gradient(180deg,rgba(255,255,255,.088),rgba(255,255,255,.038));border:1px solid rgba(255,255,255,.06);
 }
 .mode:hover{color:#fff}
@@ -65,8 +65,8 @@ h1{font-size:clamp(26px,4.2vw,36px);font-weight:410;letter-spacing:.0018em;line-
   box-shadow:inset 0 0 0 1px var(--line),0 22px 60px rgba(0,0,0,.30);
 }
 .card h2{font-size:15px;font-weight:600;letter-spacing:-.005em}
-.card h2 small{font-weight:400;color:var(--muted);font-size:13px;margin-left:6px}
-.hint{color:var(--muted);font-size:13px}
+.card h2 small{font-weight:400;color:var(--muted);font-size:14px;margin-left:6px}
+.hint{color:var(--muted);font-size:14px}
 .row{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
 .gap{margin-top:16px}
 .grow{flex:1}
@@ -78,7 +78,7 @@ h1{font-size:clamp(26px,4.2vw,36px);font-weight:410;letter-spacing:.0018em;line-
 .drop:hover,.drop.over{background:rgba(255,255,255,.07);border-color:var(--accent)}
 .drop svg{width:22px;height:22px;flex:none;color:var(--muted)}
 .drop b{display:block;font-weight:500;font-size:14px}
-.drop span{display:block;color:var(--muted);font-size:12.5px}
+.drop span{display:block;color:var(--muted);font-size:13.5px}
 
 select{
   max-width:100%;padding:10px 30px 10px 12px;border-radius:12px;background:rgba(0,0,0,.26);appearance:none;cursor:pointer;
@@ -90,48 +90,48 @@ select:focus{outline:none;box-shadow:inset 0 0 0 1px rgba(244,157,112,.7)}
 select option{background:#1c1c1f}
 
 .btn{
-  height:40px;padding:0 20px;border-radius:12px;font-size:14px;font-weight:520;color:#1d1d20;
+  height:42px;padding:0 22px;border-radius:12px;font-size:14px;font-weight:520;color:#1d1d20;
   background:linear-gradient(163deg,#FBBC94,#F49D70 46%,#E88654);box-shadow:0 3px 12px rgba(210,110,60,.34);
 }
 .btn:hover{filter:brightness(1.07)} .btn:active{transform:scale(.98)}
-.btn[disabled]{opacity:.45;cursor:default;filter:none;transform:none}
+.btn[disabled]{color:#8B8C8E;background:rgba(255,255,255,.09);box-shadow:none;cursor:default;filter:none;transform:none}
 .btn.ghost{color:var(--text);background:linear-gradient(180deg,#3d3d3f,#1d1d20);box-shadow:inset 0 1px 0 rgba(255,255,255,.10)}
-.mini{height:28px;padding:0 10px;border-radius:9px;font-size:12.5px;font-weight:500;color:#D5D5D8;background:rgba(255,255,255,.08)}
+.mini{height:32px;padding:0 14px;border-radius:9px;font-size:13.5px;font-weight:500;color:#D5D5D8;background:rgba(255,255,255,.08)}
 .mini:hover{background:rgba(255,255,255,.15);color:#fff}
 .mini[aria-pressed="true"]{color:#12301f;background:var(--ok)}
-.link{color:var(--muted);font-size:13px;text-decoration:underline;text-underline-offset:3px}
+.link{color:var(--muted);font-size:14px;text-decoration:underline;text-underline-offset:3px}
 .link:hover{color:#fff}
 
-.status{display:flex;align-items:center;gap:9px;color:var(--muted);font-size:13px;min-height:22px}
+.status{display:flex;align-items:center;gap:9px;color:var(--muted);font-size:14px;min-height:22px}
 .status i{width:7px;height:7px;border-radius:50%;background:var(--accent);animation:pulse 1s ease-in-out infinite}
-.status.err{color:var(--warn)} .status.err i,.status.idle i{animation:none;background:currentColor;opacity:.6}
+.status.err{color:var(--warn)} .status.err i,.status.idle i{display:none}
 @keyframes pulse{0%,100%{opacity:.25}50%{opacity:1}}
 
 /* The files waiting to be read */
 .file{display:flex;align-items:center;gap:10px 12px;padding:9px 12px;border-radius:12px;background:rgba(255,255,255,.04);margin-top:6px}
 .file .name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13.5px}
-.file .what{color:var(--muted);font-size:12.5px;text-align:right;max-width:58%}
+.file .what{color:var(--muted);font-size:13.5px;text-align:right;max-width:58%}
 .file.reading .what{color:var(--accent)} .file.done .what{color:var(--ok)} .file.error .what,.file.partial .what{color:var(--warn)}
 .file .x{width:20px;height:20px;border-radius:50%;line-height:1;color:var(--muted);flex:none}
 .file .x:hover{color:#fff;background:rgba(255,255,255,.14)}
 .file .x[disabled]{visibility:hidden}
-.notes{margin:2px 0 0 12px;color:var(--warn);font-size:12.5px}
+.notes{margin:2px 0 0 12px;color:var(--warn);font-size:13.5px}
 
 /* The sheet */
-.legend{display:flex;flex-wrap:wrap;gap:6px 18px;margin-top:10px;font-size:12.5px;color:var(--muted)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 18px;margin-top:10px;font-size:13.5px;color:var(--muted)}
 .legend i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:6px;vertical-align:-1px}
 .k-ok{background:var(--ok)} .k-read{background:rgba(255,255,255,.22)} .k-check{background:var(--accent)} .k-empty{border:1px dashed rgba(255,255,255,.35)}
 .sheet{margin-top:14px;overflow:auto;max-height:min(70vh,760px);border-radius:12px;background:rgba(0,0,0,.26);scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.25) transparent;overscroll-behavior:contain}
-table{border-collapse:separate;border-spacing:0;font-size:13px}
-th{position:sticky;top:0;z-index:2;background:#232326;text-align:left;font-weight:600;font-size:12px;color:#D5D5D8;padding:9px 9px;white-space:nowrap;border-bottom:1px solid rgba(255,255,255,.1)}
+table{border-collapse:separate;border-spacing:0;font-size:14px}
+th{position:sticky;top:0;z-index:2;background:#232326;text-align:left;font-weight:600;font-size:13px;color:#D5D5D8;padding:9px 9px;white-space:nowrap;border-bottom:1px solid rgba(255,255,255,.1)}
 td{padding:3px;border-bottom:1px solid rgba(255,255,255,.06);vertical-align:top}
 th:first-child,td:first-child{position:sticky;left:0;z-index:1;background:#232326}
 th:first-child{z-index:3}
 td.file-cell{padding:7px 9px;min-width:190px;max-width:230px}
 td.file-cell button{display:block;max-width:100%;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-decoration:underline;text-underline-offset:3px;text-decoration-color:rgba(255,255,255,.3)}
 td.file-cell button:hover{text-decoration-color:var(--accent)}
-td.file-cell small{display:block;color:var(--muted);font-size:11.5px;margin-top:1px}
-.cell{display:block;width:100%;padding:6px 7px;border-radius:7px;border-left:3px solid transparent;font-size:13px;line-height:1.35;resize:none;min-height:30px}
+td.file-cell small{display:block;color:var(--muted);font-size:12.5px;margin-top:1px}
+.cell{display:block;width:100%;padding:6px 7px;border-radius:7px;border-left:3px solid transparent;font-size:14px;line-height:1.35;resize:none;min-height:30px}
 .cell:hover{background:rgba(255,255,255,.05)}
 .cell:focus{outline:none;background:rgba(0,0,0,.35);box-shadow:inset 0 0 0 1px rgba(244,157,112,.7)}
 .cell::placeholder{color:#5f6063}
@@ -139,7 +139,7 @@ td.ok .cell{border-left-color:var(--ok)}
 td.check .cell{border-left-color:var(--accent);background:rgba(244,157,112,.16)}
 td.conf{padding:9px 9px;font-variant-numeric:tabular-nums;font-weight:600;white-space:nowrap}
 td.conf.high{color:var(--ok)} td.conf.low{color:var(--warn)}
-td.why{padding:8px 9px;min-width:300px;max-width:360px;color:var(--warn);font-size:12px;line-height:1.4}
+td.why{padding:8px 9px;min-width:300px;max-width:360px;color:var(--warn);font-size:13px;line-height:1.4}
 td.why b{font-weight:600;color:#F3D2BC}
 td.why span{display:block}
 td.why .fine{color:var(--muted)}
@@ -153,9 +153,9 @@ tr.more td.file-cell .again{display:block;max-width:100%;overflow:hidden;text-ov
 tr.checked td.check .cell{background:none;border-left-color:var(--ok)}
 tr.checked td.why{color:var(--muted)}
 .w-xs{min-width:84px} .w-s{min-width:112px} .w-m{min-width:150px} .w-l{min-width:210px} .w-xl{min-width:300px}
-td select.cell{padding:6px 22px 6px 7px;border-radius:7px;background-color:transparent;box-shadow:none;font-size:13px;line-height:1.35;background-position:right 8px center}
+td select.cell{padding:6px 22px 6px 7px;border-radius:7px;background-color:transparent;box-shadow:none;font-size:14px;line-height:1.35;background-position:right 8px center}
 td select.cell:focus{background-color:rgba(0,0,0,.35);box-shadow:inset 0 0 0 1px rgba(244,157,112,.7)}
-.opt{display:inline-flex;align-items:center;gap:8px;color:var(--muted);font-size:13px;cursor:pointer}
+.opt{display:inline-flex;align-items:center;gap:8px;color:var(--muted);font-size:14px;cursor:pointer}
 .opts{display:grid;gap:7px}
 .opt input{appearance:auto;width:15px;height:15px;accent-color:#F49D70}
 
@@ -165,6 +165,15 @@ td select.cell:focus{background-color:rgba(0,0,0,.35);box-shadow:inset 0 0 0 1px
   .file{flex-wrap:wrap} .file .what{max-width:100%;text-align:left}
 }
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+/* Five links do not fit beside the logo on a phone: they scroll sideways inside the bar instead. */
+.nav{gap:12px}
+.links{min-width:0;overflow-x:auto;scrollbar-width:none}
+.links::-webkit-scrollbar{display:none}
+.links a{flex:none}
+@media (max-width:620px){.links a{padding:7px 9px;font-size:13.5px}}
+a.mini{display:inline-flex;align-items:center}
+.back{display:inline-block;margin-bottom:12px;font-size:14px;color:#D5D5D8}
+.back:hover{color:#fff}
 </style>
 </head>
 
@@ -181,21 +190,15 @@ td select.cell:focus{background-color:rgba(0,0,0,.35);box-shadow:inset 0 0 0 1px
     </a>
     <nav class="links" aria-label="Primary">
       <a href="index.html">Chat</a>
+      <a href="workspaces.html">Workspaces</a>
       <a href="documents.html" aria-current="page">Documents</a>
+      <a href="databases.html">Databases</a>
     </nav>
   </header>
 
-  <h1>Invoices into a sheet</h1>
-  <p class="lede">Add invoices as PDFs, Word files, scans or photos. A model on this machine reads the fields, what was bought and the tax breakdown; you check them and download the sheet as Excel or CSV. The files are read and then forgotten: nothing is kept on the server.</p>
-
-  <nav class="modes" aria-label="Documents">
-    <a class="mode" href="documents.html#fill">Fill a template</a>
-    <a class="mode" href="documents.html#edit">Change a document</a>
-    <a class="mode" href="documents.html#create">Write a new one</a>
-    <a class="mode" href="documents.html#library">Template library</a>
-    <a class="mode" href="word.html">Word document</a>
-    <a class="mode" href="invoices.html" aria-current="page">Invoices</a>
-  </nav>
+  <a class="back" href="documents.html">← All document tasks</a>
+  <h1>Read invoices into a sheet</h1>
+  <p class="lede">Add invoices as PDFs, Word files, scans or photos. A model on this machine reads each one: the details, every line and the tax breakdown. You check the rows, then download Excel or CSV. The files are read and forgotten; nothing is kept on the server.</p>
 
   <!-- What goes in -->
   <section class="card narrow" id="inputs">

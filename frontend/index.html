@@ -52,8 +52,8 @@ img,svg{display:block}
   /* Chat (typed text and replies never drop below a readable size) */
   --type-fs:max(12px,calc(12.5*var(--u)));
   --msg-fs:max(13px,calc(13.5*var(--u)));
-  --ui-fs:max(11px,calc(11.5*var(--u)));
-  --ui-sm:max(10px,calc(9.5*var(--u)));
+  --ui-fs:max(12.5px,calc(11.5*var(--u)));
+  --ui-sm:max(11.5px,calc(9.5*var(--u)));
 }
 @supports (height:100dvh){
   :root{--u:min(0.06410256vw,0.12400794dvh);--vu:0.09920635dvh}
@@ -81,45 +81,15 @@ button{cursor:pointer}
   padding:calc(var(--inset-top)*var(--vu)) calc(225*var(--u)) calc(var(--inset-bottom)*var(--vu));
 }
 
-/* ───────── Nav ───────── */
-.nav{
-  position:relative;flex:none;height:calc(43*var(--u));
-  display:flex;align-items:center;justify-content:space-between;
+/* ───────── Top bar: opens the sidebar while it is closed ───────── */
+.nav{position:relative;flex:none;height:calc(43*var(--u));display:flex;align-items:center;gap:8px}
+.top-btn{
+  width:38px;height:38px;border-radius:11px;display:inline-flex;align-items:center;justify-content:center;color:#D5D5D8;
+  background:rgba(32,32,35,.82);-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);
+  box-shadow:inset 0 0 0 1px rgba(214,228,255,.14),0 6px 18px rgba(0,0,0,.22);
 }
-.brand{display:inline-flex;align-items:center;gap:calc(var(--brand-gap)*var(--u))}
-.mark{width:calc(var(--mark)*var(--u));height:calc(var(--mark)*var(--u));flex:none}
-.word{
-  font-family:var(--font-display);font-variation-settings:"opsz" 32;
-  font-size:calc(var(--brand-fs)*var(--u));font-weight:var(--w-brand);
-  letter-spacing:var(--brand-ls);line-height:1;
-  transform:translateY(calc(1*var(--u)));
-  text-shadow:0 calc(1*var(--u)) calc(10*var(--u)) rgba(0,0,0,.30);
-}
-.links{
-  position:absolute;left:50%;transform:translateX(-50%);
-  top:calc((50.5 - 41)*var(--u));
-  display:flex;gap:calc(var(--links-gap)*var(--u));
-}
-.links a{
-  font-size:calc(var(--links-fs)*var(--u));font-weight:var(--w-nav);
-  letter-spacing:var(--nav-ls);line-height:1.2;color:#fff;white-space:nowrap;
-  text-shadow:0 calc(1*var(--u)) calc(12*var(--u)) rgba(0,0,0,.32);
-  transition:opacity .18s ease;
-}
-.links a:hover{opacity:.72}
-.cta{
-  align-self:flex-start;margin-top:calc((42 - 41)*var(--u));flex:none;
-  width:calc(var(--cta-w)*var(--u));height:calc(var(--cta-h)*var(--u));
-  border-radius:calc(var(--cta-r)*var(--u));
-  display:inline-flex;align-items:center;justify-content:center;
-  font-size:calc(var(--cta-fs)*var(--u));font-weight:var(--w-cta);letter-spacing:var(--cta-ls);
-  background:linear-gradient(180deg,#3d3d3f 0%,#1d1d20 100%);
-  box-shadow:inset 0 calc(1*var(--u)) 0 rgba(255,255,255,.10),0 calc(2*var(--u)) calc(14*var(--u)) rgba(0,0,0,.28);
-}
-.cta span{transform:translateY(calc(var(--cta-dy)*var(--u)))}
-.cta:hover{filter:brightness(1.16)}
-.cta:active{transform:translateY(1px)}
-.burger,.sheet{display:none}
+.top-btn:hover{color:#fff;background:rgba(48,48,52,.9)}
+.top-btn svg{width:18px;height:18px}
 
 /* ───────── Hero ───────── */
 .hero{
@@ -214,7 +184,7 @@ button{cursor:pointer}
 /* ───────── Model menu ───────── */
 .menu{
   position:absolute;z-index:20;right:calc(-10*var(--u));bottom:calc(100% + 12*var(--u));
-  width:max(230px,calc(250*var(--u)));max-height:min(46vh,340px);overflow-y:auto;scrollbar-width:thin;
+  width:max(270px,calc(280*var(--u)));max-height:min(52vh,420px);overflow-y:auto;scrollbar-width:thin;
   padding:6px;border-radius:14px;
   background:rgba(24,24,27,.97);border:1px solid rgba(255,255,255,.09);
   box-shadow:0 18px 50px rgba(0,0,0,.45);
@@ -226,11 +196,14 @@ button{cursor:pointer}
 .opt:hover,.opt:focus-visible{background:rgba(255,255,255,.07);outline:none}
 .opt-text{flex:1;min-width:0}
 .opt-name{font-size:var(--ui-fs);font-weight:500;color:#ECECEF;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.opt-sub{font-size:var(--ui-sm);color:#8B8C8E;line-height:1.35;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.opt-sub{font-size:var(--ui-sm);color:#8B8C8E;line-height:1.35;margin-top:2px}
 .opt-dot{flex:none;width:6px;height:6px;border-radius:50%;background:transparent}
-.opt[aria-selected="true"] .opt-dot{background:#F49D70}
+.opt[aria-selected="true"] .opt-dot{width:10px;height:5px;margin-bottom:3px;border:solid #F49D70;border-width:0 0 2px 2px;border-radius:0;background:none;transform:rotate(-45deg)}
 .opt[disabled]{cursor:default}
 .opt[disabled] .opt-name{color:#77787B}
+.menu-head{padding:10px 10px 4px;margin-top:4px;border-top:1px solid rgba(255,255,255,.07);font-size:var(--ui-sm);font-weight:500;color:#77787B;text-transform:uppercase;letter-spacing:.04em}
+.menu-link{display:block;padding:8px 10px;border-radius:9px;font-size:var(--ui-sm);color:#F49D70}
+.menu-link:hover{background:rgba(255,255,255,.07)}
 .menu-note{padding:10px;font-size:var(--ui-fs);line-height:1.5;color:#98999C}
 .menu-note code,.msg code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.92em;background:rgba(255,255,255,.08);padding:.1em .35em;border-radius:5px}
 
@@ -294,9 +267,20 @@ button{cursor:pointer}
 .think summary{display:inline-flex;align-items:center;gap:7px;cursor:pointer;list-style:none;font-weight:500;color:#98999C;user-select:none}
 .think summary::-webkit-details-marker{display:none}
 .think summary::before{content:"";width:6px;height:6px;border-radius:50%;background:#F49D70;animation:dot 1s ease-in-out infinite}
-.think.done summary::before{background:#5E5F62;animation:none}
+/* Once finished, the block's marker is a chevron that shows whether it is open, not another dot. */
+.think.done summary::before{width:5px;height:5px;margin:0 2px;border:solid #77787B;border-width:0 1.5px 1.5px 0;border-radius:0;background:none;animation:none;transform:rotate(-45deg);transition:transform .15s ease}
+.think.done[open] summary::before{transform:rotate(45deg)}
 .think-text{margin-top:6px;padding:2px 0 2px 10px;border-left:2px solid rgba(255,255,255,.10);white-space:pre-wrap;line-height:1.5;max-height:8.5em;overflow-y:auto;scrollbar-width:thin}
 .think.done .think-text{max-height:18em}
+/* A database lookup the model made: the query, then what came back. */
+.think.tool .think-text,.think.tool.done .think-text{white-space:normal;max-height:none}
+.tool pre{margin:0 0 6px;white-space:pre-wrap;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.95em;color:#C9C9CC}
+.tool .tool-err{color:#FBBC94}
+.tool .tool-rows{max-height:14em;overflow:auto;scrollbar-width:thin}
+.tool table{border-collapse:collapse;font-size:.95em}
+.tool th,.tool td{padding:2px 8px;border-bottom:1px solid rgba(255,255,255,.07);text-align:left;white-space:nowrap}
+.tool th{color:#98999C;font-weight:500}
+.pill.db{background:rgba(244,157,112,.16);color:#FBBC94}
 /* Caret at the end of a reply that is still being written. */
 .msg.live .body>.txt:last-child::after,.msg.live .body>pre:last-child code::after{
   content:"";display:inline-block;width:.45em;height:1em;margin-left:2px;vertical-align:-.12em;border-radius:1px;
@@ -331,11 +315,197 @@ button{cursor:pointer}
 .logos text{font-family:var(--font-display);font-weight:700;font-size:23px}
 
 /* ═════════ TABLET: fluid desktop, one-row toolbar ═════════ */
+/* ───────── Sidebar (left): new chat, saved chats, workspace, pages, account ───────── */
+:root{--sb:264px}
+.sb{
+  position:fixed;z-index:40;top:0;bottom:0;left:0;width:var(--sb);
+  display:flex;flex-direction:column;
+  padding:max(10px,env(safe-area-inset-top)) 10px max(10px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left));
+  background:rgba(13,13,15,.9);-webkit-backdrop-filter:blur(24px) saturate(120%);backdrop-filter:blur(24px) saturate(120%);
+  box-shadow:inset -1px 0 0 rgba(255,255,255,.07);
+  color:#ECECEF;font-size:14px;line-height:1.4;
+  transform:translateX(-100%);visibility:hidden;
+  transition:transform .26s var(--e-primary),visibility 0s .26s;
+}
+.sb-open .sb{transform:none;visibility:visible;transition:transform .26s var(--e-primary)}
+.sb ::selection,.settings ::selection{background:rgba(244,157,112,.35)}
+.sb-top{flex:none;display:flex;align-items:center;justify-content:space-between;height:44px;padding:0 0 0 6px;margin-bottom:6px}
+.sb-brand{display:inline-flex;align-items:center;gap:10px;font-size:16px;font-weight:550;letter-spacing:-.015em}
+.sb-brand svg{width:26px;height:26px}
+.sb-icon{flex:none;width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;color:#98999C}
+.sb-icon:hover{background:rgba(255,255,255,.07);color:#fff}
+.sb-icon svg{width:18px;height:18px}
+.sb-item{
+  width:100%;display:flex;align-items:center;gap:11px;height:36px;padding:0 10px;border-radius:10px;
+  text-align:left;color:#D5D5D8;font-size:14px;white-space:nowrap;
+}
+.sb-item:hover,.sb-item:focus-visible{background:rgba(255,255,255,.07);color:#fff;outline:none}
+.sb-item svg{width:18px;height:18px;flex:none;color:#A9AAAD}
+.sb-item span{overflow:hidden;text-overflow:ellipsis}
+.sb-search{display:flex;align-items:center;gap:11px;height:36px;padding:0 10px;border-radius:10px;color:#A9AAAD}
+.sb-search:focus-within{background:rgba(255,255,255,.07);box-shadow:inset 0 0 0 1px rgba(244,157,112,.55)}
+.sb-search svg{width:18px;height:18px;flex:none}
+.sb-search input{flex:1;min-width:0;height:100%;outline:none;font-size:14px;color:#ECECEF}
+.sb-search input::placeholder{color:#8B8C8E}
+.sb-search input::-webkit-search-cancel-button{filter:invert(.6)}
+.sb-scroll{
+  flex:1 1 auto;min-height:0;overflow-y:auto;margin:6px -10px 0;padding:0 10px 8px;
+  scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.18) transparent;
+}
+.sb-label{display:flex;align-items:center;gap:6px;padding:16px 10px 6px;font-size:12px;font-weight:500;color:#8B8C8E}
+/* The workspace every answer is based on: folds to one line. */
+.sb-ws>summary{list-style:none;cursor:pointer;user-select:none;border-radius:8px}
+.sb-ws>summary::-webkit-details-marker{display:none}
+.sb-ws>summary:hover{color:#C9C9CC}
+.sb-ws>summary::after{content:"";width:5px;height:5px;margin-left:2px;border:solid currentColor;border-width:0 1.5px 1.5px 0;transform:rotate(-45deg);transition:transform .15s ease}
+.sb-ws[open]>summary::after{transform:rotate(45deg) translate(-1px,-1px)}
+.sb-ws-now{margin-left:auto;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#CDBFF0;font-weight:500}
+.spaces-list{display:flex;flex-direction:column;gap:1px}
+.space{width:100%;display:flex;align-items:center;gap:10px;text-align:left;padding:6px 10px;border-radius:10px}
+.space:hover,.space:focus-visible{background:rgba(255,255,255,.07);outline:none}
+.space[aria-selected="true"]{background:rgba(156,134,206,.16)}
+.space .s-text{flex:1;min-width:0}
+.space .s-name{display:block;font-size:13.5px;color:#D5D5D8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.space[aria-selected="true"] .s-name{color:#fff}
+.space .s-sub{display:block;font-size:12px;color:#8B8C8E}
+.space .s-tick{flex:none;width:10px;height:5px;margin-bottom:3px}
+.space[aria-selected="true"] .s-tick{border:solid #CDBFF0;border-width:0 0 2px 2px;transform:rotate(-45deg)}
+.spaces-empty{padding:4px 10px;font-size:12.5px;color:#8B8C8E}
+.spaces-new{display:flex;gap:6px;margin:6px 0 2px}
+.spaces-new input{flex:1;min-width:0;height:32px;padding:0 10px;border-radius:9px;background:rgba(0,0,0,.3);box-shadow:inset 0 0 0 1px rgba(255,255,255,.09);color:#ECECEF;font-size:13px;outline:none}
+.spaces-new input:focus{box-shadow:inset 0 0 0 1px rgba(244,157,112,.7)}
+.spaces-new input::placeholder{color:#77787B}
+.spaces-new button{flex:none;width:32px;height:32px;border-radius:9px;display:grid;place-items:center;color:#1d1d20;background:#F49D70}
+.spaces-new button svg{width:14px;height:14px}
+.spaces-manage{display:inline-block;padding:6px 10px 2px;font-size:12.5px;color:#F49D70}
+.spaces-manage:hover{text-decoration:underline;text-underline-offset:3px}
+/* Saved chats, newest first, grouped by day. */
+.sb-chat{display:flex;align-items:center;border-radius:10px}
+.sb-chat:hover{background:rgba(255,255,255,.06)}
+.sb-chat.on{background:rgba(255,255,255,.1)}
+.sb-open-chat{
+  flex:1;min-width:0;height:34px;padding:0 4px 0 10px;border-radius:10px;text-align:left;
+  font-size:13.5px;color:#C9C9CC;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.sb-chat.on .sb-open-chat,.sb-open-chat:hover{color:#fff}
+.sb-open-chat:focus-visible{outline-offset:-2px}
+.sb-del{flex:none;width:28px;height:28px;margin-right:3px;border-radius:8px;display:grid;place-items:center;color:#8B8C8E;opacity:0}
+.sb-del svg{width:15px;height:15px}
+.sb-chat:hover .sb-del,.sb-chat.on .sb-del,.sb-del:focus-visible{opacity:1}
+.sb-del:hover{color:#FBBC94;background:rgba(255,255,255,.08)}
+@media (hover:none){.sb-del{opacity:1}}
+.sb-empty{padding:4px 10px;font-size:13px;color:#8B8C8E;line-height:1.5}
+/* Account: settings, and the Admin panel once signed in as admin. */
+.sb-foot{flex:none;position:relative;padding-top:8px;box-shadow:0 -1px 0 rgba(255,255,255,.06)}
+.sb-user{width:100%;display:flex;align-items:center;gap:10px;height:48px;padding:0 8px;border-radius:12px;text-align:left}
+.sb-user:hover,.sb-user[aria-expanded="true"]{background:rgba(255,255,255,.07)}
+.avatar{flex:none;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-size:13px;font-weight:600;color:#1d1d20;background:#9C86CE}
+.is-admin .avatar{background:#F49D70}
+.sb-user .u-text{flex:1;min-width:0}
+.sb-user b{display:block;font-weight:500;font-size:14px}
+.sb-user small{display:block;font-size:12px;color:#8B8C8E}
+.sb-user>svg{width:14px;height:14px;flex:none;color:#8B8C8E}
+.user-menu{
+  position:absolute;left:0;right:0;bottom:calc(100% + 6px);padding:6px;border-radius:14px;
+  background:rgba(26,26,29,.98);box-shadow:inset 0 0 0 1px rgba(255,255,255,.09),0 18px 50px rgba(0,0,0,.45);
+}
+.user-menu hr{border:0;height:1px;margin:5px 4px;background:rgba(255,255,255,.08)}
+.sb-scrim{display:none}
+@media (min-width:1181px){
+  .sb-open .nav>*{visibility:hidden}
+  .frame{transition:left .26s var(--e-primary),padding .26s var(--e-primary)}
+  .sb-open .frame{
+    left:var(--sb);
+    padding-left:max(32px,calc(225*var(--u) - var(--sb)/2));padding-right:max(32px,calc(225*var(--u) - var(--sb)/2));
+  }
+}
+@media (max-width:1180px){
+  .sb{width:min(300px,86vw);box-shadow:inset -1px 0 0 rgba(255,255,255,.07),24px 0 60px rgba(0,0,0,.45)}
+  .sb-open .sb-scrim{display:block;position:fixed;inset:0;z-index:39;background:rgba(0,0,0,.45)}
+}
+
+/* ───────── Settings ───────── */
+.settings{
+  margin:auto;width:min(880px,calc(100vw - 32px));height:min(660px,calc(100vh - 48px));padding:0;border:0;border-radius:20px;
+  color:#ECECEF;background:#18181b;font-size:14px;line-height:1.5;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.09),0 30px 80px rgba(0,0,0,.55);
+}
+.settings::backdrop{background:rgba(5,6,9,.6);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
+.settings[open]{display:flex;flex-direction:column}
+.set-head{flex:none;display:flex;align-items:center;justify-content:space-between;padding:14px 14px 10px 24px}
+.set-head h2{font-size:17px;font-weight:600;letter-spacing:-.01em}
+.set-body{flex:1;min-height:0;display:flex;gap:20px;padding:4px 24px 24px 14px}
+.set-tabs{flex:none;width:176px;display:flex;flex-direction:column;gap:2px}
+.set-tabs .sb-item[aria-selected="true"]{background:rgba(255,255,255,.1);color:#fff}
+.set-panel{flex:1;min-width:0;overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.18) transparent;padding-right:4px}
+.set-group+.set-group{margin-top:22px;padding-top:20px;border-top:1px solid rgba(255,255,255,.07)}
+.set-group h3{font-size:14.5px;font-weight:600;margin-bottom:3px}
+.set-hint{color:#98999C;font-size:13.5px;max-width:62ch}
+.set-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:12px}
+.set-in{
+  flex:1;min-width:180px;max-width:340px;height:38px;padding:0 12px;border-radius:10px;font-size:14px;
+  background:rgba(0,0,0,.3);box-shadow:inset 0 0 0 1px rgba(255,255,255,.1);outline:none;
+}
+.set-in:focus{box-shadow:inset 0 0 0 1px rgba(244,157,112,.7)}
+.set-btn{height:38px;padding:0 16px;border-radius:10px;font-weight:500;color:#1d1d20;background:#F49D70}
+.set-btn:hover{filter:brightness(1.07)}
+.set-btn:disabled{opacity:.5;cursor:default;filter:none}
+.set-btn.ghost{color:#ECECEF;background:rgba(255,255,255,.08)}
+.set-btn.ghost:hover{background:rgba(255,255,255,.13)}
+.set-btn.danger{color:#FBBC94;background:rgba(244,120,90,.13)}
+.set-btn.danger:hover{background:rgba(244,120,90,.2)}
+.set-status{margin-top:8px;font-size:13px;color:#98999C}
+.set-status.err{color:#FBBC94}
+.set-status.ok{color:#8FD3A8}
+.set-panel.embed{overflow:hidden;padding:0}
+.set-iframe{display:block;width:100%;height:100%;border:0;background:transparent}
+@media (max-width:640px){
+  .settings{width:calc(100vw - 16px);height:calc(100vh - 16px)}
+  .set-body{flex-direction:column;gap:10px;padding:0 14px 14px}
+  .set-tabs{width:auto;flex-direction:row}
+  .set-tabs .sb-item{width:auto}
+}
+
+/* Sources under an answer from a workspace. */
+.sources{margin-top:10px;padding-top:8px;border-top:1px solid rgba(255,255,255,.07);font-size:var(--ui-sm);color:#98999C}
+.sources-head{margin-bottom:4px}
+.sources summary{cursor:pointer;list-style:none;padding:3px 0;color:#C9C9CC}
+.sources summary::-webkit-details-marker{display:none}
+.sources summary b{color:#F49D70;font-weight:500;margin-right:4px}
+.sources summary span{color:#8B8C8E}
+.sources .src-text{margin:4px 0 8px;padding:2px 0 2px 10px;border-left:2px solid rgba(255,255,255,.10);white-space:pre-wrap;line-height:1.5;max-height:12em;overflow-y:auto}
+.pill.ws{background:rgba(156,134,206,.18);color:#CDBFF0}
+
+/* A chart drawn from the create_chart skill */
+.chart{margin:4px 0 6px;padding:10px 12px 8px;border-radius:12px;background:rgba(0,0,0,.22);max-width:640px}
+.chart-title{font-size:var(--ui-fs);font-weight:500;color:#ECECEF;margin-bottom:4px}
+.chart svg{width:100%;height:auto;display:block}
+.chart .c-grid{stroke:rgba(255,255,255,.07)}
+.chart .c-zero{stroke:rgba(255,255,255,.28)}
+.chart .c-label{fill:#98999C;font-size:11px;font-family:inherit}
+.chart-foot{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;margin-top:4px;font-size:var(--ui-sm);color:#98999C}
+.chart-key::before{content:"";display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px;background:var(--c)}
+.chart-axis{font-style:italic}
+.chart-copy{margin-left:auto;padding:3px 10px;border-radius:8px;color:#D5D5D8;background:rgba(255,255,255,.07)}
+.chart-copy:hover{background:rgba(255,255,255,.14)}
+
+/* Readability floors. The design scales with the window (--u), which on a laptop screen made the
+   composer's text 8-10px. Positions stay as designed; text, chips and their padding get a minimum. */
+.ph{font-size:max(13px,calc(var(--ph-fs)*var(--u)))}
+.chip{
+  width:auto;min-width:calc(var(--cw)*var(--u));height:max(30px,calc(var(--chip-h)*var(--u)));
+  padding:0 max(11px,calc(11*var(--u))) 0 max(10px,calc(var(--pl)*var(--u)));gap:max(5px,calc(var(--ig)*var(--u)));
+  font-size:max(11.5px,calc(var(--chip-fs)*var(--u)));
+}
+.chip svg{width:max(12px,calc(var(--iw)*var(--u)))}
+.chip span{transform:none}
+.model{font-size:max(12.5px,calc(var(--son-fs)*var(--u)))}
+.model svg{width:max(8px,calc(6.8*var(--u)))}
+.attach svg{width:max(19px,calc(19.79*var(--u)))}
+
 @media (min-width:600px) and (max-width:1180px) and (min-height:600px){
   :root{--u:1px}
   .frame{padding:clamp(24px,3.4vh,44px) clamp(28px,4.2vw,60px) clamp(26px,4.4vh,56px)}
-  .links{gap:clamp(18px,3.4vw,50px)}
-  .links a{font-size:clamp(15px,2vw,21.69px)}
   .h1{font-size:clamp(27px,4.3vw,44px);line-height:1.12}
   .card,.chat .thread{width:min(100%,clamp(516px,74vw,760px));margin-right:0}
   .card{
@@ -367,29 +537,6 @@ button{cursor:pointer}
     --pad-l:max(clamp(18px,5.2vw,40px),env(safe-area-inset-left));
   }
   .frame,.chat .frame{padding:var(--pad-t) var(--pad-r) var(--pad-b) var(--pad-l)}
-  .links,header .cta{display:none}
-  .mark{width:30px;height:30px}
-  .burger{
-    display:flex;align-items:center;justify-content:center;width:38px;height:38px;border-radius:11px;cursor:pointer;
-    background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.14);
-  }
-  .burger svg{width:17px;height:12px;fill:#fff}
-  .sheet{
-    display:grid;grid-template-rows:0fr;transition:grid-template-rows .32s cubic-bezier(.4,0,.2,1);
-    position:absolute;z-index:30;left:var(--pad-l);right:var(--pad-r);top:calc(var(--pad-t) + 43px + 8px);
-  }
-  #menu:checked~.sheet{grid-template-rows:1fr}
-  .sheet-inner{overflow:hidden;min-height:0}
-  .panel{
-    display:flex;flex-direction:column;gap:2px;padding:10px;border-radius:16px;
-    background:rgba(24,24,27,.86);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);
-    border:1px solid rgba(255,255,255,.09);
-  }
-  .panel a{font-size:15px;padding:10px 10px;border-radius:10px}
-  .panel .cta{
-    display:inline-flex;align-self:stretch;width:auto;height:40px;margin-top:6px;border-radius:11px;font-size:15px;padding:0;
-  }
-  .panel .cta span{transform:none}
   .h1{width:100%;max-width:15ch;white-space:normal;font-size:clamp(29px,7.6vw,50px);line-height:1.14;letter-spacing:-.012em}
   .card,.chat .thread{width:100%;max-width:600px;margin-right:0}
   .card{height:auto;display:flex;flex-direction:column;gap:clamp(16px,4.6vh,34px);padding:clamp(13px,3.4vw,18px);border-radius:20px}
@@ -416,23 +563,13 @@ button{cursor:pointer}
 }
 
 /* ═════════ Entrance (once, on first paint) ═════════ */
-@keyframes e-settle-down{from{opacity:0;transform:translateY(calc(-5*var(--u)))}to{opacity:1;transform:none}}
 @keyframes e-settle-up{from{opacity:0;transform:translateY(calc(6*var(--u)))}to{opacity:1;transform:none}}
-@keyframes e-mark{from{transform:scale(.9)}to{transform:none}}
 @keyframes e-focus{from{opacity:0;transform:translateY(calc(14*var(--u)));filter:blur(calc(6*var(--u)))}to{opacity:1;transform:none;filter:blur(0)}}
 @keyframes e-panel{from{opacity:0;transform:translateY(calc(18*var(--u))) scale(.985)}to{opacity:1;transform:none}}
 @keyframes e-populate{from{opacity:0;transform:translateY(calc(4*var(--u)))}to{opacity:1;transform:none}}
 @keyframes e-send{from{transform:scale(.82)}to{transform:none}}
 @keyframes e-msg{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:no-preference){
-  .anim .brand{animation:e-settle-down .58s var(--e-soft) .06s both}
-  .anim .mark{animation:e-mark .62s var(--e-primary) .06s both}
-  .anim .links a{animation:e-settle-down .50s var(--e-soft) both}
-  .anim .links a:nth-child(1){animation-delay:.16s}
-  .anim .links a:nth-child(2){animation-delay:.21s}
-  .anim .links a:nth-child(3){animation-delay:.26s}
-  .anim .links a:nth-child(4){animation-delay:.31s}
-  .anim .nav>.cta{animation:e-settle-down .55s var(--e-soft) .34s both}
   .anim .h1{animation:e-focus 1s var(--e-primary) .30s both;will-change:transform,opacity}
   .anim .card{animation:e-panel .90s var(--e-primary) .62s both;will-change:transform,opacity}
   .anim .ph{animation:e-populate .50s var(--e-soft) .88s both}
@@ -456,39 +593,136 @@ button{cursor:pointer}
   <video class="stage-video" autoplay muted loop playsinline preload="auto"
     src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260826_124724_bc041163-d651-425f-aea3-2acc1efc2c96.mp4"></video>
 
-  <div class="frame">
-    <input type="checkbox" id="menu" hidden>
-
-    <header class="nav">
-      <a class="brand" href="#" id="brand" aria-label="Fastshot home">
-        <svg class="mark" viewBox="0 0 34 34" aria-hidden="true">
-          <circle cx="17" cy="17" r="17" fill="#9C86CE"/>
-          <circle cx="17" cy="17" r="8.6" fill="#FFFFFF"/>
-          <circle cx="17" cy="17" r="3.7" fill="#151519"/>
-        </svg>
-        <span class="word">Fastshot</span>
+  <aside class="sb" id="sb" aria-label="Sidebar">
+    <div class="sb-top">
+      <a class="sb-brand" href="#" id="brand" aria-label="Fastshot, new chat">
+        <svg viewBox="0 0 34 34" aria-hidden="true"><circle cx="17" cy="17" r="17" fill="#9C86CE"/><circle cx="17" cy="17" r="8.6" fill="#FFFFFF"/><circle cx="17" cy="17" r="3.7" fill="#151519"/></svg>
+        <span>Fastshot</span>
       </a>
-      <nav class="links" aria-label="Primary">
-        <a href="#">Features</a>
-        <a href="#">Examples</a>
-        <a href="documents.html">Docs</a>
-      </nav>
-      <a class="cta" href="#" data-start><span>Get Started</span></a>
-      <label class="burger" for="menu" aria-label="Menu">
-        <svg viewBox="0 0 17 12" aria-hidden="true"><rect width="17" height="2" rx="1"/><rect y="10" width="17" height="2" rx="1"/></svg>
-      </label>
-    </header>
-
-    <div class="sheet">
-      <div class="sheet-inner">
-        <div class="panel">
-          <a href="#">Features</a>
-          <a href="#">Examples</a>
-          <a href="documents.html">Docs</a>
-          <a class="cta" href="#" data-start><span>Get Started</span></a>
-        </div>
-      </div>
+      <button type="button" class="sb-icon" id="sb-close" aria-label="Close sidebar" aria-controls="sb">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="14" height="12" rx="2.5"/><path d="M8 4v12"/></svg>
+      </button>
     </div>
+
+    <button type="button" class="sb-item" id="new-chat">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 4H5.5A1.5 1.5 0 0 0 4 5.5v9A1.5 1.5 0 0 0 5.5 16h9a1.5 1.5 0 0 0 1.5-1.5V10"/><path d="M14.3 3.7a1.4 1.4 0 0 1 2 2L10.5 11.5 8 12l.5-2.5Z"/></svg>
+      <span>New chat</span>
+    </button>
+    <label class="sb-search">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="9" cy="9" r="5"/><path d="M13 13l3.5 3.5"/></svg>
+      <input type="search" id="chat-search" placeholder="Search chats" aria-label="Search chats" autocomplete="off">
+    </label>
+    <nav aria-label="Pages">
+      <a class="sb-item" href="workspaces.html">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5.5A1.5 1.5 0 0 1 4.5 4h3.2l1.6 1.8h6.2A1.5 1.5 0 0 1 17 7.3v7.2a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 3 14.5Z"/></svg>
+        <span>Workspaces</span>
+      </a>
+      <a class="sb-item" href="documents.html">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h5.5L15 6.5V16a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/><path d="M11 3v4h4M7.5 11h5M7.5 14h3"/></svg>
+        <span>Documents</span>
+      </a>
+      <a class="sb-item" href="databases.html">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="10" cy="5.5" rx="5.5" ry="2.2"/><path d="M4.5 5.5v9c0 1.2 2.5 2.2 5.5 2.2s5.5-1 5.5-2.2v-9M4.5 10c0 1.2 2.5 2.2 5.5 2.2s5.5-1 5.5-2.2"/></svg>
+        <span>Databases</span>
+      </a>
+    </nav>
+
+    <div class="sb-scroll">
+      <!-- Workspace: a team's documents, picked here so every answer is based on them. -->
+      <details class="sb-ws" id="spaces">
+        <summary class="sb-label">Workspace <span class="sb-ws-now" id="spaces-now"></span></summary>
+        <div class="spaces-list" id="spaces-list" role="listbox" aria-label="Workspace"></div>
+        <form class="spaces-new" id="spaces-new" onsubmit="return false">
+          <input id="spaces-new-name" placeholder="New workspace" aria-label="New workspace name" maxlength="80">
+          <button type="submit" aria-label="Add workspace"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M7 2v10M2 7h10"/></svg></button>
+        </form>
+        <a class="spaces-manage" id="spaces-manage" href="workspaces.html">Add documents and manage</a>
+      </details>
+      <div id="chat-list" aria-label="Chats"></div>
+    </div>
+
+    <div class="sb-foot">
+      <div class="user-menu" id="user-menu" role="menu" hidden>
+        <button type="button" class="sb-item" role="menuitem" id="open-settings">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M3.5 6h7.5M15 6h1.5M3.5 14h1.5M9 14h7.5"/><circle cx="13" cy="6" r="2"/><circle cx="7" cy="14" r="2"/></svg>
+          <span>Settings</span>
+        </button>
+        <button type="button" class="sb-item" role="menuitem" id="open-admin" hidden>
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><path d="M10 3l5.5 2v4.5c0 3.4-2.3 6-5.5 7.5-3.2-1.5-5.5-4.1-5.5-7.5V5Z"/></svg>
+          <span>Admin panel</span>
+        </button>
+        <hr id="admin-rule" hidden>
+        <button type="button" class="sb-item" role="menuitem" id="admin-out" hidden>
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 4H5.5A1.5 1.5 0 0 0 4 5.5v9A1.5 1.5 0 0 0 5.5 16H8M12 7l3 3-3 3M15 10H8"/></svg>
+          <span>Sign out of admin</span>
+        </button>
+      </div>
+      <button type="button" class="sb-user" id="user-btn" aria-haspopup="menu" aria-expanded="false" aria-controls="user-menu">
+        <span class="avatar" id="avatar" aria-hidden="true">U</span>
+        <span class="u-text"><b id="user-name">User</b><small id="user-sub">Settings</small></span>
+        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8.5 7 5.5l3 3"/></svg>
+      </button>
+    </div>
+  </aside>
+  <div class="sb-scrim" id="sb-scrim" aria-hidden="true"></div>
+
+  <dialog class="settings" id="settings" aria-labelledby="settings-title">
+    <div class="set-head">
+      <h2 id="settings-title">Settings</h2>
+      <button type="button" class="sb-icon" id="settings-close" aria-label="Close settings">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M5.5 5.5l9 9M14.5 5.5l-9 9"/></svg>
+      </button>
+    </div>
+    <div class="set-body">
+      <div class="set-tabs" role="tablist" aria-label="Settings">
+        <button type="button" class="sb-item" role="tab" id="tab-general" aria-controls="panel-general" aria-selected="true">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M3.5 6h7.5M15 6h1.5M3.5 14h1.5M9 14h7.5"/><circle cx="13" cy="6" r="2"/><circle cx="7" cy="14" r="2"/></svg>
+          <span>General</span>
+        </button>
+        <button type="button" class="sb-item" role="tab" id="tab-admin" aria-controls="panel-admin" aria-selected="false" hidden>
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><path d="M10 3l5.5 2v4.5c0 3.4-2.3 6-5.5 7.5-3.2-1.5-5.5-4.1-5.5-7.5V5Z"/></svg>
+          <span>Admin panel</span>
+        </button>
+      </div>
+
+      <section class="set-panel" id="panel-general" role="tabpanel" aria-labelledby="tab-general">
+        <div class="set-group">
+          <h3>Chats</h3>
+          <p class="set-hint" id="chats-hint">Chats are saved in this browser only. Pictures attached to a message are not kept.</p>
+          <div class="set-row"><button type="button" class="set-btn danger" id="clear-chats">Delete all chats</button></div>
+        </div>
+        <div class="set-group">
+          <h3>Admin</h3>
+          <div id="admin-in">
+            <p class="set-hint">Sign in with the admin password (ADMIN_PASSWORD on the server) to turn agent skills on and off and manage memories. It lasts until this tab is closed.</p>
+            <form class="set-row" id="admin-form" onsubmit="return false">
+              <input class="set-in" id="admin-password" type="password" autocomplete="current-password" aria-label="Admin password" placeholder="Admin password">
+              <button type="submit" class="set-btn" id="admin-go">Sign in</button>
+            </form>
+          </div>
+          <div id="admin-on" hidden>
+            <p class="set-hint">Signed in as admin in this tab.</p>
+            <div class="set-row">
+              <button type="button" class="set-btn" id="admin-show">Open the Admin panel</button>
+              <button type="button" class="set-btn ghost" id="admin-out-2">Sign out</button>
+            </div>
+          </div>
+          <p class="set-status" id="admin-status" role="status" hidden></p>
+        </div>
+      </section>
+      <section class="set-panel embed" id="panel-admin" role="tabpanel" aria-labelledby="tab-admin" hidden></section>
+    </div>
+  </dialog>
+
+  <div class="frame">
+    <header class="nav">
+      <button type="button" class="top-btn" id="sb-open" aria-label="Open sidebar" aria-controls="sb" aria-expanded="false">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="14" height="12" rx="2.5"/><path d="M8 4v12"/></svg>
+      </button>
+      <button type="button" class="top-btn" id="top-new" aria-label="New chat">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 4H5.5A1.5 1.5 0 0 0 4 5.5v9A1.5 1.5 0 0 0 5.5 16h9a1.5 1.5 0 0 0 1.5-1.5V10"/><path d="M14.3 3.7a1.4 1.4 0 0 1 2 2L10.5 11.5 8 12l.5-2.5Z"/></svg>
+      </button>
+    </header>
 
     <main class="hero">
       <h1 class="h1">Describe an app. We'll build it.</h1>
@@ -570,7 +804,13 @@ button{cursor:pointer}
   /* Set window.FASTSHOT_API before this script to point at a backend on another origin. */
   const API = (window.FASTSHOT_API || '').replace(/\/$/, '');
   const MODEL_KEY = 'fastshot.model';
-  const MAX_DOC_BYTES = 20 * 1024 * 1024;
+  const DB_KEY = 'fastshot.database';
+  const WS_KEY = 'fastshot.workspace'; /* shared with workspaces.html */
+  const SIDEBAR_KEY = 'fastshot.sidebar';
+  const CHATS_KEY = 'fastshot.chats';
+  const MAX_CHATS = 200;
+  const ADMIN_KEY = 'fastshot.admin'; /* shared with admin.html: this tab only */
+  const MAX_DOC_BYTES = 50 * 1024 * 1024; /* workspaces.max_upload_mb on the server */
   const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 
   const el = {
@@ -579,12 +819,23 @@ button{cursor:pointer}
     send: $('send'), figma: $('figma'), figmaUrl: $('figma-url'),
     fileAny: $('file-any'), fileImg: $('file-img'),
   };
-  const state = { models: [], model: null, offline: false, messages: [], attachments: [], busy: false, abort: null };
-
-  const store = {
-    get() { try { return localStorage.getItem(MODEL_KEY); } catch { return null; } },
-    set(v) { try { localStorage.setItem(MODEL_KEY, v); } catch {} },
+  const state = {
+    models: [], model: null, offline: false, messages: [], attachments: [], busy: false, abort: null,
+    databases: [], database: null, /* a saved connection the model answers from (databases.html) */
+    workspaces: [], workspace: null, /* a workspace whose documents every answer is based on (workspaces.html) */
+    chatId: null, /* the saved chat on screen; null until its first reply */
   };
+
+  const keep = (key) => ({
+    get() { try { return localStorage.getItem(key); } catch { return null; } },
+    set(v) { try { if (v) localStorage.setItem(key, v); else localStorage.removeItem(key); } catch {} },
+  });
+  const store = keep(MODEL_KEY);
+  const dbStore = keep(DB_KEY);
+  const wsStore = keep(WS_KEY);
+  const sidebarStore = keep(SIDEBAR_KEY);
+  state.database = dbStore.get();
+  state.workspace = wsStore.get();
   const node = (tag, cls, text) => {
     const n = document.createElement(tag);
     if (cls) n.className = cls;
@@ -609,7 +860,28 @@ button{cursor:pointer}
       state.model = null;
       state.offline = true;
     }
+    await loadDatabases();
     renderModels();
+  }
+  async function loadDatabases() {
+    try {
+      /* Database answers can be turned off on the Admin panel: then there is nothing to pick. */
+      const on = await fetch(API + '/api/skills').then((r) => (r.ok ? r.json() : {})).catch(() => ({}));
+      state.sqlOn = on.sql !== false;
+      if (!state.sqlOn) throw new Error('off');
+      const res = await fetch(API + '/api/sql/connections');
+      if (!res.ok) throw new Error(String(res.status));
+      state.databases = (await res.json()).connections;
+      if (state.database && !state.databases.some((d) => d.id === state.database)) setDatabase(null);
+    } catch {
+      state.databases = [];
+    }
+    renderAttachments();
+  }
+  function setDatabase(id) {
+    state.database = id;
+    dbStore.set(id);
+    renderAttachments();
   }
 
   function renderModels() {
@@ -649,6 +921,36 @@ button{cursor:pointer}
       note.append('No models are pulled yet. Start Ollama, then run ', node('code', '', 'ollama pull llama3.2:3b'), '.');
       el.menu.append(note);
     }
+    renderDatabases();
+  }
+
+  /* The model menu's second part: answer from a saved database, or not. */
+  function renderDatabases() {
+    if (state.sqlOn === false) return;
+    el.menu.append(node('p', 'menu-head', 'Answer from a database'));
+    for (const d of [null, ...state.databases]) {
+      const opt = node('button', 'opt');
+      opt.type = 'button';
+      opt.setAttribute('role', 'option');
+      opt.setAttribute('aria-selected', String((d ? d.id : null) === state.database));
+      const text = node('span', 'opt-text');
+      text.append(
+        node('span', 'opt-name', d ? d.id : 'No database'),
+        node('span', 'opt-sub', d ? d.label + ' · read-only, local models only' : 'Chat as usual'),
+      );
+      text.firstChild.style.display = text.lastChild.style.display = 'block';
+      opt.append(text, node('span', 'opt-dot'));
+      opt.addEventListener('click', () => {
+        setDatabase(d ? d.id : null);
+        renderModels();
+        toggleMenu(false);
+        el.prompt.focus();
+      });
+      el.menu.append(opt);
+    }
+    const manage = node('a', 'menu-link', state.databases.length ? 'Manage databases →' : 'Connect a database →');
+    manage.href = 'databases.html';
+    el.menu.append(manage);
   }
 
   function toggleMenu(open) {
@@ -665,11 +967,333 @@ button{cursor:pointer}
     if (e.key !== 'Escape') return;
     toggleMenu(false);
     el.figma.hidden = true;
+    if (!$('user-menu').hidden) { toggleUserMenu(false); $('user-btn').focus(); }
+    else if (!wide() && root.classList.contains('sb-open')) toggleSidebar(false);
   });
+
+  /* ── Sidebar ── */
+  const wide = () => window.matchMedia('(min-width:1181px)').matches;
+  function toggleSidebar(open, remember = true) {
+    root.classList.toggle('sb-open', open);
+    $('sb-open').setAttribute('aria-expanded', String(open));
+    /* Only the wide layout remembers: on a phone the sidebar covers the chat, so it starts closed. */
+    if (remember && wide()) sidebarStore.set(open ? 'open' : 'closed');
+    if (!open) toggleUserMenu(false);
+  }
+  const closeIfNarrow = () => { if (!wide()) toggleSidebar(false); };
+  $('sb-open').addEventListener('click', () => toggleSidebar(true));
+  $('sb-close').addEventListener('click', () => toggleSidebar(false));
+  $('sb-scrim').addEventListener('click', () => toggleSidebar(false));
+  toggleSidebar(wide() && sidebarStore.get() !== 'closed', false);
+
+  /* ── Workspace (in the sidebar) ── */
+  const currentWorkspace = () => state.workspaces.find((w) => w.id === state.workspace) || null;
+  const plural = (n, one, many) => n + ' ' + (n === 1 ? one : many);
+  async function loadWorkspaces() {
+    try {
+      const res = await fetch(API + '/api/workspaces');
+      if (!res.ok) throw new Error(String(res.status));
+      state.workspaces = (await res.json()).workspaces;
+      if (state.workspace && !currentWorkspace()) setWorkspace(null);
+    } catch {
+      state.workspaces = [];
+    }
+    renderSpaces();
+    renderAttachments();
+  }
+  function setWorkspace(id) {
+    state.workspace = id;
+    wsStore.set(id);
+    renderSpaces();
+    renderAttachments();
+  }
+  function renderSpaces() {
+    const list = $('spaces-list');
+    list.replaceChildren();
+    const ws = currentWorkspace();
+    $('spaces-now').textContent = ws ? ws.name : '';
+    $('spaces-manage').href = 'workspaces.html' + (ws ? '#' + encodeURIComponent(ws.id) : '');
+    for (const w of [null, ...state.workspaces]) {
+      const b = node('button', 'space');
+      b.type = 'button';
+      b.setAttribute('role', 'option');
+      b.setAttribute('aria-selected', String((w ? w.id : null) === state.workspace));
+      const text = node('span', 's-text');
+      text.append(
+        node('span', 's-name', w ? w.name : 'No workspace'),
+        node('span', 's-sub', w ? plural(w.documents, 'document', 'documents') : 'Chat without documents'),
+      );
+      b.append(text, node('span', 's-tick'));
+      b.addEventListener('click', () => {
+        setWorkspace(w ? w.id : null);
+        closeIfNarrow();
+        el.prompt.focus();
+      });
+      list.append(b);
+    }
+    if (!state.workspaces.length) list.append(node('p', 'spaces-empty', 'No workspaces yet. Name one below, then add its documents.'));
+  }
+  $('spaces').addEventListener('toggle', () => { if ($('spaces').open) loadWorkspaces(); });
+  $('spaces-new').addEventListener('submit', async () => {
+    const input = $('spaces-new-name');
+    const name = input.value.trim();
+    if (!name) { input.focus(); return; }
+    try {
+      const res = await fetch(API + '/api/workspaces', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(typeof data.detail === 'string' ? data.detail : 'Could not make the workspace');
+      input.value = '';
+      wsStore.set(data.id);
+      location.href = 'workspaces.html#' + encodeURIComponent(data.id); /* a new workspace needs its documents first */
+    } catch (err) {
+      flash(err instanceof TypeError ? 'The backend is not reachable' : err.message);
+    }
+  });
+  loadWorkspaces();
+
+  /* ── Saved chats: kept in this browser (localStorage), newest first ── */
+  const chats = {
+    all() {
+      try { const list = JSON.parse(localStorage.getItem(CHATS_KEY) || '[]'); return Array.isArray(list) ? list : []; }
+      catch { return []; }
+    },
+    /* A full browser store drops the oldest chats until this one fits. */
+    write(list) {
+      for (;;) {
+        try { localStorage.setItem(CHATS_KEY, JSON.stringify(list)); return true; }
+        catch {
+          if (list.length <= 1) return false;
+          list = list.slice(0, -1);
+        }
+      }
+    },
+  };
+  const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  function titleOf(messages) {
+    const first = messages.find((m) => m.role === 'user');
+    const text = first ? (first.content || '').trim().split('\n')[0] || (first.names || [])[0] || '' : '';
+    return text.length > 60 ? text.slice(0, 59) + '…' : text || 'New chat';
+  }
+  /* What is kept of a message: pictures are left out (they would fill the browser's store). */
+  const storable = (m) => (m.images && m.images.length ? { ...m, images: [] } : m);
+  function saveChat(id, messages) {
+    const list = chats.all().filter((c) => c.id !== id);
+    const old = chats.all().find((c) => c.id === id);
+    list.unshift({ id, title: old ? old.title : titleOf(messages), updated: Date.now(), messages: messages.map(storable) });
+    if (list.length > MAX_CHATS) list.length = MAX_CHATS;
+    if (!chats.write(list)) flash('This chat could not be saved: the browser storage is full');
+    renderChats();
+  }
+  function deleteChat(id) {
+    chats.write(chats.all().filter((c) => c.id !== id));
+    if (state.chatId === id) reset();
+    renderChats();
+  }
+  function dayGroup(time) {
+    const start = new Date(); start.setHours(0, 0, 0, 0);
+    const days = (start - new Date(time).setHours(0, 0, 0, 0)) / 864e5;
+    return days <= 0 ? 'Today' : days === 1 ? 'Yesterday' : days < 7 ? 'Previous 7 days' : days < 30 ? 'Previous 30 days' : 'Older';
+  }
+  function renderChats() {
+    const box = $('chat-list');
+    box.replaceChildren();
+    const query = $('chat-search').value.trim().toLowerCase();
+    const list = chats.all().filter((c) => !query || c.title.toLowerCase().includes(query)
+      || c.messages.some((m) => (m.content || '').toLowerCase().includes(query)));
+    let group = '';
+    for (const c of list) {
+      const g = dayGroup(c.updated);
+      if (g !== group) { box.append(node('p', 'sb-label', g)); group = g; }
+      const row = node('div', 'sb-chat' + (c.id === state.chatId ? ' on' : ''));
+      const open = node('button', 'sb-open-chat', c.title);
+      open.type = 'button';
+      open.title = c.title;
+      if (c.id === state.chatId) open.setAttribute('aria-current', 'true');
+      open.addEventListener('click', () => openChat(c.id));
+      const del = node('button', 'sb-del');
+      del.type = 'button';
+      del.setAttribute('aria-label', 'Delete chat: ' + c.title);
+      del.innerHTML = '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 6h11M8 6V4.5h4V6M6.2 6l.7 9.5h6.2l.7-9.5"/></svg>';
+      del.addEventListener('click', () => { if (confirm('Delete "' + c.title + '"?')) deleteChat(c.id); });
+      row.append(open, del);
+      box.append(row);
+    }
+    if (!list.length) {
+      box.append(node('p', 'sb-label', 'Chats'));
+      box.append(node('p', 'sb-empty', query ? 'No chat matches.' : 'Your chats will show here. They are kept in this browser only.'));
+    }
+    $('chats-hint').textContent = 'Chats are saved in this browser only (' + plural(chats.all().length, 'chat', 'chats')
+      + ' now). Pictures attached to a message are not kept.';
+  }
+  function openChat(id) {
+    const chat = chats.all().find((c) => c.id === id);
+    if (!chat) { renderChats(); return; }
+    reset(false);
+    state.chatId = id;
+    state.messages = chat.messages;
+    for (const m of chat.messages) {
+      if (m.role === 'user') { addUser(m, m.names || []); continue; }
+      const v = m.view || {};
+      const out = addBot(v.label || 'Fastshot');
+      if (v.title) out.name.title = v.title;
+      out.stats.textContent = v.stats || '';
+      for (const note of v.notes || []) out.body.before(node('div', 'note', note));
+      for (const spec of v.charts || []) {
+        const box = node('details', 'think tool done');
+        box.open = true;
+        const text = node('div', 'think-text');
+        text.append(chartView(spec));
+        box.append(node('summary', '', 'Made a chart' + (spec.title ? ': ' + spec.title : '')), text);
+        out.body.before(box);
+      }
+      out.body.innerHTML = render(m.content);
+      if (v.sources) out.bubble.append(sourcesView(v.sources));
+    }
+    root.classList.remove('anim');
+    root.classList.add('chat');
+    follow.go();
+    renderChats();
+    closeIfNarrow();
+    el.prompt.focus();
+  }
+  const newChat = () => { reset(); closeIfNarrow(); };
+  $('new-chat').addEventListener('click', newChat);
+  $('top-new').addEventListener('click', newChat);
+  $('chat-search').addEventListener('input', renderChats);
+  window.addEventListener('storage', (e) => { if (e.key === CHATS_KEY) renderChats(); });
+
+  /* ── Account menu, Settings, and the Admin panel (shown to the admin only) ── */
+  /* Hiding it is for tidiness; the server checks the password on every admin request. */
+  const admin = {
+    get() { try { return sessionStorage.getItem(ADMIN_KEY) || ''; } catch { return ''; } },
+    set(v) { try { if (v) sessionStorage.setItem(ADMIN_KEY, v); else sessionStorage.removeItem(ADMIN_KEY); } catch {} },
+  };
+  function toggleUserMenu(open) {
+    $('user-menu').hidden = !open;
+    $('user-btn').setAttribute('aria-expanded', String(open));
+  }
+  $('user-btn').addEventListener('click', () => toggleUserMenu($('user-menu').hidden));
+  document.addEventListener('click', (e) => { if (!e.target.closest('.sb-foot')) toggleUserMenu(false); });
+
+  function renderAdmin() {
+    const on = !!admin.get();
+    root.classList.toggle('is-admin', on);
+    $('avatar').textContent = on ? 'A' : 'U';
+    $('user-name').textContent = on ? 'Admin' : 'User';
+    $('user-sub').textContent = on ? 'Settings · Admin panel' : 'Settings';
+    for (const id of ['open-admin', 'admin-rule', 'admin-out', 'tab-admin', 'admin-on']) $(id).hidden = !on;
+    $('admin-in').hidden = on;
+    if (!on && !$('panel-admin').hidden) showTab('general');
+    if (!on) $('panel-admin').replaceChildren(); /* the panel's page goes with the sign-in */
+  }
+  function adminStatus(text, kind) {
+    const s = $('admin-status');
+    s.hidden = !text;
+    s.className = 'set-status' + (kind ? ' ' + kind : '');
+    s.textContent = text || '';
+  }
+  async function checkAdmin(password) {
+    let res;
+    try {
+      res = await fetch(API + '/api/admin/login', { method: 'POST', headers: { 'X-Admin-Password': password } });
+    } catch {
+      throw new Error('The backend is not reachable. Start it with ./run.sh.');
+    }
+    if (res.ok) return;
+    const detail = (await res.json().catch(() => ({}))).detail;
+    throw new Error(typeof detail === 'string' ? detail : 'Could not sign in (' + res.status + ')');
+  }
+  function signOutAdmin() {
+    admin.set('');
+    renderAdmin();
+    toggleUserMenu(false);
+  }
+  $('admin-form').addEventListener('submit', async () => {
+    const input = $('admin-password');
+    const password = input.value;
+    if (!password) { input.focus(); return; }
+    $('admin-go').disabled = true;
+    adminStatus('Checking…');
+    try {
+      await checkAdmin(password);
+      admin.set(password);
+      input.value = '';
+      adminStatus('');
+      renderAdmin();
+      showTab('admin');
+    } catch (err) {
+      adminStatus(err.message, 'err');
+      input.select();
+    } finally {
+      $('admin-go').disabled = false;
+    }
+  });
+  $('admin-out').addEventListener('click', signOutAdmin);
+  $('admin-out-2').addEventListener('click', signOutAdmin);
+
+  function showTab(name) {
+    for (const tab of ['general', 'admin']) {
+      $('tab-' + tab).setAttribute('aria-selected', String(tab === name));
+      $('panel-' + tab).hidden = tab !== name;
+    }
+    if (name === 'admin' && !$('panel-admin').firstChild) {
+      /* The existing Admin page, without its own header; it reads the password this tab signed in with. */
+      const frame = node('iframe', 'set-iframe');
+      frame.title = 'Admin panel';
+      frame.src = 'admin.html?embed';
+      $('panel-admin').append(frame);
+    }
+  }
+  $('tab-general').addEventListener('click', () => showTab('general'));
+  $('tab-admin').addEventListener('click', () => showTab('admin'));
+  $('admin-show').addEventListener('click', () => showTab('admin'));
+  function openSettings(tab) {
+    toggleUserMenu(false);
+    renderChats();
+    showTab(tab === 'admin' && admin.get() ? 'admin' : 'general');
+    if (!$('settings').open) $('settings').showModal();
+  }
+  $('open-settings').addEventListener('click', () => openSettings('general'));
+  $('open-admin').addEventListener('click', () => openSettings('admin'));
+  $('settings-close').addEventListener('click', () => $('settings').close());
+  $('settings').addEventListener('click', (e) => { if (e.target === $('settings')) $('settings').close(); });
+  $('clear-chats').addEventListener('click', () => {
+    if (!chats.all().length || !confirm('Delete all chats saved in this browser?')) return;
+    chats.write([]);
+    reset();
+    renderChats();
+  });
+  /* A password kept from earlier in this tab is checked again: it may have been changed on the server. */
+  renderAdmin();
+  if (admin.get()) checkAdmin(admin.get()).catch(signOutAdmin);
+  renderChats();
 
   /* ── Attachments ── */
   function renderAttachments() {
     el.attachments.querySelectorAll('.pill:not(.warn)').forEach((p) => p.remove());
+    const ws = currentWorkspace();
+    if (ws) {
+      const pill = node('span', 'pill ws');
+      pill.title = 'Answers are based on the documents in "' + ws.name + '"';
+      const remove = node('button', '', '×');
+      remove.type = 'button';
+      remove.setAttribute('aria-label', 'Stop using ' + ws.name);
+      remove.addEventListener('click', () => setWorkspace(null));
+      pill.append(node('span', '', 'Workspace: ' + ws.name), remove);
+      el.attachments.append(pill);
+    }
+    if (state.database) {
+      const pill = node('span', 'pill db');
+      pill.title = 'Replies come from the database "' + state.database + '", queried read-only by a local model';
+      const remove = node('button', '', '×');
+      remove.type = 'button';
+      remove.setAttribute('aria-label', 'Stop answering from ' + state.database);
+      remove.addEventListener('click', () => setDatabase(null));
+      pill.append(node('span', '', 'Database: ' + state.database), remove);
+      el.attachments.append(pill);
+    }
     state.attachments.forEach((a, i) => {
       const pill = node('span', a.pending ? 'pill pending' : 'pill');
       pill.title = a.name;
@@ -677,7 +1301,7 @@ button{cursor:pointer}
       remove.type = 'button';
       remove.setAttribute('aria-label', 'Remove ' + a.name);
       remove.addEventListener('click', () => { state.attachments.splice(i, 1); renderAttachments(); });
-      pill.append(node('span', '', a.pending ? 'Reading ' + a.name + '…' : a.name), remove);
+      pill.append(node('span', '', a.pending ? 'Reading ' + a.name + '…' : a.name + (a.info ? ' · ' + a.info : '')), remove);
       el.attachments.append(pill);
     });
   }
@@ -696,6 +1320,13 @@ button{cursor:pointer}
     reader.readAsDataURL(file);
   });
   /* PDF, DOCX and text files are turned into text by the backend. */
+  /* "84 pages", "3 sheets · 12,345 rows": what a kept file is, for its pill. */
+  function fileInfo(doc) {
+    const n = (x) => Number(x).toLocaleString('en-IN');
+    if (doc.kind === 'table') return (doc.sheets > 1 ? doc.sheets + ' sheets · ' : '') + n(doc.rows) + ' rows';
+    if (doc.pages) return n(doc.pages) + (doc.pages === 1 ? ' page' : ' pages');
+    return doc.tokens > 1000 ? '~' + n(Math.round(doc.tokens / 1000)) + 'k tokens' : '';
+  }
   async function extract(file) {
     const form = new FormData();
     form.append('file', file);
@@ -713,7 +1344,7 @@ button{cursor:pointer}
     const image = file.type.startsWith('image/');
     const name = file.name || (image ? 'screenshot.png' : 'file');
     if (file.size > (image ? MAX_IMAGE_BYTES : MAX_DOC_BYTES)) {
-      problems.push(name + ' is over ' + (image ? 8 : 20) + ' MB');
+      problems.push(name + ' is over ' + (image ? 8 : 50) + ' MB');
       return;
     }
     const item = { kind: image ? 'image' : 'file', name, pending: true };
@@ -724,8 +1355,10 @@ button{cursor:pointer}
         item.data = (await readDataUrl(file)).split(',')[1];
       } else {
         const doc = await extract(file);
-        item.content = doc.content;
-        if (doc.truncated) problems.push(name + ' is long: only the first 200,000 characters are attached');
+        /* The file stays on the server: messages carry its id, and each question gets the part it needs. */
+        item.id = doc.id;
+        item.info = fileInfo(doc);
+        if (doc.truncated) problems.push(name + ' is very long: only its first part is kept');
       }
       item.pending = false;
     } catch (err) {
@@ -795,26 +1428,147 @@ button{cursor:pointer}
     if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); send(); }
   });
   el.send.addEventListener('click', (e) => { e.preventDefault(); send(); });
-  document.querySelectorAll('[data-start]').forEach((a) => a.addEventListener('click', (e) => {
-    e.preventDefault();
-    $('menu').checked = false;
-    el.prompt.focus();
-  }));
-  $('brand').addEventListener('click', (e) => { e.preventDefault(); reset(); });
+  $('brand').addEventListener('click', (e) => { e.preventDefault(); newChat(); });
 
   function setBusy(busy) {
     state.busy = busy;
     root.classList.toggle('busy', busy);
     el.send.setAttribute('aria-label', busy ? 'Stop' : 'Build it');
   }
-  function reset() {
+  function reset(focus = true) {
     if (state.abort) state.abort.abort();
     state.messages = [];
+    state.chatId = null;
     state.attachments = [];
     el.thread.replaceChildren();
     renderAttachments();
+    renderChats();
     root.classList.remove('chat');
-    el.prompt.focus();
+    if (focus) el.prompt.focus();
+  }
+
+  /* ── Charts (the create_chart skill): drawn here as SVG, no library, so it works offline ── */
+  const CHART_COLORS = ['#F49D70', '#8AB4F8', '#8FD3A8', '#C9A7F5', '#F2C66D', '#F28B9B'];
+  const svgNode = (tag, attrs, text) => {
+    const n = document.createElementNS('http://www.w3.org/2000/svg', tag);
+    for (const [k, v] of Object.entries(attrs || {})) n.setAttribute(k, v);
+    if (text != null) n.textContent = text;
+    return n;
+  };
+  const fmt = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 2 });
+  const fmtShort = new Intl.NumberFormat('en-IN', { notation: 'compact', maximumFractionDigits: 1 });
+  /* Round tick values: 0, 250, 500 ... rather than 0, 237.4, 474.8 */
+  function ticks(min, max, count = 5) {
+    if (min === max) { max = min + 1; min = Math.min(0, min); }
+    const raw = (max - min) / count;
+    const step = [1, 2, 2.5, 5, 10].map((m) => m * 10 ** Math.floor(Math.log10(raw))).find((s) => s >= raw);
+    const out = [];
+    for (let v = Math.floor(min / step) * step; v <= max + step * 1e-9; v += step) out.push(+v.toFixed(10));
+    if (out[out.length - 1] < max) out.push(out[out.length - 1] + step);
+    return out;
+  }
+  function chartView(spec) {
+    const wrap = node('div', 'chart');
+    if (spec.title) wrap.append(node('div', 'chart-title', spec.title));
+    /* As wide as the reply has room for, so the labels keep their size on a phone. */
+    const W = Math.max(300, Math.min(640, Math.round(el.thread.clientWidth - 76)));
+    const narrow = W < 520;
+    const pieRows = spec.type === 'pie' && narrow ? spec.labels.length : 0;
+    const H = spec.type === 'pie' && narrow ? 236 + pieRows * 20 : narrow ? 250 : 300;
+    const svg = svgNode('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': spec.title || 'Chart' });
+    const series = spec.series, labels = spec.labels;
+    const color = (i) => CHART_COLORS[i % CHART_COLORS.length];
+
+    if (spec.type === 'pie') {
+      const values = series[0].values, total = values.reduce((a, b) => a + b, 0) || 1;
+      const cx = narrow ? W / 2 : 150, cy = narrow ? 112 : 150, r = narrow ? 100 : 120;
+      let angle = -Math.PI / 2;
+      values.forEach((v, i) => {
+        const a2 = angle + (v / total) * Math.PI * 2;
+        const large = a2 - angle > Math.PI ? 1 : 0;
+        const p = (a) => `${cx + r * Math.cos(a)} ${cy + r * Math.sin(a)}`;
+        const d = values.length === 1 ? `M ${cx - r} ${cy} a ${r} ${r} 0 1 0 ${2 * r} 0 a ${r} ${r} 0 1 0 ${-2 * r} 0`
+          : `M ${cx} ${cy} L ${p(angle)} A ${r} ${r} 0 ${large} 1 ${p(a2)} Z`;
+        const slice = svgNode('path', { d, fill: color(i), stroke: '#141417', 'stroke-width': 1.5 });
+        slice.append(svgNode('title', {}, `${labels[i]}: ${fmt.format(v)} (${Math.round((v / total) * 100)}%)`));
+        svg.append(slice);
+        angle = a2;
+      });
+      labels.forEach((label, i) => {
+        const y = narrow ? 240 + i * 20 : 40 + i * 20, x = narrow ? 8 : 320;
+        svg.append(svgNode('rect', { x, y: y - 10, width: 11, height: 11, rx: 2, fill: color(i) }));
+        svg.append(svgNode('text', { x: x + 18, y, class: 'c-label' },
+          `${label.length > 26 ? label.slice(0, 25) + '…' : label}  ${fmt.format(series[0].values[i])} · ${Math.round((series[0].values[i] / total) * 100)}%`));
+      });
+    } else {
+      const all = series.flatMap((s) => s.values);
+      const lo = Math.min(0, ...all), hi = Math.max(0, ...all);
+      const ys = ticks(lo, hi);
+      const left = narrow ? 44 : 58, right = 10, top = 14, bottom = labels.length > 8 || (narrow && labels.length > 4) ? 70 : 40;
+      const pw = W - left - right, ph = H - top - bottom;
+      const y = (v) => top + ph - ((v - ys[0]) / (ys[ys.length - 1] - ys[0])) * ph;
+      const band = pw / labels.length;
+      for (const t of ys) {
+        svg.append(svgNode('line', { x1: left, x2: W - right, y1: y(t), y2: y(t), class: t === 0 ? 'c-zero' : 'c-grid' }));
+        svg.append(svgNode('text', { x: left - 8, y: y(t) + 4, 'text-anchor': 'end', class: 'c-label' }, fmtShort.format(t)));
+      }
+      const every = Math.ceil(labels.length / 24); /* never more than 24 labels along the bottom */
+      labels.forEach((label, i) => {
+        if (i % every) return;
+        const x = left + band * (i + 0.5), short = label.length > 14 ? label.slice(0, 13) + '…' : label;
+        const attrs = labels.length > 8 || (narrow && labels.length > 4)
+          ? { x, y: H - bottom + 14, 'text-anchor': 'end', transform: `rotate(-35 ${x} ${H - bottom + 14})`, class: 'c-label' }
+          : { x, y: H - bottom + 18, 'text-anchor': 'middle', class: 'c-label' };
+        svg.append(svgNode('text', attrs, short));
+      });
+      if (spec.type === 'bar') {
+        const gw = band * 0.72, bw = gw / series.length;
+        series.forEach((s, si) => s.values.forEach((v, i) => {
+          const x = left + band * i + (band - gw) / 2 + bw * si, y0 = y(0), yv = y(v);
+          const bar = svgNode('rect', { x, y: Math.min(y0, yv), width: Math.max(1, bw - 2), height: Math.max(1, Math.abs(y0 - yv)), rx: 2, fill: color(si) });
+          bar.append(svgNode('title', {}, `${labels[i]} · ${s.name}: ${fmt.format(v)}`));
+          svg.append(bar);
+        }));
+      } else {
+        series.forEach((s, si) => {
+          const pts = s.values.map((v, i) => [left + band * (i + 0.5), y(v)]);
+          if (spec.type === 'area') {
+            const d = `M ${pts[0][0]} ${y(Math.max(0, ys[0]))} ` + pts.map((p) => `L ${p[0]} ${p[1]}`).join(' ') + ` L ${pts[pts.length - 1][0]} ${y(Math.max(0, ys[0]))} Z`;
+            svg.append(svgNode('path', { d, fill: color(si), opacity: 0.18 }));
+          }
+          svg.append(svgNode('polyline', { points: pts.map((p) => p.join(',')).join(' '), fill: 'none', stroke: color(si), 'stroke-width': 2.2, 'stroke-linejoin': 'round' }));
+          pts.forEach((p, i) => {
+            const dot = svgNode('circle', { cx: p[0], cy: p[1], r: labels.length > 30 ? 2 : 3.2, fill: color(si) });
+            dot.append(svgNode('title', {}, `${labels[i]} · ${s.name}: ${fmt.format(s.values[i])}`));
+            svg.append(dot);
+          });
+        });
+      }
+      if (spec.y_label) svg.append(svgNode('text', { x: 12, y: top + ph / 2, transform: `rotate(-90 12 ${top + ph / 2})`, 'text-anchor': 'middle', class: 'c-label' }, spec.y_label));
+    }
+    wrap.append(svg);
+
+    const foot = node('div', 'chart-foot');
+    if (spec.type !== 'pie' && series.length > 1) {
+      for (const [i, s] of series.entries()) {
+        const key = node('span', 'chart-key', s.name);
+        key.style.setProperty('--c', color(i));
+        foot.append(key);
+      }
+    }
+    if (spec.x_label && spec.type !== 'pie') foot.append(node('span', 'chart-axis', spec.x_label));
+    const copy = node('button', 'chart-copy', 'Copy data');
+    copy.type = 'button';
+    copy.addEventListener('click', async () => {
+      const rows = [[spec.x_label || 'Label', ...series.map((s) => s.name)].join('\t'),
+        ...labels.map((l, i) => [l, ...series.map((s) => s.values[i])].join('\t'))];
+      try { await navigator.clipboard.writeText(rows.join('\n')); copy.textContent = 'Copied'; }
+      catch { copy.textContent = 'Could not copy'; }
+      setTimeout(() => { copy.textContent = 'Copy data'; }, 1600);
+    });
+    foot.append(copy);
+    wrap.append(foot);
+    return wrap;
   }
 
   /* ── Rendering ── */
@@ -870,6 +1624,22 @@ button{cursor:pointer}
     return { bubble, body, stats, name };
   }
 
+  /* The passages an answer is based on, under it: [n] document · page, each opening to its text. */
+  function sourcesView(event) {
+    const box = node('div', 'sources');
+    box.append(node('div', 'sources-head', event.items.length
+      ? 'Sources from ' + event.workspace + ' (found by ' + event.mode + ')'
+      : 'No passage in ' + event.workspace + ' matched this question'));
+    for (const item of event.items) {
+      const d = node('details');
+      const s = node('summary');
+      s.append(node('b', '', '[' + item.n + ']'), item.document, item.label ? node('span', '', ' · ' + item.label) : '');
+      d.append(s, node('div', 'src-text', item.text));
+      box.append(d);
+    }
+    return box;
+  }
+
   /* ── Chat ── */
   async function send() {
     if (state.busy) { state.abort?.abort(); return; }
@@ -882,9 +1652,13 @@ button{cursor:pointer}
       role: 'user',
       content,
       images: attached.filter((a) => a.kind === 'image').map((a) => a.data),
-      files: attached.filter((a) => a.kind === 'file').map((a) => ({ name: a.name, content: a.content })),
+      names: attached.map((a) => a.name), /* for the saved chat; not sent */
+      files: attached.filter((a) => a.kind === 'file').map((a) => (a.id ? { id: a.id, name: a.name } : { name: a.name, content: a.content })),
     };
     const history = state.messages; /* reset() swaps the array, so a late reply can't leak into a new chat */
+    const chatId = state.chatId || newId();
+    state.chatId = chatId;
+    const view = { label: '', title: '', notes: [], charts: [], sources: null, stats: '' }; /* what the saved chat shows again */
     history.push(message);
     state.attachments = [];
     el.prompt.value = '';
@@ -903,6 +1677,7 @@ button{cursor:pointer}
     let answeredBy = state.model; /* with Auto, replaced by the model the router picked */
     let thought = '';
     let think = null; /* the live "Thinking" block, created when the first reasoning arrives */
+    let tool = null; /* the database lookup that is running */
     let frame = 0;
     const startThinking = () => {
       const box = node('details', 'think');
@@ -931,6 +1706,70 @@ button{cursor:pointer}
       if (answer) out.body.innerHTML = render(answer);
       follow.keep();
     };
+    /* One database lookup: what the model asked for, then what came back. */
+    const TOOL_NAMES = {
+      read_document: 'Reading the whole document',
+      list_databases: 'Listing databases', list_tables: 'Listing tables', get_table_schema: 'Reading columns', query: 'Running a query',
+      create_chart: 'Making a chart', save_memory: 'Saving to memory', forget_memory: 'Forgetting',
+    };
+    const addTool = (event) => {
+      const box = node('details', 'think tool');
+      const args = event.args || {};
+      const label = node('summary', '', (TOOL_NAMES[event.name] || event.name) + (args.file ? ': ' + args.file : '') + '…');
+      const text = node('div', 'think-text');
+      if (args.sql_query) text.append(node('pre', '', args.sql_query));
+      else if (args.table_name) text.append(node('pre', '', args.table_name));
+      box.append(label, text);
+      out.body.before(box);
+      follow.keep();
+      return { box, label, text, name: event.name };
+    };
+    const showToolResult = (t, event) => {
+      t.box.classList.add('done');
+      const what = {
+        read_document: 'Read ' + (event.file || 'the document') + (event.parts ? ' in ' + event.parts + (event.parts === 1 ? ' part' : ' parts') : ''),
+        list_databases: 'Listed databases', list_tables: 'Listed tables', get_table_schema: 'Read the columns of ' + (event.table || 'a table'),
+        query: 'Ran a query', create_chart: 'Made a chart', save_memory: 'Saved to memory', forget_memory: 'Forgot',
+      }[t.name] || t.name;
+      if (event.error) {
+        t.label.textContent = what + ' · refused or failed';
+        t.text.append(node('div', 'tool-err', event.error));
+        return;
+      }
+      if (event.chart) { /* the chart stays open: it is part of the answer */
+        t.label.textContent = what + (event.chart.title ? ': ' + event.chart.title : '');
+        t.text.replaceChildren(chartView(event.chart));
+        view.charts.push(event.chart);
+        t.box.open = true;
+        return;
+      }
+      if (t.name === 'read_document') {
+        t.label.textContent = what;
+        t.text.append(node('div', '', 'Too long to read at once, so it was read in parts and the answer is written from notes on each part.'
+          + (event.skipped ? ' Only the first ' + event.parts + ' parts were read.' : '')));
+        return;
+      }
+      if (t.name === 'save_memory' || t.name === 'forget_memory') {
+        t.label.textContent = event.saved ? 'Saved to memory' : event.forgotten ? 'Forgot' : 'Nothing forgotten';
+        t.text.append(node('div', '', event.memory || ''));
+        return;
+      }
+      t.label.textContent = what + (event.database ? ' on ' + event.database : '') + ' · ' + event.rows + (event.rows === 1 ? ' row' : ' rows') + (event.truncated ? ' (more not read)' : '');
+      if (!event.columns || !event.columns.length) return;
+      const table = node('table');
+      const head = node('tr');
+      for (const c of event.columns) head.append(node('th', '', c));
+      table.append(head);
+      for (const row of event.preview || []) {
+        const tr = node('tr');
+        for (const v of row) tr.append(node('td', '', v == null ? '' : typeof v === 'object' ? JSON.stringify(v) : String(v)));
+        table.append(tr);
+      }
+      const wrap = node('div', 'tool-rows');
+      wrap.append(table);
+      if ((event.preview || []).length < event.rows) wrap.append(node('div', '', 'First ' + event.preview.length + ' of ' + event.rows + ' rows shown.'));
+      t.text.append(wrap);
+    };
     const fail = (text) => {
       out.bubble.classList.add('err');
       out.body.textContent = text;
@@ -943,7 +1782,10 @@ button{cursor:pointer}
       const res = await fetch(API + '/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: state.model, messages: history }),
+        body: JSON.stringify({
+          model: state.model, messages: history.map(({ names, view, ...m }) => m),
+          database: state.database || undefined, workspace: state.workspace || undefined,
+        }),
         signal: state.abort.signal,
       });
       if (!res.ok) {
@@ -966,21 +1808,37 @@ button{cursor:pointer}
           if (event.type === 'route') {
             /* Auto picked a model for this message: show which one, and why on hover. */
             answeredBy = event.model;
-            out.name.textContent = 'Auto · ' + event.label;
-            out.name.title = 'Routed by ' + event.source
+            out.name.textContent = (event.source === 'database' ? 'Database · ' : event.source === 'picked' ? '' : 'Auto · ') + event.label;
+            if (event.source === 'skills') out.name.title = 'Picked because this message uses a skill (a chart or memory) that needs a local model that calls tools';
+            out.name.title = event.source === 'database' || event.source === 'picked'
+              ? 'Answers from the database "' + state.database + '", queried read-only on this machine'
+              : 'Routed by ' + event.source
               + (event.route ? ' to "' + event.route + '"' : '')
               + (event.confidence != null ? ' (confidence ' + event.confidence + ')' : '');
-            if (event.note) out.body.before(node('div', 'note', event.note));
+            if (event.note) { out.body.before(node('div', 'note', event.note)); view.notes.push(event.note); }
+          } else if (event.type === 'sources') {
+            out.bubble.append(sourcesView(event));
+            view.sources = event;
           } else if (event.type === 'notice') {
             out.body.before(node('div', 'note', event.message));
+            view.notes.push(event.message);
           } else if (event.type === 'thinking') {
-            if (!think) think = startThinking();
+            /* After a lookup the model thinks again: that goes in a block of its own, below the lookup. */
+            if (!think || think.closed) { endThinking(); think = startThinking(); thought = ''; }
             thought += event.content;
             if (!frame) frame = requestAnimationFrame(paint);
           } else if (event.type === 'delta') {
             endThinking();
             answer += event.content;
             if (!frame) frame = requestAnimationFrame(paint);
+          } else if (event.type === 'tool_call') {
+            endThinking();
+            tool = addTool(event);
+          } else if (event.type === 'tool_progress') {
+            if (tool) tool.label.textContent = event.message;
+          } else if (event.type === 'tool_result') {
+            if (tool) showToolResult(tool, event);
+            tool = null;
           } else if (event.type === 'done') {
             const s = event.stats || {};
             out.stats.textContent = [s.tokens_per_second && s.tokens_per_second + ' tok/s', s.total_seconds && s.total_seconds + 's']
@@ -1001,10 +1859,19 @@ button{cursor:pointer}
     } finally {
       cancelAnimationFrame(frame);
       endThinking();
+      if (tool) { /* a lookup whose result never came: stopped, or the stream broke */
+        tool.box.classList.add('done');
+        tool.label.textContent = tool.label.textContent.replace(/…$/, '') + ' · stopped';
+        tool = null;
+      }
       out.bubble.classList.remove('live');
       if (answer) {
         paint();
-        history.push({ role: 'assistant', content: answer, model: answeredBy });
+        view.label = out.name.textContent;
+        view.title = out.name.title;
+        view.stats = out.stats.textContent;
+        history.push({ role: 'assistant', content: answer, model: answeredBy, view });
+        if (state.messages === history) saveChat(chatId, history); /* not after New chat or another chat was opened */
       } else {
         history.pop(); /* nothing came back, so the turn does not join the history */
       }
